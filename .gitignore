@@ -1,0 +1,26 @@
+node_modules/
+.pnpm-store/
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Build outputs
+.next/
+dist/
+build/
+.turbo/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
