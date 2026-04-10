@@ -6,3 +6,26 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum Role {
+  ADMIN
+  SUPPLIER
+  BUYER
+}
+
+model User {
+  id           String    @id @default(cuid())
+  fullName     String?
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(BUYER)
+  isVerified   Boolean   @default(false)
+  isActive     Boolean   @default(true)
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}

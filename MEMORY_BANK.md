@@ -10,8 +10,8 @@
 ## 🗓️ SON GÜNCELLEME
 
 ```
-Tarih     : 2026-04-09
-Oturum    : Sprint 1 — Altyapi ve Monorepo Kurulumu
+Tarih     : 2026-04-10
+Oturum    : Sprint 2 — Auth (Register/Login) Full-Stack Uygulamasi
 Güncelleyen: Ajan
 ```
 
@@ -24,9 +24,9 @@ Sprint    : [ ] Sprint 1 - Altyapı  [ ] Sprint 2 - Auth  [ ] Sprint 3 - Ürün 
            [ ] Sprint 4 - Tedarikçi [ ] Sprint 5 - Alıcı [ ] Sprint 6 - Mesajlaşma
            [ ] Sprint 7 - Admin     [ ] Sprint 8 - Polish
 
-Aktif Sprint : Sprint 1
-Son Tamamlanan Görev : Sprint 1 / 06 Next.js boilerplate (layout, fonts, TanStack Query provider)
-Sıradaki Görev : Sprint 1 / 04 Prisma schema v1 (User, Supplier, Product modelleme)
+Aktif Sprint : Sprint 2
+Son Tamamlanan Görev : Sprint 2 / 08 Giris yap (backend + frontend + test)
+Sıradaki Görev : Sprint 2 / 09 Email dogrulama (backend + frontend + test)
 ```
 
 ---
@@ -45,8 +45,8 @@ Sıradaki Görev : Sprint 1 / 04 Prisma schema v1 (User, Supplier, Product model
 
 ### Sprint 2 — Auth
 ```
-[ ] 07. Kayıt ol (backend + frontend + test)
-[ ] 08. Giriş yap (backend + frontend + test)
+[x] 07. Kayıt ol (backend + frontend + test)
+[x] 08. Giriş yap (backend + frontend + test)
 [ ] 09. Email doğrulama (backend + frontend + test)
 [ ] 10. JWT refresh token (backend + test)
 [ ] 11. Şifre sıfırlama (backend + frontend + test)
@@ -72,21 +72,49 @@ Sıradaki Görev : Sprint 1 / 04 Prisma schema v1 (User, Supplier, Product model
 ### Backend — apps/api/src/
 
 ```
-apps/api/src/main.ts             — NestJS bootstrap ve API port konfigurasyonu
-apps/api/src/app.module.ts       — Temel application module
-apps/api/src/app.controller.ts   — Baslangic GET endpoint
-apps/api/src/app.service.ts      — Baslangic servis sinifi
-apps/api/prisma/schema.prisma    — Prisma datasource + generator baslangici
-apps/api/.env.example            — API ortam degiskenleri sablonu
+apps/api/src/main.ts                                      — Global prefix (/api/v1), CORS ve ValidationPipe kurulumu
+apps/api/src/app.module.ts                                — ConfigModule + PrismaModule + UsersModule + AuthModule baglantisi
+apps/api/src/prisma/prisma.module.ts                      — Global Prisma provider
+apps/api/src/prisma/prisma.service.ts                     — Prisma client lifecycle yonetimi
+apps/api/src/modules/users/users.module.ts                — Users domain module
+apps/api/src/modules/users/users.repository.ts            — User sorgulari (Prisma select guvenli alanlar)
+apps/api/src/modules/users/users.service.ts               — Users domain service
+apps/api/src/modules/users/entities/user.entity.ts        — passwordHash icermeyen guvenli user entity
+apps/api/src/modules/auth/auth.module.ts                  — JWT + Passport + Auth wiring
+apps/api/src/modules/auth/auth.controller.ts              — POST /api/v1/auth/register ve POST /api/v1/auth/login
+apps/api/src/modules/auth/auth.service.ts                 — bcrypt hash/compare + JWT token uretimi
+apps/api/src/modules/auth/dto/login.dto.ts                — Login request validasyonu
+apps/api/src/modules/auth/dto/register.dto.ts             — Register request validasyonu
+apps/api/src/modules/auth/strategies/jwt.strategy.ts      — Bearer JWT strategy
+apps/api/src/modules/auth/auth.controller.spec.ts         — Auth controller unit testleri
+apps/api/src/modules/auth/auth.service.spec.ts            — Auth service unit testleri
+apps/api/src/modules/users/users.service.spec.ts          — Users service unit testleri
+apps/api/src/modules/users/users.repository.spec.ts       — Users repository unit testleri
+apps/api/prisma/schema.prisma                             — Role + User modeli (fullName dahil)
+apps/api/prisma/migrations/*                              — add_user_model migration dosyalari
+apps/api/.env.example                                     — API ortam degiskenleri sablonu
 ```
 
 ### Frontend — apps/web/src/
 
 ```
-apps/web/src/app/layout.tsx       — Root layout + QueryProvider entegrasyonu
-apps/web/src/app/providers.tsx    — TanStack Query client provider
-apps/web/src/app/page.tsx         — Altyapi hazir placeholder sayfasi
-apps/web/.env.example             — Web ortam degiskenleri sablonu
+apps/web/src/app/layout.tsx                               — Root layout (TR locale) + QueryProvider
+apps/web/src/app/page.tsx                                 — Login/Register giris landing sayfasi
+apps/web/src/app/(auth)/layout.tsx                        — Auth segment layout + footer
+apps/web/src/app/(auth)/login/page.tsx                    — Stitch tabanli login sayfasi
+apps/web/src/app/(auth)/register/page.tsx                 — Stitch tabanli register sayfasi
+apps/web/src/features/auth/components/AuthScreen.tsx      — Ortak auth ekran kabugu (split panel)
+apps/web/src/features/auth/components/LoginForm.tsx       — React Hook Form + Zod login formu
+apps/web/src/features/auth/components/RegisterForm.tsx    — React Hook Form + Zod register formu
+apps/web/src/features/auth/components/SocialAuthButtons.tsx — Sosyal buton gorunumu
+apps/web/src/features/auth/hooks/useAuthMutations.ts      — TanStack Query login/register mutationlari
+apps/web/src/features/auth/api/auth.api.ts                — Auth API istemcisi
+apps/web/src/lib/api.ts                                   — Generic POST JSON helper (error parse dahil)
+apps/web/src/app/providers.tsx                            — TanStack Query client provider
+apps/web/src/app/globals.css                              — Frontend global stil token temeli
+apps/web/tailwind.config.ts                               — Brand/accent tokenlari + packages/ui content scan
+apps/web/next.config.mjs                                  — transpilePackages ayari (@toptannext/ui, @toptannext/types)
+apps/web/.env.example                                     — Web ortam degiskenleri sablonu
 ```
 
 ### Frontend — apps/admin/src/
@@ -101,10 +129,16 @@ apps/admin/.env.example           — Admin ortam degiskenleri sablonu
 ### Ortak Paketler — packages/
 
 ```
-packages/types/package.json       — @toptannext/types workspace paketi
-packages/types/src/index.ts       — Tip giris noktasi
-packages/ui/package.json          — @toptannext/ui workspace paketi
-packages/ui/src/index.ts          — UI paket giris noktasi
+packages/types/package.json                             — @toptannext/types + zod bagimliligi
+packages/types/src/index.ts                             — Types export girisi
+packages/types/src/schemas/auth.ts                      — login/register Zod semalari + TS infer tipleri
+packages/types/src/schemas/index.ts                     — Schema export girisi
+packages/ui/package.json                                — @toptannext/ui + react bagimliliklari
+packages/ui/src/index.ts                                — UI export girisi
+packages/ui/src/components/Button.tsx                   — Ortak button bileseni
+packages/ui/src/components/Input.tsx                    — Ortak input bileseni
+packages/ui/src/components/Checkbox.tsx                 — Ortak checkbox bileseni
+packages/ui/src/components/index.ts                     — UI component exportlari
 packages/config/package.json      — @toptannext/config workspace paketi
 packages/config/src/index.ts      — Config paket giris noktasi
 packages/utils/package.json       — @toptannext/utils workspace paketi
@@ -114,9 +148,9 @@ packages/utils/src/index.ts       — Utils paket giris noktasi
 ### Veritabanı
 
 ```
-Prisma Schema Versiyonu : v0.1 (datasource + generator)
-Son Migration           : —
-Modeller                : Henüz eklenmedi (bir sonraki adim: User, Supplier, Product)
+Prisma Schema Versiyonu : v0.3 (Role + User + fullName)
+Son Migration           : add_user_model
+Modeller                : User eklendi (Supplier ve Product bir sonraki sprint kalemi)
 ```
 
 ---
@@ -134,6 +168,15 @@ Modeller                : Henüz eklenmedi (bir sonraki adim: User, Supplier, Pr
 
 2026-04-09 | Next.js layout seviyesinde TanStack Query provider eklendi.
            Gerekce: sonraki vertical slice'larda hook entegrasyonunun hazir olmasi.
+
+2026-04-10 | Auth akisi icin UsersRepository + UsersService + AuthService katman ayrimi uygulandi.
+           Gerekce: Prisma erisimi sadece repository'de kalarak RULES_BACKEND katman prensibi korundu.
+
+2026-04-10 | Login/Register formlarinda ortak dogrulama sozlesmesi @toptannext/types Zod semalari ile saglandi.
+           Gerekce: frontend ve backend auth payload formatlarinin tek kaynaktan yonetilmesi.
+
+2026-04-10 | UI tekrarini azaltmak icin Button/Input/Checkbox bilesenleri packages/ui icine tasindi.
+           Gerekce: auth disindaki sonraki ekranlarda da ortak component tekrar kullanimi.
 ```
 
 ---
@@ -156,7 +199,15 @@ AÇIK | Docker CLI bu makinede bulunmuyor (docker: command not found).
 @nestjs/common@10.x
 @nestjs/core@10.x
 @nestjs/platform-express@10.x
+@nestjs/config@4.x
+@nestjs/jwt@11.x
+@nestjs/passport@11.x
 @prisma/client@5.22.x
+bcrypt@6.x
+passport@0.7.x
+passport-jwt@4.x
+class-validator@0.15.x
+class-transformer@0.5.x
 prisma@5.22.x
 ```
 
@@ -164,8 +215,17 @@ prisma@5.22.x
 ```
 next@14.x
 @tanstack/react-query@5.x
+react-hook-form@7.x
+@hookform/resolvers@5.x
+@toptannext/types@workspace
+@toptannext/ui@workspace
 react@18.x
 tailwindcss@3.x
+```
+
+### packages/types
+```
+zod@4.x
 ```
 
 ---
@@ -173,59 +233,86 @@ tailwindcss@3.x
 ## 🔄 SON OTURUM ÖZETİ
 
 ```
-Oturum Tarihi  : 2026-04-09
+Oturum Tarihi  : 2026-04-10
 Yapılan İşler  :
-  - Kök monorepo dosyalari olusturuldu (package.json, pnpm-workspace.yaml, turbo.json)
-  - apps/web, apps/admin, apps/api ve packages/* klasor/paket iskeleti kuruldu
-  - apps/api icin NestJS 10+ scaffold olusturuldu
-  - apps/web ve apps/admin icin Next.js 14 App Router + Tailwind scaffold olusturuldu
-  - Prisma baslangic semasi eklendi (datasource + generator)
-  - docker-compose.yml ile Postgres/Redis/Meilisearch altyapisi tanimlandi
-  - API portu 3001'e sabitlendi, web/admin portlari 3000/3002 olarak pinlendi
-  - Type-check, lint, build ve Prisma validate dogrulamalari calistirildi
+  - Stitch login/register tasarimlari analiz edilerek auth component parcasi cikarildi
+  - Prisma User modeline fullName alani eklendi
+  - Auth backend katmani tamamlandi (UsersRepository, UsersService, AuthService, AuthController)
+  - bcrypt ile sifre hashleme/verify ve JWT token uretimi eklendi
+  - POST /api/v1/auth/register ve POST /api/v1/auth/login endpointleri aktif edildi
+  - users.repository, users.service, auth.service ve auth.controller unit testleri yazildi
+  - Frontend auth sayfalari Stitch referansli layout ile apps/web/(auth) altina tasindi
+  - Login/Register formlari React Hook Form + Zod resolver ile baglandi
+  - API cagirilari TanStack Query useMutation ile yonetildi
+  - Ortak Button/Input/Checkbox bilesenleri packages/ui altina cikarildi
 
 Oluşturulan Dosyalar:
-  - package.json
-  - pnpm-workspace.yaml
-  - turbo.json
-  - docker-compose.yml
-  - .nvmrc
-  - apps/api/prisma/schema.prisma
-  - apps/api/.env.example
-  - apps/web/.env.example
-  - apps/admin/.env.example
-  - apps/web/src/app/providers.tsx
-  - apps/admin/src/app/providers.tsx
-  - packages/types/*
-  - packages/ui/*
-  - packages/config/*
-  - packages/utils/*
+  - apps/api/src/prisma/prisma.module.ts
+  - apps/api/src/prisma/prisma.service.ts
+  - apps/api/src/modules/users/users.module.ts
+  - apps/api/src/modules/users/users.repository.ts
+  - apps/api/src/modules/users/users.service.ts
+  - apps/api/src/modules/users/entities/user.entity.ts
+  - apps/api/src/modules/users/users.repository.spec.ts
+  - apps/api/src/modules/users/users.service.spec.ts
+  - apps/api/src/modules/auth/auth.module.ts
+  - apps/api/src/modules/auth/auth.controller.ts
+  - apps/api/src/modules/auth/auth.service.ts
+  - apps/api/src/modules/auth/dto/login.dto.ts
+  - apps/api/src/modules/auth/dto/register.dto.ts
+  - apps/api/src/modules/auth/strategies/jwt.strategy.ts
+  - apps/api/src/modules/auth/auth.controller.spec.ts
+  - apps/api/src/modules/auth/auth.service.spec.ts
+  - apps/web/src/app/(auth)/layout.tsx
+  - apps/web/src/app/(auth)/login/page.tsx
+  - apps/web/src/app/(auth)/register/page.tsx
+  - apps/web/src/features/auth/components/AuthScreen.tsx
+  - apps/web/src/features/auth/components/LoginForm.tsx
+  - apps/web/src/features/auth/components/RegisterForm.tsx
+  - apps/web/src/features/auth/components/SocialAuthButtons.tsx
+  - apps/web/src/features/auth/hooks/useAuthMutations.ts
+  - apps/web/src/features/auth/api/auth.api.ts
+  - apps/web/src/lib/api.ts
+  - packages/types/src/schemas/auth.ts
+  - packages/types/src/schemas/index.ts
+  - packages/ui/src/components/Button.tsx
+  - packages/ui/src/components/Input.tsx
+  - packages/ui/src/components/Checkbox.tsx
+  - packages/ui/src/components/index.ts
 
 Değiştirilen Dosyalar:
-  - .gitignore
-  - MEMORY_BANK.md
-  - apps/api/package.json
+  - apps/api/prisma/schema.prisma
   - apps/api/src/main.ts
+  - apps/api/src/app.module.ts
+  - apps/api/package.json
   - apps/web/package.json
+  - apps/web/next.config.mjs
+  - apps/web/tailwind.config.ts
   - apps/web/src/app/layout.tsx
+  - apps/web/src/app/globals.css
   - apps/web/src/app/page.tsx
-  - apps/admin/package.json
-  - apps/admin/src/app/layout.tsx
-  - apps/admin/src/app/page.tsx
+  - packages/types/package.json
+  - packages/types/src/index.ts
+  - packages/ui/package.json
+  - packages/ui/src/index.ts
+  - MEMORY_BANK.md
 
 Çalışan Testler:
-  - pnpm type-check
-  - pnpm lint
-  - pnpm build
-  - pnpm --filter api exec prisma validate
-  - pnpm dev smoke testi (web:3000, api:3001, admin:3002)
+  - pnpm --filter @toptannext/types type-check
+  - pnpm --filter @toptannext/ui type-check
+  - pnpm --filter api type-check
+  - pnpm --filter api test -- --runInBand
+  - pnpm --filter api build
+  - pnpm --filter web type-check
+  - pnpm --filter web build
 
 Bekleyen / Yarım Kalan:
-  - Sprint 1 / 04 Prisma schema v1 modelleme (User, Supplier, Product)
-  - Docker runtime dogrulamasi (bu ortamda Docker CLI yok)
+  - Sprint 1 / 04 kapsaminda Supplier ve Product modelleri halen eksik
+  - Sprint 2 / 09 Email dogrulama akisi baslatilmadi
+  - Sprint 2 / 10 JWT refresh token akisi baslatilmadi
 
 Bir Sonraki Oturuma Not:
-  - Ilk HTML tasarimi geldiginde RULES_CORE HTML -> Kod Donusum Protokolu ile vertical slice baslat.
+  - Auth frontend sayfalarina token bazli redirect/middleware entegrasyonu eklenmeli.
 ```
 
 ---

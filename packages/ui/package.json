@@ -9,5 +9,11 @@
     "build": "tsc -p tsconfig.json",
     "type-check": "tsc -p tsconfig.json --noEmit",
     "lint": "echo \"No lint configured for @toptannext/ui\""
+  },
+  "dependencies": {
+    "react": "^18"
+  },
+  "devDependencies": {
+    "@types/react": "^18"
   }
 }

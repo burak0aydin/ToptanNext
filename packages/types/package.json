@@ -9,5 +9,8 @@
     "build": "tsc -p tsconfig.json",
     "type-check": "tsc -p tsconfig.json --noEmit",
     "lint": "echo \"No lint configured for @toptannext/types\""
+  },
+  "dependencies": {
+    "zod": "^4.3.6"
   }
 }

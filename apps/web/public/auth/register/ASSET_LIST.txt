@@ -1,0 +1,16 @@
+Place the following assets in this folder:
+
+1) hero-register.jpg
+   Usage: Left panel background image on register page
+
+2) social-google.png
+   Usage: Google social button icon
+
+3) social-facebook.png
+   Usage: Facebook social button icon
+
+4) social-linkedin.png
+   Usage: LinkedIn social button icon
+
+Path for all files:
+apps/web/public/auth/register/
