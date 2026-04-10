@@ -164,9 +164,9 @@ export default function LoginPage() {
                 <label className='text-xs font-semibold uppercase tracking-wider text-on-surface-variant'>
                   ŞİFRE
                 </label>
-                <a className='text-xs font-bold text-primary hover:text-secondary-container transition-colors' href='#'>
+                <Link className='text-xs font-bold text-primary hover:text-secondary-container transition-colors' href='/forgot-password'>
                   Şifremi Unuttum
-                </a>
+                </Link>
               </div>
               <div className='relative'>
                 <span className='material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-xl'>
