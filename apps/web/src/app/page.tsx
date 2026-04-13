@@ -46,37 +46,37 @@ export default function Home() {
 
   const products = [
     {
+      sku: 'MSM: TX-9042',
       title: 'Premium Kablosuz Gurultu Engelleyici Kulaklik',
-      price: 'TL2,450.00 - TL2,850.00',
-      moq: 'MSM: 50 Adet',
+      price: 'TL2.450 - TL2.850',
       image:
         'https://lh3.googleusercontent.com/aida-public/AB6AXuCyGffFgAGO7jcnnfx3rjq_OK93CN6UfcFeKmQe23A-cH20TiXlSd9Yf5QVe6B_8iCFQu2tE2QgPIU_o4MCq1WG5WUV2F-ODuNaqrjudtwiVBBpVExftDH5gCOI5nw4EzfpTWrhqTsLffY6PLgI-zFCrhU9cnqnCxJbGsTOoRnneGOxgXVW6dyGnQwWFAmX_y3jehayLK3rO-dSbZdCCsPHOv5sQHYqKAoW7oLA84aP9uvc6F_-u10ieOukAchEpBFV6Ab6fTihmdI',
     },
     {
+      sku: 'MSM: TX-3312',
       title: 'Hafif Tabanli Profesyonel Kosu Ayakkabisi',
-      price: 'TL850.00 - TL980.00',
-      moq: 'MSM: 30 Adet',
+      price: 'TL850 - TL980',
       image:
         'https://lh3.googleusercontent.com/aida-public/AB6AXuCwQkkBIUOKiFYD0bzAR2U3StlTDtFYpe-LHPFJZBITlRzFyM1YKpcTIyW3BtD204B74M1dbrqtI8mxL-jUPBOcxEfkTegVRyrhtK9X_rovU8V7WD2gBvR3GV51rTSnfT-ACnK_yuG92wEX6NfjFVGVWqVGUdSAV7YllsVx-xwERkIP6xDGvO8DNKxSVSnYGPIXAxkbmgTrRvhCVwpgclJUXPAOotyhd1LwvlUoxM02K19tGNfx5sbzWczQCaYMSr5Ec0txHzm-Uos',
     },
     {
+      sku: 'MSM: TX-1188',
       title: 'Ergonomik Fileli Ofis Calisma Koltugu',
-      price: 'TL1,150.00 - TL1,400.00',
-      moq: 'MSM: 10 Adet',
+      price: 'TL1.150 - TL1.400',
       image:
         'https://lh3.googleusercontent.com/aida-public/AB6AXuBZ5E4iuehvVbr3rXzlausdIiQIEDRK3AD0Qc4jKECawiOf5Y18GAa_72SipRGX81vp2Hxb7BfmkNPEhBCbZjz00Fby4DaeFcEaw35_WfENR9MS1qA8GzUtY14ykqo1InLxzSBEzv6xmH9IKIbIovKYABP6o4KBvpmZhsJgCqnMv7MzTI9E1thaZK5nmXuV8xRMIpZsO_aVmQqETwy4otshkQDQPaCMHEBuumchyh5vu1kFfZYkX1oDedMhE46bYFA0nQ-M22brMDw',
     },
     {
+      sku: 'MSM: TX-5521',
       title: 'Minimalist Tasarim Akilli Kol Saati',
-      price: 'TL1,120.00 - TL1,450.00',
-      moq: 'MSM: 20 Adet',
+      price: 'TL1.120 - TL1.450',
       image:
         'https://lh3.googleusercontent.com/aida-public/AB6AXuD0XCb_Tof0DrAwcF3y1aV_fhE1C7GbRbsfZ6Ak1YF9DHx7KO3Hw91dR5p2CnDoX1ohevogkW6X7AXn_v7Uiit5JgsMKos_lzph8RTRWguwIpRukjfgEMIlXDqd4sn71znTDvV65HsU1B7xndtjURk4BUJaRrgsxMMF0TgHd-ZdkOdZg9vswb5xOiWkBFwafSUVJDKWojmAeA-z5lNceT5bqefs_4BMOJo4YyRJlLnz9VrbWaY-DvKwF4JDIWGz4G8lHcVQK9wK5s0',
     },
     {
+      sku: 'MSM: TX-7733',
       title: '20000mAh Endustriyel Power Bank - Su Gecirmez',
-      price: 'TL350.00 - TL420.00',
-      moq: 'MSM: 100 Adet',
+      price: 'TL350 - TL420',
       image:
         'https://lh3.googleusercontent.com/aida-public/AB6AXuB5lMjWFwfR3tVtOzfFmMUf5fG5VZhUof-3cp3MPscPC2BsVpw1CebYQp8cYKmvMdO1Ay4v7672xLEMOeZcUEZXF87jQpScx544ftob7ZKbWzv5Hfj1oBkG9lb_1j1_Z1LOndWqO7HCgdb_gGuUmLJ4KykXZTECM9I2rDbZiU1J25Ek1524sBvNqTAOkMO96qDjZ1qAtgMr6fWS5e12hpfKJ7PqRMu3t32i4IjLktLnZ-8tRuF0yix5r3QW7y6aqVp7rB-mA2FYBmE',
     },
@@ -86,11 +86,9 @@ export default function Home() {
     <div className='bg-background text-on-surface antialiased'>
       <header className='sticky top-0 z-50 border-b border-slate-100 bg-white shadow-sm'>
         <nav className='relative mx-auto flex w-full max-w-[1920px] items-center justify-between px-6 py-3'>
-          <div className='flex items-center'>
-            <span className='text-2xl font-bold tracking-tighter text-[#003FB1]'>
-              Toptan<span className='text-[#FF5A1F]'>Next</span>
-            </span>
-          </div>
+          <span className='text-2xl font-bold tracking-tighter text-[#003FB1]'>
+            Toptan<span className='text-[#FF5A1F]'>Next</span>
+          </span>
 
           <div className='mx-12 hidden max-w-3xl flex-1 items-center gap-1 rounded-xl border border-outline-variant/30 bg-surface-container-low px-4 py-2 lg:flex'>
             <span className='material-symbols-outlined text-outline'>search</span>
@@ -131,7 +129,7 @@ export default function Home() {
               <span className='material-symbols-outlined text-[20px]'>menu</span>
               Kategoriler
             </button>
-            <a className='flex h-full items-center border-b-2 border-primary py-1 text-sm font-semibold text-primary' href='#'>
+            <a className='text-sm font-semibold text-on-surface-variant transition-colors hover:text-primary' href='#'>
               Sektorler
             </a>
             <a className='text-sm font-semibold text-on-surface-variant transition-colors hover:text-primary' href='#'>
@@ -140,108 +138,132 @@ export default function Home() {
             <a className='text-sm font-semibold text-on-surface-variant transition-colors hover:text-primary' href='#'>
               ToptanNext'te Satis Yap
             </a>
+            <div className='flex-1'></div>
+            <div className='flex items-center gap-4'>
+              <a className='text-[10px] font-bold text-on-surface-variant transition-colors hover:text-primary' href='#'>
+                App Store
+              </a>
+              <a className='text-[10px] font-bold text-on-surface-variant transition-colors hover:text-primary' href='#'>
+                Play Store
+              </a>
+            </div>
           </div>
         </div>
       </header>
 
       <main>
-        <section className='relative flex h-[600px] items-center overflow-hidden bg-slate-900'>
-          <div className='absolute inset-0 z-0'>
+        <section className='relative flex h-[400px] items-center overflow-hidden bg-slate-900'>
+          <div className='absolute inset-0'>
             <img
               className='h-full w-full object-cover opacity-50'
               src='https://lh3.googleusercontent.com/aida-public/AB6AXuD4MIDmelgzGiknOErjpkKb1wOCHSfnAF95fAFfSr6c83x7VzsJS0axr00qBRoGkpITWFO0ipPHIRADHIsNJBTebzbt0Xniw_7y677gEu34kWp19NuSVZi2UTlOmCmKExpRnY_4211CcI_UPuZ3rEt2ATyUhmubYJbvuB5zmxTdyaoZgNtU-r8Pt10LveCHtFiiRyhJ8wYX-9LjV0oNvWxDBQD9xZaEOjmncfQk3zzRvF-QeZv5Yxnn8vvh5p4yPKtI-Tmpj0vUHQQ'
               alt='Modern logistics warehouse'
             />
-            <div className='absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/60 to-transparent'></div>
+            <div className='absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/40 to-transparent'></div>
           </div>
 
-          <div className='container relative z-10 mx-auto flex h-full flex-col justify-center px-6'>
+          <div className='container relative z-10 mx-auto px-6'>
             <div className='max-w-2xl'>
-              <h1 className='mb-6 text-5xl font-extrabold leading-tight text-white md:text-6xl'>
+              <h1 className='mb-4 text-4xl font-extrabold leading-tight text-white md:text-5xl'>
                 Toptan Alimin Gelecegi: <span className='text-[#1A56DB]'>Toptan</span>
                 <span className='text-[#FF5A1F]'>Next</span>
               </h1>
-              <p className='mb-10 text-xl leading-relaxed text-slate-300'>
+              <p className='mb-8 text-lg leading-relaxed text-slate-300'>
                 Binlerce dogrulanmis tedarikci, guvenli odeme sistemleri ve global lojistik agi ile
                 isletmenizi buyutun.
               </p>
-              <div className='flex flex-wrap gap-4'>
-                <button className='rounded-xl border border-white/30 bg-white/10 px-8 py-4 text-lg font-bold text-white backdrop-blur-md transition-all hover:bg-white/20 active:scale-95'>
-                  Firsatlari Kesfet
+              <button className='rounded-xl bg-primary px-8 py-3 text-base font-bold text-white transition-all hover:bg-primary-container active:scale-95'>
+                Firsatlari Kesfet
+              </button>
+            </div>
+          </div>
+
+          <div className='absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 gap-2'>
+            <div className='h-2.5 w-2.5 rounded-full bg-white'></div>
+            <div className='h-2.5 w-2.5 rounded-full bg-white/40'></div>
+            <div className='h-2.5 w-2.5 rounded-full bg-white/40'></div>
+            <div className='h-2.5 w-2.5 rounded-full bg-white/40'></div>
+          </div>
+        </section>
+
+        <section className='bg-white py-12'>
+          <div className='container mx-auto px-6'>
+            <div className='mb-8 flex items-center justify-between'>
+              <h2 className='text-2xl font-bold text-on-surface'>One Cikan Sektorler</h2>
+              <div className='flex items-center gap-2'>
+                <button className='flex h-10 w-10 items-center justify-center rounded-full border border-outline-variant'>
+                  <span className='material-symbols-outlined'>chevron_left</span>
+                </button>
+                <button className='flex h-10 w-10 items-center justify-center rounded-full border border-outline-variant'>
+                  <span className='material-symbols-outlined'>chevron_right</span>
                 </button>
               </div>
             </div>
-          </div>
 
-          <div className='absolute bottom-8 left-1/2 z-20 flex -translate-x-1/2 gap-2'>
-            <div className='h-3 w-3 cursor-pointer rounded-full bg-white shadow-sm'></div>
-            <div className='h-3 w-3 cursor-pointer rounded-full bg-white/40 transition-colors hover:bg-white/60'></div>
-            <div className='h-3 w-3 cursor-pointer rounded-full bg-white/40 transition-colors hover:bg-white/60'></div>
-            <div className='h-3 w-3 cursor-pointer rounded-full bg-white/40 transition-colors hover:bg-white/60'></div>
-          </div>
-        </section>
-
-        <section className='container mx-auto px-6 py-20'>
-          <div className='mb-12 flex items-end justify-between'>
-            <div>
-              <h2 className='mb-2 text-3xl font-bold text-on-surface'>One Cikan Sektorler</h2>
-              <p className='text-on-surface-variant'>Isletmeniz icin en populer sektorleri kesfedin</p>
-            </div>
-            <button className='flex items-center gap-1 font-semibold text-primary hover:underline'>
-              Tumunu Gor <span className='material-symbols-outlined text-sm'>arrow_forward</span>
-            </button>
-          </div>
-
-          <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4'>
-            {sectors.map((sector) => (
-              <div key={sector.title} className='group relative h-64 overflow-hidden rounded-2xl bg-slate-200'>
-                <img
-                  className='h-full w-full object-cover transition-transform duration-500 group-hover:scale-110'
-                  src={sector.image}
-                  alt={sector.title}
-                />
-                <div className='absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-transparent to-transparent p-6'>
-                  <h3 className='text-xl font-bold text-white'>{sector.title}</h3>
+            <div className='hide-scrollbar flex gap-8 overflow-x-auto pb-4 lg:justify-between'>
+              {sectors.map((sector) => (
+                <div key={sector.title} className='group flex min-w-[100px] flex-col items-center gap-3'>
+                  <div className='h-20 w-20 overflow-hidden rounded-full border-2 border-transparent bg-surface-container-low shadow-sm transition-all group-hover:border-primary'>
+                    <img className='h-full w-full object-cover' src={sector.image} alt={sector.title} />
+                  </div>
+                  <span className='text-center text-xs font-semibold text-on-surface group-hover:text-primary'>
+                    {sector.title}
+                  </span>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </section>
 
-        <section className='bg-surface-container-low py-20'>
+        <section className='bg-[#F8FAFC] py-16'>
           <div className='container mx-auto px-6'>
-            <div className='mb-12 flex items-end justify-between'>
-              <div>
-                <h2 className='text-3xl font-bold text-on-surface'>Kesfetmeye Devam Et</h2>
-                <p className='text-on-surface-variant'>Sizin icin onerilen en yeni toptan urunler</p>
+            <div className='mb-10 flex items-center justify-between'>
+              <h2 className='text-3xl font-bold text-on-surface'>Kesfetmeye Devam Et</h2>
+              <div className='relative'>
+                <select className='appearance-none rounded-lg border border-outline-variant/30 bg-white px-4 py-2 pr-10 text-sm font-medium'>
+                  <option>Onerilen</option>
+                  <option>En Yeniler</option>
+                  <option>Fiyata Gore (Artan)</option>
+                  <option>Fiyata Gore (Azalan)</option>
+                </select>
+                <span className='material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-lg text-outline'>
+                  expand_more
+                </span>
               </div>
-              <button className='flex items-center gap-1 font-semibold text-primary hover:underline'>
-                Tumunu Gor <span className='material-symbols-outlined text-sm'>arrow_forward</span>
-              </button>
             </div>
 
             <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5'>
               {products.map((product) => (
                 <div
                   key={product.title}
-                  className='group rounded-2xl bg-surface-container-lowest p-4 transition-all hover:shadow-xl'
+                  className='group overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm transition-all hover:shadow-md'
                 >
-                  <div className='relative mb-4 aspect-square overflow-hidden rounded-xl bg-slate-100'>
+                  <div className='aspect-square overflow-hidden bg-slate-50'>
                     <img
-                      className='h-full w-full object-cover transition-transform group-hover:scale-105'
+                      className='h-full w-full object-cover transition-transform duration-500 group-hover:scale-105'
                       src={product.image}
                       alt={product.title}
                     />
                   </div>
-                  <h3 className='mb-2 text-sm font-semibold text-on-surface'>{product.title}</h3>
-                  <p className='text-base font-bold text-primary'>{product.price}</p>
-                  <p className='mt-2 text-[11px] font-medium text-on-surface-variant'>{product.moq}</p>
+                  <div className='p-4'>
+                    <p className='mb-1 text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant'>
+                      {product.sku}
+                    </p>
+                    <h3 className='mb-3 min-h-[40px] line-clamp-2 text-sm font-bold text-on-surface'>
+                      {product.title}
+                    </h3>
+                    <p className='mb-1 text-[10px] text-on-surface-variant'>Toptan Fiyat Araligi</p>
+                    <div className='flex items-baseline gap-1'>
+                      <span className='text-lg font-bold text-primary'>{product.price}</span>
+                      <span className='text-[10px] text-on-surface-variant'>/ Adet</span>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
 
             <div className='mt-12 flex justify-center'>
-              <button className='rounded-full border border-outline-variant bg-white px-8 py-3 text-sm font-bold text-on-surface-variant transition-all hover:bg-surface-container'>
+              <button className='rounded-lg border border-outline-variant bg-white px-12 py-3 text-sm font-bold text-on-surface-variant shadow-sm'>
                 Daha Fazla Yukle
               </button>
             </div>
@@ -261,7 +283,6 @@ export default function Home() {
                 </p>
               </div>
             </div>
-
             <div className='flex items-start gap-4'>
               <div className='flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10'>
                 <span className='material-symbols-outlined text-3xl'>local_shipping</span>
@@ -273,7 +294,6 @@ export default function Home() {
                 </p>
               </div>
             </div>
-
             <div className='flex items-start gap-4'>
               <div className='flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10'>
                 <span className='material-symbols-outlined text-3xl'>support_agent</span>
@@ -292,106 +312,39 @@ export default function Home() {
       <footer className='border-t border-slate-900 bg-slate-950 py-16 text-slate-400'>
         <div className='container mx-auto px-6'>
           <div className='mb-12 grid grid-cols-1 gap-12 md:grid-cols-4'>
-            <div className='md:col-span-1'>
+            <div>
               <span className='mb-6 block text-2xl font-bold text-white'>
                 Toptan<span className='text-[#FF5A1F]'>Next</span>
               </span>
               <p className='mb-6 text-sm leading-relaxed'>
                 Turkiye'nin lider B2B pazaryeri platformu. Ticaretin dijital mimari.
               </p>
-              <div className='flex gap-4'>
-                <a className='transition-colors hover:text-primary' href='#'>
-                  <span className='material-symbols-outlined'>social_leaderboard</span>
-                </a>
-                <a className='transition-colors hover:text-primary' href='#'>
-                  <span className='material-symbols-outlined'>share</span>
-                </a>
-                <a className='transition-colors hover:text-primary' href='#'>
-                  <span className='material-symbols-outlined'>public</span>
-                </a>
-              </div>
             </div>
-
             <div>
               <h5 className='mb-6 font-bold text-white'>Kurumsal</h5>
               <ul className='space-y-4 text-sm'>
-                <li>
-                  <a className='transition-colors hover:text-white' href='#'>
-                    Hakkimizda
-                  </a>
-                </li>
-                <li>
-                  <a className='transition-colors hover:text-white' href='#'>
-                    Kariyer
-                  </a>
-                </li>
-                <li>
-                  <a className='transition-colors hover:text-white' href='#'>
-                    Yatirimci Iliskileri
-                  </a>
-                </li>
-                <li>
-                  <a className='transition-colors hover:text-white' href='#'>
-                    Basin Bultenleri
-                  </a>
-                </li>
+                <li>Hakkimizda</li>
+                <li>Kariyer</li>
+                <li>Yatirimci Iliskileri</li>
+                <li>Basin Bultenleri</li>
               </ul>
             </div>
-
             <div>
               <h5 className='mb-6 font-bold text-white'>Destek</h5>
               <ul className='space-y-4 text-sm'>
-                <li>
-                  <a className='transition-colors hover:text-white' href='#'>
-                    Yardim Merkezi
-                  </a>
-                </li>
-                <li>
-                  <a className='transition-colors hover:text-white' href='#'>
-                    Islem Rehberi
-                  </a>
-                </li>
-                <li>
-                  <a className='transition-colors hover:text-white' href='#'>
-                    Iade Politikasi
-                  </a>
-                </li>
-                <li>
-                  <a className='transition-colors hover:text-white' href='#'>
-                    Guvenli Alisveris
-                  </a>
-                </li>
+                <li>Yardim Merkezi</li>
+                <li>Islem Rehberi</li>
+                <li>Iade Politikasi</li>
+                <li>Guvenli Alisveris</li>
               </ul>
             </div>
-
             <div>
               <h5 className='mb-6 font-bold text-white'>Iletisim</h5>
               <ul className='space-y-4 text-sm'>
-                <li className='flex items-center gap-2'>
-                  <span className='material-symbols-outlined text-sm'>mail</span> info@toptannext.com
-                </li>
-                <li className='flex items-center gap-2'>
-                  <span className='material-symbols-outlined text-sm'>call</span> 0850 000 00 00
-                </li>
-                <li className='flex items-center gap-2'>
-                  <span className='material-symbols-outlined text-sm'>location_on</span> Istanbul, Turkiye
-                </li>
+                <li>info@toptannext.com</li>
+                <li>0850 000 00 00</li>
+                <li>Istanbul, Turkiye</li>
               </ul>
-            </div>
-          </div>
-
-          <div className='flex flex-col items-center justify-between gap-4 border-t border-slate-900 pt-8 md:flex-row'>
-            <p className='text-xs'>© 2024 ToptanNext. Tum Haklari Saklidir.</p>
-            <div className='flex gap-6 text-xs'>
-              <a className='transition-colors hover:text-white' href='#'>
-                Gizlilik Politikasi
-              </a>
-              <a className='transition-colors hover:text-white' href='#'>
-                Kullanim Kosullari
-              </a>
-              <a className='transition-colors hover:text-white' href='#'>
-                KVKK Aydinlatma Metni
-              </a>
             </div>
           </div>
         </div>

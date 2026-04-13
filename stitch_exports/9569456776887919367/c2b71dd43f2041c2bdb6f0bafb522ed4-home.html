@@ -1,0 +1,424 @@
+<!DOCTYPE html><html class="light" lang="tr" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>ToptanNext | Toptan Alımın Geleceği</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error-container": "#93000a",
+                        "on-primary-container": "#d4dcff",
+                        "error-container": "#ffdad6",
+                        "on-tertiary": "#ffffff",
+                        "inverse-primary": "#b5c4ff",
+                        "surface-dim": "#d8dadc",
+                        "primary": "#003fb1",
+                        "surface-tint": "#1353d8",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed": "#380d00",
+                        "on-secondary-container": "#521300",
+                        "surface-container-low": "#f2f4f6",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-secondary-fixed": "#3a0b00",
+                        "on-surface-variant": "#434654",
+                        "tertiary": "#852b00",
+                        "secondary-fixed": "#ffdbd0",
+                        "on-tertiary-fixed-variant": "#802a00",
+                        "outline": "#737686",
+                        "on-surface": "#191c1e",
+                        "tertiary-fixed": "#ffdbcf",
+                        "inverse-on-surface": "#eff1f3",
+                        "inverse-surface": "#2d3133",
+                        "primary-container": "#1a56db",
+                        "secondary": "#ae3200",
+                        "primary-fixed": "#dbe1ff",
+                        "on-primary": "#ffffff",
+                        "on-background": "#191c1e",
+                        "tertiary-container": "#ad3b00",
+                        "on-tertiary-container": "#ffd4c5",
+                        "on-secondary-fixed-variant": "#852400",
+                        "surface-container": "#eceef0",
+                        "surface-container-high": "#e6e8ea",
+                        "surface": "#f7f9fb",
+                        "tertiary-fixed-dim": "#ffb59a",
+                        "surface-variant": "#e0e3e5",
+                        "on-secondary": "#ffffff",
+                        "surface-bright": "#f7f9fb",
+                        "secondary-container": "#fd591e",
+                        "on-primary-fixed-variant": "#003dab",
+                        "on-primary-fixed": "#00174d",
+                        "background": "#f7f9fb",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed-dim": "#ffb59e",
+                        "primary-fixed-dim": "#b5c4ff",
+                        "outline-variant": "#c3c5d7",
+                        "error": "#ba1a1a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-background text-on-surface antialiased">
+<!-- TopNavBar (Main) -->
+<header class="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-none sticky top-0 z-50">
+<nav class="flex justify-between items-center px-6 py-3 w-full max-w-[1920px] mx-auto relative">
+<div class="flex items-center">
+<span class="text-2xl font-bold tracking-tighter text-[#003FB1] dark:text-blue-400" style="">Toptan<span class="text-[#FF5A1F]" style="">Next</span></span>
+</div>
+<!-- Search Bar -->
+<div class="hidden lg:flex flex-1 max-w-3xl mx-12 items-center gap-1 bg-surface-container-low px-4 py-2 rounded-xl border border-outline-variant/30">
+<span class="material-symbols-outlined text-outline" style="">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-full text-on-surface-variant" placeholder="Ürün, kategori veya marka ara..." type="text">
+</div>
+<div class="flex items-center gap-8">
+<!-- User Login Area -->
+<button class="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-[#1A56DB] dark:hover:text-blue-300 transition-colors active:scale-95 duration-150" style="">
+<span class="material-symbols-outlined text-3xl" style="">account_circle</span>
+<div class="flex flex-col items-start leading-tight">
+<span class="text-xs font-bold" style="">Giriş Yap</span>
+<span class="text-[10px] text-on-surface-variant" style=""><br></span>
+</div>
+</button>
+<!-- Messages -->
+<button class="flex flex-col items-center text-slate-600 dark:text-slate-400 hover:text-[#1A56DB] dark:hover:text-blue-300 transition-colors active:scale-95 duration-150" style="">
+<span class="material-symbols-outlined" style="">forum</span>
+<span class="text-[10px] mt-1 font-medium" style="">Mesajlar</span>
+</button>
+<!-- Cart -->
+<button class="flex flex-col items-center text-slate-600 dark:text-slate-400 hover:text-[#1A56DB] dark:hover:text-blue-300 transition-colors active:scale-95 duration-150" style="">
+<span class="material-symbols-outlined" style="">shopping_cart</span>
+<span class="text-[10px] mt-1 font-medium" style="">Sepetim</span>
+</button>
+</div>
+</nav>
+<!-- Sub-Navbar -->
+<div class="w-full bg-slate-50 dark:bg-slate-950 border-b border-slate-200/50 dark:border-slate-800/50 h-10">
+<div class="flex items-center h-full px-6 gap-8 max-w-[1920px] mx-auto">
+<button class="flex items-center gap-2 text-sm font-semibold text-on-surface hover:text-primary transition-colors" style="">
+<span class="material-symbols-outlined text-[20px]" style="">menu</span>
+                    Kategoriler
+                </button>
+<a class="text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors" href="#" style="">Sektörler</a>
+<a class="text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors" href="#" style="">Lojistik Çözümler</a>
+<a class="text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors" href="#" style="">ToptanNext'te Satış Yap</a>
+<div class="flex-1"></div>
+<div class="flex items-center gap-4">
+<a class="flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors" href="#" style="">
+<span class="text-[10px] font-bold" style="">App Store</span>
+</a>
+<a class="flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors" href="#" style="">
+<span class="text-[10px] font-bold" style="">Play Store</span>
+</a>
+</div>
+</div>
+</div>
+</header>
+<main>
+<!-- Hero Section (Compact Height) -->
+<section class="relative h-[400px] flex items-center overflow-hidden bg-slate-900">
+<div class="absolute inset-0 z-0">
+<img class="w-full h-full object-cover opacity-50" data-alt="Modern high-tech logistics warehouse with organized shelves and soft blue artificial lighting atmosphere industrial professional" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4MIDmelgzGiknOErjpkKb1wOCHSfnAF95fAFfSr6c83x7VzsJS0axr00qBRoGkpITWFO0ipPHIRADHIsNJBTebzbt0Xniw_7y677gEu34kWp19NuSVZi2UTlOmCmKExpRnY_4211CcI_UPuZ3rEt2ATyUhmubYJbvuB5zmxTdyaoZgNtU-r8Pt10LveCHtFiiRyhJ8wYX-9LjV0oNvWxDBQD9xZaEOjmncfQk3zzRvF-QeZv5Yxnn8vvh5p4yPKtI-Tmpj0vUHQQ" style="">
+<div class="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/40 to-transparent"></div>
+</div>
+<div class="relative z-10 container mx-auto px-6 h-full flex flex-col justify-center">
+<div class="max-w-2xl">
+<h1 class="text-4xl md:text-5xl font-extrabold text-white leading-tight mb-4" style="">Toptan Alımın Geleceği: <span class="text-[#1A56DB]" style="">Toptan</span><span class="text-[#FF5A1F]" style="">Next</span></h1>
+<p class="text-lg text-slate-300 mb-8 leading-relaxed" style="">
+                        Binlerce doğrulanmış tedarikçi, güvenli ödeme sistemleri ve global lojistik ağı ile işletmenizi büyütün.
+                    </p>
+<div class="flex flex-wrap gap-4">
+<button class="bg-primary hover:bg-primary-container text-white px-8 py-3 rounded-xl font-bold text-base transition-all active:scale-95" style="">Fırsatları Keşfet</button>
+</div>
+</div>
+</div>
+<!-- Slider Dot Indicators -->
+<div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+<div class="w-2.5 h-2.5 rounded-full bg-white shadow-sm cursor-pointer"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-white/40 hover:bg-white/60 transition-colors cursor-pointer"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-white/40 hover:bg-white/60 transition-colors cursor-pointer"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-white/40 hover:bg-white/60 transition-colors cursor-pointer"></div>
+</div>
+</section>
+<!-- Featured Sectors (Bubble Layout) -->
+<section class="py-12 bg-white">
+<div class="container mx-auto px-6">
+<div class="flex items-center justify-between mb-8">
+<h2 class="text-2xl font-bold text-on-surface" style="">Öne Çıkan Sektörler</h2>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-full border border-outline-variant hover:bg-surface-container transition-colors" style="">
+<span class="material-symbols-outlined" style="">chevron_left</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full border border-outline-variant hover:bg-surface-container transition-colors" style="">
+<span class="material-symbols-outlined" style="">chevron_right</span>
+</button>
+</div>
+</div>
+<div class="flex overflow-x-auto gap-8 pb-4 hide-scrollbar justify-between">
+<!-- Oteller -->
+<div class="flex flex-col items-center gap-3 min-w-[100px] group cursor-pointer">
+<div class="w-20 h-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-primary transition-all duration-300 shadow-sm bg-surface-container-low flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="Hotel icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuATa7MW03Vy6yYzqUZZWXlKql0_dNKGC5WrmwRNgROWfDUJ7mBkjmIP9FWq2YhTlVn6xlVoF7H-Uv-X5x9UUgVhizGcXo6bzp4c6ZDZS25-vR9rTWVxjR-KFvtdhQ8tQgWvX9YVpdkcC-OCgW0PlszIFBvBkOo5j8CaMnEsLGncLvBFwV5lWVhZtWEvEvUq4ifyMRkj5-1oA_nSlaoAfvmWYitcbb3zF_T_PIU_s7UIb4uYwCXQcd7nYx6j0AQZJmousA39UoT3Spc" style="">
+</div>
+<span class="text-xs font-semibold text-center text-on-surface group-hover:text-primary transition-colors" style="">Oteller</span>
+</div>
+<!-- Restoran & Kafe -->
+<div class="flex flex-col items-center gap-3 min-w-[100px] group cursor-pointer">
+<div class="w-20 h-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-primary transition-all duration-300 shadow-sm bg-surface-container-low flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="Restaurant icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRd-YWx1Y9h-8xhSKtOMQlm0TwqIAW-zfPTy_ogsXmVLhoe1I-SPefDOqy5yxt_1SjSowJ78eVT3AEnr1LA_K8chEM6Kl4xjqBsoJte3CPADxmXYTzFhnxCGOiEExfFy2C-3juBvDayhYRYKQk3j_UWPZF2PZPPCdESYogY4z74FhJWeTmhfQAPGJvo3RlhT8gojIafkzwnjfisAXLy-I4DLN4l_EffJYV0QKaKVnvaMZ3H-RmUc4JTR-vTTB1l7ByEKwhSQFNNQk" style="">
+</div>
+<span class="text-xs font-semibold text-center text-on-surface group-hover:text-primary transition-colors" style="">Restoran &amp; Kafe</span>
+</div>
+<!-- Marketler -->
+<div class="flex flex-col items-center gap-3 min-w-[100px] group cursor-pointer">
+<div class="w-20 h-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-primary transition-all duration-300 shadow-sm bg-surface-container-low flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="Market icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCm-ZmHxv0Cfme9TEItFTgYcJDAFykW91pPvhZpaxL7eax2zUnytz2UTDPaSqjrs3M5qNZLJWgtRPn3MsNQ2808MTVmx9GC9mWWoOEILWuwpVodyFRf7cHr09zfHluGJ5le6-QQFFbmek_qPEseP5J1UTJUgcA0dBNqwyHgDxcLiGkzPu1zbL5nbdHk7fjd5Inw_YSZ0_cbupPvQz3PBd14N1rU9-EoAYYXPniQMmNOXr2GToNAeLU8Q7NeGnzTdQb-0kg1LeI-NAY" style="">
+</div>
+<span class="text-xs font-semibold text-center text-on-surface group-hover:text-primary transition-colors" style="">Marketler</span>
+</div>
+<!-- Mağazalar -->
+<div class="flex flex-col items-center gap-3 min-w-[100px] group cursor-pointer">
+<div class="w-20 h-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-primary transition-all duration-300 shadow-sm bg-surface-container-low flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="Store icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbdtvI5k7kdDtu-Q14MA4vRBouBwApJbssCTphD4oWW45MR9CSgvB_-ltyLjaFtyaM2Va58MNFrDMeUhbFx43egrhA0XUPW5TDUbexUICgcjheBp6xPtACn_5YLNxQ7WWS5NJRXp72f0Rhe_XI31ZRTyZTLDhH3jEAMdcqccpsX09OaLrM1x1v9XHAWoPrx_509fghLK936vVuUg4L-6U2etFM1VPQf7z6zwcJsAHVmJFSs5bzHOhG--I_D9_Zi4mjj2Jazx7MRPM" style="">
+</div>
+<span class="text-xs font-semibold text-center text-on-surface group-hover:text-primary transition-colors" style="">Mağazalar</span>
+</div>
+<!-- Ofisler -->
+<div class="flex flex-col items-center gap-3 min-w-[100px] group cursor-pointer">
+<div class="w-20 h-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-primary transition-all duration-300 shadow-sm bg-surface-container-low flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="Office icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAtmroIq7w4E60Hmkg7-Eyy7sONa34EnBCNUKlflIWT3lnRDZ0gecLA5wL-NVxFfdioJdRh13dvgjWeaBj6w9tSx2b91aCpBRhi7cAJYamq49TmzeGsG74gKij9tjaZONeasgf2DaT6oq8Fm3KLForX_lRwo8qK24LboWjaxgvylxB42awLLGuZoNNx-CB412MGBRp1UOkxLqpKW5mgLEvLx3N1UBeOuZ12Ga7GzJC7I054kxBn6tYfznCk9rds8z9jvImt9NzqftE" style="">
+</div>
+<span class="text-xs font-semibold text-center text-on-surface group-hover:text-primary transition-colors" style="">Ofisler</span>
+</div>
+<!-- İnşaat & Yapı -->
+<div class="flex flex-col items-center gap-3 min-w-[100px] group cursor-pointer">
+<div class="w-20 h-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-primary transition-all duration-300 shadow-sm bg-surface-container-low flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="Construction icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBpCsF7DeAYhOtxI80pQ2C-vs4oKQz2AdDBVir-H-c21cZTys5lZWOurp76XhswIO4h27CXKv5f-UgMDJVMUCUhuqtESx6FJNd6aONSuSRZFTK6Mkp0vNWZJR8p_dy7RZ2s9A9dxX5NxzJXjqdamG6pYC_n6O7mbjytoYiGCoVJautRMhhOMPO-SHEj4loPPHrmY0uQjKVf7pPyhnPJIg3OWY2vmoff7zrg0CjPpORjpBEEdCHG9LVA06R9LEksKiNeqx3h094pKfg" style="">
+</div>
+<span class="text-xs font-semibold text-center text-on-surface group-hover:text-primary transition-colors" style="">İnşaat &amp; Yapı</span>
+</div>
+<!-- Sağlık & Medikal -->
+<div class="flex flex-col items-center gap-3 min-w-[100px] group cursor-pointer">
+<div class="w-20 h-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-primary transition-all duration-300 shadow-sm bg-surface-container-low flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="Medical icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAD0e_Z8sTSOSJQQs73gtrxKQYa3b-xqC1jHxo8goYkisS0S-SqOo_zRMJxAM2Y1KQaD-PQpqFoP7-KNRBLKNsyQYFHS3FP3u9h8oKheoQAi986H97LQrDNGvg_cDokQmcbRc2wlEnjjzrQe0EcLG6WXEmZPU2jGIPCtJAf4Kn_O-q90jV1G950mB5hoXdYqV_iGWr0A0-6Cf4HbI8t3TWobPTxgtlwSglW-PCFtzKgVl_Fr_80qbTT1W3p_m90sjRDABED7d5En6A" style="">
+</div>
+<span class="text-xs font-semibold text-center text-on-surface group-hover:text-primary transition-colors" style="">Sağlık &amp; Medikal</span>
+</div>
+<!-- Tarım & Hayvancılık -->
+<div class="flex flex-col items-center gap-3 min-w-[100px] group cursor-pointer">
+<div class="w-20 h-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-primary transition-all duration-300 shadow-sm bg-surface-container-low flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="Agriculture icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgbGWeUXfGR3T2SsVxOMB6uust7bL_qzIsBWP4yCUqthzOpoBSo2nEUPT67DuEtWtjPnhgE0hBSrT0uxu-EmoxaYkqmHJtF52g_LTQRa4KuqRN17lLIjHIwQ41toZ_YBu2UO66F2milJLxnMlxaM3Zm9joojn2CaVTTGW82N5tPC_FppVZg1w8gQPmrym2RDTKCw7k9_aS7GvelNZlBmH_06yoxCOgzkqK7GY9vy1iRUOSDmqOQ4aiT6wm1Ci9W1nKDC5YYkR1NmI" style="">
+</div>
+<span class="text-xs font-semibold text-center text-on-surface group-hover:text-primary transition-colors" style="">Tarım &amp; Hayvancılık</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Keşfetmeye Devam Et -->
+<section class="py-16 bg-[#F8FAFC]">
+<div class="container mx-auto px-6">
+<div class="mb-10 flex items-center justify-between">
+<h2 class="text-3xl font-bold text-on-surface" style="">Keşfetmeye Devam Et</h2>
+<div class="relative">
+<select class="bg-white border border-outline-variant/30 rounded-lg px-4 py-2 text-sm font-medium focus:ring-primary focus:border-primary appearance-none pr-10 cursor-pointer">
+<option>Önerilen</option>
+<option>En Yeniler</option>
+<option>Fiyata Göre (Artan)</option>
+<option>Fiyata Göre (Azalan)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline text-lg" style="">expand_more</span>
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+<!-- Card 1 -->
+<div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-all overflow-hidden border border-slate-100 group">
+<div class="relative aspect-square overflow-hidden bg-slate-50">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Wireless noise cancelling headphones" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCyGffFgAGO7jcnnfx3rjq_OK93CN6UfcFeKmQe23A-cH20TiXlSd9Yf5QVe6B_8iCFQu2tE2QgPIU_o4MCq1WG5WUV2F-ODuNaqrjudtwiVBBpVExftDH5gCOI5nw4EzfpTWrhqTsLffY6PLgI-zFCrhU9cnqnCxJbGsTOoRnneGOxgXVW6dyGnQwWFAmX_y3jehayLK3rO-dSbZdCCsPHOv5sQHYqKAoW7oLA84aP9uvc6F_-u10ieOukAchEpBFV6Ab6fTihmdI" style="">
+</div>
+<div class="p-4">
+<p class="text-[10px] text-on-surface-variant font-semibold uppercase tracking-wider mb-1" style="">MSM: TX-9042</p>
+<h3 class="font-bold text-sm text-on-surface mb-3 line-clamp-2 min-h-[40px]" style="">Premium Kablosuz Gürültü Engelleyici Kulaklık</h3>
+<p class="text-[10px] text-on-surface-variant mb-1" style="">Toptan Fiyat Aralığı</p>
+<div class="flex items-baseline gap-1">
+<span class="text-primary font-bold text-lg" style="">₺2.450 - ₺2.850</span>
+<span class="text-[10px] text-on-surface-variant" style="">/ Adet</span>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-all overflow-hidden border border-slate-100 group">
+<div class="relative aspect-square overflow-hidden bg-slate-50">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Professional sports sneakers" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwQkkBIUOKiFYD0bzAR2U3StlTDtFYpe-LHPFJZBITlRzFyM1YKpcTIyW3BtD204B74M1dbrqtI8mxL-jUPBOcxEfkTegVRyrhtK9X_rovU8V7WD2gBvR3GV51rTSnfT-ACnK_yuG92wEX6NfjFVGVWqVGUdSAV7YllsVx-xwERkIP6xDGvO8DNKxSVSnYGPIXAxkbmgTrRvhCVwpgclJUXPAOotyhd1LwvlUoxM02K19tGNfx5sbzWczQCaYMSr5Ec0txHzm-Uos" style="">
+</div>
+<div class="p-4">
+<p class="text-[10px] text-on-surface-variant font-semibold uppercase tracking-wider mb-1" style="">MSM: TX-3312</p>
+<h3 class="font-bold text-sm text-on-surface mb-3 line-clamp-2 min-h-[40px]" style="">Hafif Tabanlı Profesyonel Koşu Ayakkabısı</h3>
+<p class="text-[10px] text-on-surface-variant mb-1" style="">Toptan Fiyat Aralığı</p>
+<div class="flex items-baseline gap-1">
+<span class="text-primary font-bold text-lg" style="">₺850 - ₺980</span>
+<span class="text-[10px] text-on-surface-variant" style="">/ Adet</span>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-all overflow-hidden border border-slate-100 group">
+<div class="relative aspect-square overflow-hidden bg-slate-50">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Ergonomic office chair" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZ5E4iuehvVbr3rXzlausdIiQIEDRK3AD0Qc4jKECawiOf5Y18GAa_72SipRGX81vp2Hxb7BfmkNPEhBCbZjz00Fby4DaeFcEaw35_WfENR9MS1qA8GzUtY14ykqo1InLxzSBEzv6xmH9IKIbIovKYABP6o4KBvpmZhsJgCqnMv7MzTI9E1thaZK5nmXuV8xRMIpZsO_aVmQqETwy4otshkQDQPaCMHEBuumchyh5vu1kFfZYkX1oDedMhE46bYFA0nQ-M22brMDw" style="">
+</div>
+<div class="p-4">
+<p class="text-[10px] text-on-surface-variant font-semibold uppercase tracking-wider mb-1" style="">MSM: TX-1188</p>
+<h3 class="font-bold text-sm text-on-surface mb-3 line-clamp-2 min-h-[40px]" style="">Ergonomik Fileli Ofis Çalışma Koltuğu</h3>
+<p class="text-[10px] text-on-surface-variant mb-1" style="">Toptan Fiyat Aralığı</p>
+<div class="flex items-baseline gap-1">
+<span class="text-primary font-bold text-lg" style="">₺1.150 - ₺1.400</span>
+<span class="text-[10px] text-on-surface-variant" style="">/ Adet</span>
+</div>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-all overflow-hidden border border-slate-100 group">
+<div class="relative aspect-square overflow-hidden bg-slate-50">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Smart watch series 7" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0XCb_Tof0DrAwcF3y1aV_fhE1C7GbRbsfZ6Ak1YF9DHx7KO3Hw91dR5p2CnDoX1ohevogkW6X7AXn_v7Uiit5JgsMKos_lzph8RTRWguwIpRukjfgEMIlXDqd4sn71znTDvV65HsU1B7xndtjURk4BUJaRrgsxMMF0TgHd-ZdkOdZg9vswb5xOiWkBFwafSUVJDKWojmAeA-z5lNceT5bqefs_4BMOJo4YyRJlLnz9VrbWaY-DvKwF4JDIWGz4G8lHcVQK9wK5s0" style="">
+</div>
+<div class="p-4">
+<p class="text-[10px] text-on-surface-variant font-semibold uppercase tracking-wider mb-1" style="">MSM: TX-5521</p>
+<h3 class="font-bold text-sm text-on-surface mb-3 line-clamp-2 min-h-[40px]" style="">Minimalist Tasarım Akıllı Kol Saati</h3>
+<p class="text-[10px] text-on-surface-variant mb-1" style="">Toptan Fiyat Aralığı</p>
+<div class="flex items-baseline gap-1">
+<span class="text-primary font-bold text-lg" style="">₺1.120 - ₺1.450</span>
+<span class="text-[10px] text-on-surface-variant" style="">/ Adet</span>
+</div>
+</div>
+</div>
+<!-- Card 5 -->
+<div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-all overflow-hidden border border-slate-100 group">
+<div class="relative aspect-square overflow-hidden bg-slate-50">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Industrial power bank" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5lMjWFwfR3tVtOzfFmMUf5fG5VZhUof-3cp3MPscPC2BsVpw1CebYQp8cYKmvMdO1Ay4v7672xLEMOeZcUEZXF87jQpScx544ftob7ZKbWzv5Hfj1oBkG9lb_1j1_Z1LOndWqO7HCgdb_gGuUmLJ4KykXZTECM9I2rDbZiU1J25Ek1524sBvNqTAOkMO96qDjZ1qAtgMr6fWS5e12hpfKJ7PqRMu3t32i4IjLktLnZ-8tRuF0yix5r3QW7y6aqVp7rB-mA2FYBmE" style="">
+</div>
+<div class="p-4">
+<p class="text-[10px] text-on-surface-variant font-semibold uppercase tracking-wider mb-1" style="">MSM: TX-7733</p>
+<h3 class="font-bold text-sm text-on-surface mb-3 line-clamp-2 min-h-[40px]" style="">20000mAh Endüstriyel Power Bank - Su Geçirmez</h3>
+<p class="text-[10px] text-on-surface-variant mb-1" style="">Toptan Fiyat Aralığı</p>
+<div class="flex items-baseline gap-1">
+<span class="text-primary font-bold text-lg" style="">₺350 - ₺420</span>
+<span class="text-[10px] text-on-surface-variant" style="">/ Adet</span>
+</div>
+</div>
+</div>
+</div>
+<!-- More Button -->
+<div class="mt-12 flex justify-center">
+<button class="bg-white border border-outline-variant px-12 py-3 rounded-lg font-bold text-sm text-on-surface-variant hover:bg-surface-container transition-all shadow-sm" style="">
+                        Daha Fazla Yükle
+                    </button>
+</div>
+</div>
+</section>
+<!-- B2B Trust Banner -->
+<section class="py-16 bg-primary text-white">
+<div class="container mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12">
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-3xl" style="">gpp_good</span>
+</div>
+<div>
+<h4 class="text-xl font-bold mb-2" style="">Güvenli Ödeme</h4>
+<p class="text-white/70 text-sm leading-relaxed" style="">Tüm işlemleriniz ToptanNext güvencesi altında %100 korumalı gerçekleşir.</p>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-3xl" style="">local_shipping</span>
+</div>
+<div>
+<h4 class="text-xl font-bold mb-2" style="">Lojistik Desteği</h4>
+<p class="text-white/70 text-sm leading-relaxed" style="">Kapıdan kapıya teslimat ve gümrükleme süreçlerinde tam operasyonel destek.</p>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-3xl" style="">support_agent</span>
+</div>
+<div>
+<h4 class="text-xl font-bold mb-2" style="">7/24 Müşteri Hizmetleri</h4>
+<p class="text-white/70 text-sm leading-relaxed" style="">Uzman ekibimiz sorularınızı yanıtlamak ve süreçleri yönetmek için her an hazır.</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-slate-950 text-slate-400 py-16 border-t border-slate-900">
+<div class="container mx-auto px-6">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+<div class="col-span-1 md:col-span-1">
+<span class="text-2xl font-bold text-white mb-6 block" style="">Toptan<span class="text-[#FF5A1F]" style="">Next</span></span>
+<p class="text-sm leading-relaxed mb-6" style="">Türkiye'nin lider B2B pazaryeri platformu. Ticaretin dijital mimarı.</p>
+<div class="flex gap-4">
+<a class="hover:text-primary transition-colors" href="#" style=""><span class="material-symbols-outlined" style="">social_leaderboard</span></a>
+<a class="hover:text-primary transition-colors" href="#" style=""><span class="material-symbols-outlined" style="">share</span></a>
+<a class="hover:text-primary transition-colors" href="#" style=""><span class="material-symbols-outlined" style="">public</span></a>
+</div>
+</div>
+<div>
+<h5 class="text-white font-bold mb-6" style="">Kurumsal</h5>
+<ul class="space-y-4 text-sm">
+<li class="" style=""><a class="hover:text-white transition-colors" href="#" style="">Hakkımızda</a></li>
+<li class="" style=""><a class="hover:text-white transition-colors" href="#" style="">Kariyer</a></li>
+<li class="" style=""><a class="hover:text-white transition-colors" href="#" style="">Yatırımcı İlişkileri</a></li>
+<li class="" style=""><a class="hover:text-white transition-colors" href="#" style="">Basın Bültenleri</a></li>
+</ul>
+</div>
+<div>
+<h5 class="text-white font-bold mb-6" style="">Destek</h5>
+<ul class="space-y-4 text-sm">
+<li class="" style=""><a class="hover:text-white transition-colors" href="#" style="">Yardım Merkezi</a></li>
+<li class="" style=""><a class="hover:text-white transition-colors" href="#" style="">İşlem Rehberi</a></li>
+<li class="" style=""><a class="hover:text-white transition-colors" href="#" style="">İade Politikası</a></li>
+<li class="" style=""><a class="hover:text-white transition-colors" href="#" style="">Güvenli Alışveriş</a></li>
+</ul>
+</div>
+<div>
+<h5 class="text-white font-bold mb-6" style="">İletişim</h5>
+<ul class="space-y-4 text-sm">
+<li class="flex items-center gap-2" style=""><span class="material-symbols-outlined text-sm" style="">mail</span> info@toptannext.com</li>
+<li class="flex items-center gap-2" style=""><span class="material-symbols-outlined text-sm" style="">call</span> 0850 000 00 00</li>
+<li class="flex items-center gap-2" style=""><span class="material-symbols-outlined text-sm" style="">location_on</span> İstanbul, Türkiye</li>
+</ul>
+</div>
+</div>
+<div class="pt-8 border-t border-slate-900 flex flex-col md:flex-row justify-between items-center gap-4">
+<p class="text-xs" style="">© 2024 ToptanNext. Tüm Hakları Saklıdır.</p>
+<div class="flex gap-6 text-xs">
+<a class="hover:text-white transition-colors" href="#" style="">Gizlilik Politikası</a>
+<a class="hover:text-white transition-colors" href="#" style="">Kullanım Koşulları</a>
+<a class="hover:text-white transition-colors" href="#" style="">KVKK Aydınlatma Metni</a>
+</div>
+</div>
+</div>
+</footer>
+</body></html>
