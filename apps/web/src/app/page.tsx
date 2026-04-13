@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { AccountNavLink } from './components/AccountNavLink';
 
 export default function Home() {
   const sectors = [
@@ -100,17 +100,6 @@ export default function Home() {
           </div>
 
           <div className='flex items-center gap-8'>
-            <Link
-              className='flex items-center gap-2 text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'
-              href='/login'
-            >
-              <span className='material-symbols-outlined text-3xl'>account_circle</span>
-              <div className='flex flex-col items-start leading-tight'>
-                <span className='text-xs font-bold'>Giris Yap</span>
-                <span className='text-[10px] text-on-surface-variant'>veya Uye Ol</span>
-              </div>
-            </Link>
-
             <button className='flex flex-col items-center text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'>
               <span className='material-symbols-outlined'>forum</span>
               <span className='mt-1 text-[10px] font-medium'>Mesajlar</span>
@@ -120,6 +109,8 @@ export default function Home() {
               <span className='material-symbols-outlined'>shopping_cart</span>
               <span className='mt-1 text-[10px] font-medium'>Sepetim</span>
             </button>
+
+            <AccountNavLink />
           </div>
         </nav>
 
