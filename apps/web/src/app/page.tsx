@@ -99,15 +99,19 @@ export default function Home() {
             />
           </div>
 
-          <div className='flex items-center gap-8'>
-            <button className='flex flex-col items-center text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'>
-              <span className='material-symbols-outlined'>forum</span>
-              <span className='mt-1 text-[10px] font-medium'>Mesajlar</span>
+          <div className='flex items-center gap-6'>
+            <button
+              aria-label='Mesajlar'
+              className='flex items-center justify-center text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'
+            >
+              <span className='material-symbols-outlined text-[28px] leading-none'>forum</span>
             </button>
 
-            <button className='flex flex-col items-center text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'>
-              <span className='material-symbols-outlined'>shopping_cart</span>
-              <span className='mt-1 text-[10px] font-medium'>Sepetim</span>
+            <button
+              aria-label='Sepetim'
+              className='flex items-center justify-center text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'
+            >
+              <span className='material-symbols-outlined text-[28px] leading-none'>shopping_cart</span>
             </button>
 
             <AccountNavLink />
