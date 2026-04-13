@@ -8,6 +8,7 @@ type ApiErrorResponse = {
   error?: {
     message?: string;
   };
+  message?: string | string[];
 };
 
 type ApiResponse<TData> = ApiSuccessResponse<TData> | ApiErrorResponse;
@@ -19,8 +20,24 @@ function resolveApiMessage(payload: unknown): string {
     return 'Beklenmeyen bir sunucu hatası oluştu.';
   }
 
-  const maybeError = payload as { error?: { message?: string } };
-  return maybeError.error?.message ?? 'İstek işlenirken bir hata oluştu.';
+  const maybeError = payload as {
+    error?: { message?: string };
+    message?: string | string[];
+  };
+
+  if (typeof maybeError.error?.message === 'string' && maybeError.error.message.length > 0) {
+    return maybeError.error.message;
+  }
+
+  if (typeof maybeError.message === 'string' && maybeError.message.length > 0) {
+    return maybeError.message;
+  }
+
+  if (Array.isArray(maybeError.message) && maybeError.message.length > 0) {
+    return maybeError.message.join(' ');
+  }
+
+  return 'İstek işlenirken bir hata oluştu.';
 }
 
 export async function postJson<TBody, TData>(path: string, body: TBody): Promise<TData> {
@@ -32,9 +49,18 @@ export async function postJson<TBody, TData>(path: string, body: TBody): Promise
     body: JSON.stringify(body),
   });
 
-  const payload = (await response.json()) as ApiResponse<TData>;
+  const responseText = await response.text();
+  let payload: ApiResponse<TData> | null = null;
 
-  if (!response.ok || !payload.success) {
+  if (responseText) {
+    try {
+      payload = JSON.parse(responseText) as ApiResponse<TData>;
+    } catch {
+      payload = null;
+    }
+  }
+
+  if (!response.ok || !payload || !('success' in payload) || !payload.success) {
     throw new Error(resolveApiMessage(payload));
   }
 
