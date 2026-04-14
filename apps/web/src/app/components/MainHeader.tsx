@@ -1,10 +1,14 @@
 "use client";
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { requestJson } from '@/lib/api';
 import { AccountNavLink } from './AccountNavLink';
+import {
+  CategoryMegaMenu,
+  type CategoryMegaMenuCategory,
+} from './CategoryMegaMenu';
 
 type CategoryNode = {
   id: string;
@@ -52,7 +56,25 @@ export function MainHeader() {
     queryFn: fetchSectors,
   });
 
-  const categoryRoots = categories.slice(0, 6);
+  const categoryMenuData = useMemo<CategoryMegaMenuCategory[]>(() => {
+    return categories.map((root) => ({
+      id: root.id,
+      name: root.name,
+      href: `/kategori/${root.slug}`,
+      groups: root.children.map((group) => ({
+        id: group.id,
+        title: group.name,
+        href: `/kategori/${group.slug}`,
+        items: group.children.map((item) => ({
+          id: item.id,
+          name: item.name,
+          href: `/kategori/${item.slug}`,
+        })),
+      })),
+    }));
+  }, [categories]);
+
+  const categoryRoots = categoryMenuData.slice(0, 10);
   const sectorItems = sectors.slice(0, 16);
 
   return (
@@ -147,37 +169,12 @@ export function MainHeader() {
             className='absolute left-0 top-full z-50 hidden w-full border-t border-slate-200 bg-white shadow-lg lg:block'
             onMouseEnter={() => setDesktopMenu('categories')}
           >
-            <div className='mx-auto grid max-w-[1920px] grid-cols-3 gap-6 px-6 py-6'>
-              {isCategoriesLoading ? (
-                <p className='col-span-3 text-sm text-slate-500'>Kategoriler yükleniyor...</p>
-              ) : null}
-
-              {isCategoriesError ? (
-                <p className='col-span-3 text-sm text-red-600'>Kategoriler yüklenirken hata oluştu.</p>
-              ) : null}
-
-              {categoryRoots.map((root) => (
-                <div key={root.id} className='space-y-3 rounded-xl border border-slate-100 p-4'>
-                  <p className='text-sm font-bold text-[#003FB1]'>{root.name}</p>
-                  <div className='space-y-3'>
-                    {root.children.slice(0, 5).map((child) => (
-                      <div key={child.id} className='space-y-1'>
-                        <p className='text-xs font-semibold text-slate-800'>{child.name}</p>
-                        <div className='flex flex-wrap gap-2'>
-                          {child.children.slice(0, 6).map((leaf) => (
-                            <span
-                              key={leaf.id}
-                              className='rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600'
-                            >
-                              {leaf.name}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
+            <div className='mx-auto max-w-[1920px] px-6'>
+              <CategoryMegaMenu
+                categories={categoryMenuData}
+                isError={isCategoriesError}
+                isLoading={isCategoriesLoading}
+              />
             </div>
           </div>
         ) : null}
@@ -227,7 +224,7 @@ export function MainHeader() {
                     <div key={root.id} className='space-y-1'>
                       <p className='text-sm font-semibold text-[#003FB1]'>{root.name}</p>
                       <p className='text-xs text-slate-500'>
-                        {root.children.slice(0, 4).map((item) => item.name).join(', ')}
+                        {root.groups.slice(0, 4).map((item) => item.title).join(', ')}
                       </p>
                     </div>
                   ))}
