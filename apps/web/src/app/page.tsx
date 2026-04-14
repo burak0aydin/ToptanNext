@@ -206,43 +206,6 @@ export default function Home() {
           </div>
         </section>
 
-        <section className='bg-primary py-16 text-white'>
-          <div className='container mx-auto grid grid-cols-1 gap-12 px-6 md:grid-cols-3'>
-            <div className='flex items-start gap-4'>
-              <div className='flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10'>
-                <span className='material-symbols-outlined text-3xl'>gpp_good</span>
-              </div>
-              <div>
-                <h4 className='mb-2 text-xl font-bold'>Guvenli Odeme</h4>
-                <p className='text-sm leading-relaxed text-white/70'>
-                  Tum islemleriniz ToptanNext guvencesi altinda %100 korumali gerceklesir.
-                </p>
-              </div>
-            </div>
-            <div className='flex items-start gap-4'>
-              <div className='flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10'>
-                <span className='material-symbols-outlined text-3xl'>local_shipping</span>
-              </div>
-              <div>
-                <h4 className='mb-2 text-xl font-bold'>Lojistik Destegi</h4>
-                <p className='text-sm leading-relaxed text-white/70'>
-                  Kapidan kapiya teslimat ve gumrukleme sureclerinde tam operasyonel destek.
-                </p>
-              </div>
-            </div>
-            <div className='flex items-start gap-4'>
-              <div className='flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10'>
-                <span className='material-symbols-outlined text-3xl'>support_agent</span>
-              </div>
-              <div>
-                <h4 className='mb-2 text-xl font-bold'>7/24 Musteri Hizmetleri</h4>
-                <p className='text-sm leading-relaxed text-white/70'>
-                  Uzman ekibimiz sorularinizi yanitlamak ve surecleri yonetmek icin her an hazir.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
       </main>
 
       <MainFooter />

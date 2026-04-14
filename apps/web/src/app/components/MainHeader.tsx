@@ -34,6 +34,7 @@ async function fetchSectors(): Promise<SectorItem[]> {
 
 export function MainHeader() {
   const [desktopMenu, setDesktopMenu] = useState<'categories' | 'sectors' | null>(null);
+  const [activeSectorId, setActiveSectorId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileCategoryOpen, setMobileCategoryOpen] = useState(false);
   const [mobileSectorOpen, setMobileSectorOpen] = useState(false);
@@ -182,7 +183,10 @@ export function MainHeader() {
           <div
             className='absolute left-0 top-full z-50 hidden w-full border-t border-slate-200 bg-white shadow-lg lg:block'
             onMouseEnter={() => setDesktopMenu('sectors')}
-            onMouseLeave={() => setDesktopMenu(null)}
+            onMouseLeave={() => {
+              setDesktopMenu(null);
+              setActiveSectorId(null);
+            }}
           >
             <div className='mx-auto max-w-[1920px] px-6 py-6'>
               {isSectorsLoading ? <p className='text-sm text-slate-500'>Sektörler yükleniyor...</p> : null}
@@ -193,8 +197,13 @@ export function MainHeader() {
                 {sectorItems.map((sector) => (
                   <a
                     key={sector.id}
-                    className='rounded-lg border border-slate-100 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-primary/30 hover:text-primary'
+                    className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                      activeSectorId === sector.id
+                        ? 'border-primary/30 bg-[#EEF4FF] text-primary'
+                        : 'border-slate-100 text-slate-700 hover:border-primary/30 hover:bg-[#EEF4FF] hover:text-primary'
+                    }`}
                     href='#'
+                    onMouseEnter={() => setActiveSectorId(sector.id)}
                   >
                     {sector.name}
                   </a>
