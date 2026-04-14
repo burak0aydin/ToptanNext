@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 
 export type CategoryMegaMenuItem = {
@@ -50,8 +50,6 @@ export function CategoryMegaMenu({
   isError,
 }: CategoryMegaMenuProps) {
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
-  const leftPanelRef = useRef<HTMLDivElement | null>(null);
-  const rightPanelRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!categories.length) {
@@ -80,30 +78,11 @@ export function CategoryMegaMenu({
     return categories.find((category) => category.id === activeCategoryId) ?? categories[0];
   }, [activeCategoryId, categories]);
 
-  const handleRightPanelScroll = () => {
-    const leftPanel = leftPanelRef.current;
-    const rightPanel = rightPanelRef.current;
-
-    if (!leftPanel || !rightPanel) {
-      return;
-    }
-
-    const rightMax = rightPanel.scrollHeight - rightPanel.clientHeight;
-    const leftMax = leftPanel.scrollHeight - leftPanel.clientHeight;
-
-    if (rightMax <= 0 || leftMax <= 0) {
-      return;
-    }
-
-    const scrollRatio = rightPanel.scrollTop / rightMax;
-    leftPanel.scrollTop = scrollRatio * leftMax;
-  };
-
   return (
     <div className='w-full overflow-hidden border-b border-slate-200 bg-white shadow-xl' style={{ height: MENU_HEIGHT }}>
       <div className='flex h-full'>
         <aside className='h-full w-64 shrink-0 border-r border-slate-200 bg-slate-50'>
-          <div ref={leftPanelRef} className='h-full overflow-y-auto'>
+          <div className='h-full overflow-y-auto'>
             {isLoading ? (
               <p className='px-4 py-4 text-sm text-slate-500'>Kategoriler yükleniyor...</p>
             ) : null}
@@ -126,17 +105,11 @@ export function CategoryMegaMenu({
                       <Link
                         className={`flex h-16 items-center justify-between px-4 py-3 text-sm font-medium transition-colors ${
                           isActive
-                            ? 'bg-white text-primary'
-                            : 'text-slate-700 hover:bg-white hover:text-primary'
+                            ? 'bg-[#EEF4FF] text-primary'
+                            : 'text-slate-700 hover:bg-[#EEF4FF] hover:text-primary'
                         }`}
                         href={category.href}
-                        onMouseEnter={() => {
-                          setActiveCategoryId(category.id);
-
-                          if (rightPanelRef.current) {
-                            rightPanelRef.current.scrollTop = 0;
-                          }
-                        }}
+                        onMouseEnter={() => setActiveCategoryId(category.id)}
                       >
                         <span>{toDisplayLabel(category.name)}</span>
                         <span className='material-symbols-outlined text-base'>chevron_right</span>
@@ -149,18 +122,14 @@ export function CategoryMegaMenu({
           </div>
         </aside>
 
-        <section
-          ref={rightPanelRef}
-          className='h-full flex-1 overflow-y-auto bg-white p-6'
-          onScroll={handleRightPanelScroll}
-        >
+        <section className='h-full flex-1 overflow-y-auto bg-white p-6'>
           {isLoading ? <p className='text-sm text-slate-500'>Alt kategoriler hazırlanıyor...</p> : null}
           {isError ? <p className='text-sm text-red-600'>Alt kategori listesi yüklenemedi.</p> : null}
 
           {!isLoading && !isError && activeCategory ? (
             <div className='space-y-5'>
               <Link
-                className='inline-flex items-center gap-1 text-base font-bold text-primary hover:underline'
+                className='inline-flex items-center gap-1 text-base font-bold text-primary hover:text-primary/80'
                 href={activeCategory.href}
               >
                 {toDisplayLabel(activeCategory.name)}
@@ -172,7 +141,7 @@ export function CategoryMegaMenu({
                   {activeCategory.groups.map((group) => (
                     <div key={group.id} className='space-y-3'>
                       <Link
-                        className='inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline'
+                        className='inline-flex items-center gap-1 text-sm font-bold text-primary hover:text-primary/80'
                         href={group.href}
                       >
                         {toDisplayLabel(group.title)}
