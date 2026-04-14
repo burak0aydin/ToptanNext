@@ -148,10 +148,10 @@ export function MainHeader() {
             </button>
 
             <a className='py-2 text-sm font-semibold text-on-surface-variant transition-colors hover:text-primary' href='#'>
-              Lojistik Çözümler
+              Satıcı Ol
             </a>
             <a className='py-2 text-sm font-semibold text-on-surface-variant transition-colors hover:text-primary' href='#'>
-              ToptanNext'te Satış Yap
+              Lojistik
             </a>
           </div>
 

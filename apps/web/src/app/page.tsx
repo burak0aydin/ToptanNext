@@ -1,4 +1,5 @@
 import { MainFooter } from './components/MainFooter';
+import { HomeHeroSlider } from './components/HomeHeroSlider';
 import { MainHeader } from './components/MainHeader';
 
 export default function Home() {
@@ -88,39 +89,7 @@ export default function Home() {
       <MainHeader />
 
       <main className='flex-1'>
-        <section className='relative flex h-[400px] items-center overflow-hidden bg-slate-900'>
-          <div className='absolute inset-0'>
-            <img
-              className='h-full w-full object-cover opacity-50'
-              src='https://lh3.googleusercontent.com/aida-public/AB6AXuD4MIDmelgzGiknOErjpkKb1wOCHSfnAF95fAFfSr6c83x7VzsJS0axr00qBRoGkpITWFO0ipPHIRADHIsNJBTebzbt0Xniw_7y677gEu34kWp19NuSVZi2UTlOmCmKExpRnY_4211CcI_UPuZ3rEt2ATyUhmubYJbvuB5zmxTdyaoZgNtU-r8Pt10LveCHtFiiRyhJ8wYX-9LjV0oNvWxDBQD9xZaEOjmncfQk3zzRvF-QeZv5Yxnn8vvh5p4yPKtI-Tmpj0vUHQQ'
-              alt='Modern logistics warehouse'
-            />
-            <div className='absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/40 to-transparent'></div>
-          </div>
-
-          <div className='container relative z-10 mx-auto px-6'>
-            <div className='max-w-2xl'>
-              <h1 className='mb-4 text-4xl font-extrabold leading-tight text-white md:text-5xl'>
-                Toptan Alimin Gelecegi: <span className='text-[#1A56DB]'>Toptan</span>
-                <span className='text-[#FF5A1F]'>Next</span>
-              </h1>
-              <p className='mb-8 text-lg leading-relaxed text-slate-300'>
-                Binlerce dogrulanmis tedarikci, guvenli odeme sistemleri ve global lojistik agi ile
-                isletmenizi buyutun.
-              </p>
-              <button className='rounded-xl bg-primary px-8 py-3 text-base font-bold text-white transition-all hover:bg-primary-container active:scale-95'>
-                Firsatlari Kesfet
-              </button>
-            </div>
-          </div>
-
-          <div className='absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 gap-2'>
-            <div className='h-2.5 w-2.5 rounded-full bg-white'></div>
-            <div className='h-2.5 w-2.5 rounded-full bg-white/40'></div>
-            <div className='h-2.5 w-2.5 rounded-full bg-white/40'></div>
-            <div className='h-2.5 w-2.5 rounded-full bg-white/40'></div>
-          </div>
-        </section>
+        <HomeHeroSlider />
 
         <section className='bg-white py-12'>
           <div className='container mx-auto px-6'>
