@@ -20,6 +20,23 @@ export type UserWithPassword = {
   isActive: boolean;
 };
 
+export type UserProfile = {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+  phoneNumber: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type UpdateUserProfileInput = {
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string;
+  phoneNumber?: string | null;
+};
+
 @Injectable()
 export class UsersRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -30,7 +47,10 @@ export class UsersRepository {
       select: {
         id: true,
         fullName: true,
+        firstName: true,
+        lastName: true,
         email: true,
+        phoneNumber: true,
         role: true,
         isVerified: true,
         isActive: true,
@@ -42,7 +62,9 @@ export class UsersRepository {
     return user ? new UserEntity(user) : null;
   }
 
-  async findByEmailWithPassword(email: string): Promise<UserWithPassword | null> {
+  async findByEmailWithPassword(
+    email: string,
+  ): Promise<UserWithPassword | null> {
     return this.prisma.user.findUnique({
       where: { email },
       select: {
@@ -68,7 +90,10 @@ export class UsersRepository {
       select: {
         id: true,
         fullName: true,
+        firstName: true,
+        lastName: true,
         email: true,
+        phoneNumber: true,
         role: true,
         isVerified: true,
         isActive: true,
@@ -78,5 +103,48 @@ export class UsersRepository {
     });
 
     return new UserEntity(user);
+  }
+
+  async findProfileById(userId: string): Promise<UserProfile | null> {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phoneNumber: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async updateProfileById(
+    userId: string,
+    input: UpdateUserProfileInput,
+  ): Promise<UserProfile> {
+    const data = {
+      ...(input.firstName !== undefined ? { firstName: input.firstName } : {}),
+      ...(input.lastName !== undefined ? { lastName: input.lastName } : {}),
+      ...(input.email !== undefined ? { email: input.email } : {}),
+      ...(input.phoneNumber !== undefined
+        ? { phoneNumber: input.phoneNumber }
+        : {}),
+    };
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phoneNumber: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
   }
 }

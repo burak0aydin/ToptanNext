@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { registerDtoSchema, type RegisterDto } from '@toptannext/types';
 import { useForm } from 'react-hook-form';
 import { useRegisterMutation } from '@/features/auth/hooks/useAuthMutations';
+import { setAccessToken } from '@/lib/auth-token';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -28,7 +29,7 @@ export default function RegisterPage() {
   const onSubmit = (payload: RegisterDto) => {
     registerMutation.mutate(payload, {
       onSuccess: (result) => {
-        localStorage.setItem('toptannext_access_token', result.accessToken);
+        setAccessToken(result.accessToken);
         router.push('/');
       },
     });

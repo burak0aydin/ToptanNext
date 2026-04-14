@@ -1,3 +1,5 @@
+import { getAccessToken } from './auth-token';
+
 type ApiSuccessResponse<TData> = {
   success: true;
   data: TData;
@@ -14,6 +16,13 @@ type ApiErrorResponse = {
 type ApiResponse<TData> = ApiSuccessResponse<TData> | ApiErrorResponse;
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+
+type RequestJsonOptions<TBody> = {
+  method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+  body?: TBody;
+  auth?: boolean;
+  headers?: Record<string, string>;
+};
 
 function resolveApiMessage(payload: unknown): string {
   if (!payload || typeof payload !== 'object') {
@@ -41,12 +50,36 @@ function resolveApiMessage(payload: unknown): string {
 }
 
 export async function postJson<TBody, TData>(path: string, body: TBody): Promise<TData> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  return requestJson<TData, TBody>(path, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
+    body,
+  });
+}
+
+export async function requestJson<TData, TBody = unknown>(
+  path: string,
+  options: RequestJsonOptions<TBody> = {},
+): Promise<TData> {
+  const headers: Record<string, string> = {
+    ...(options.headers ?? {}),
+  };
+
+  if (options.body !== undefined && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  if (options.auth) {
+    const accessToken = getAccessToken();
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`;
+    }
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: options.method ?? 'GET',
+    credentials: 'include',
+    headers,
+    body: options.body === undefined ? undefined : JSON.stringify(options.body),
   });
 
   const responseText = await response.text();

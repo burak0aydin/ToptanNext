@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { loginDtoSchema, type LoginDto } from '@toptannext/types';
 import { useForm } from 'react-hook-form';
 import { useLoginMutation } from '@/features/auth/hooks/useAuthMutations';
+import { setAccessToken } from '@/lib/auth-token';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,7 +27,7 @@ export default function LoginPage() {
   const onSubmit = (payload: LoginDto) => {
     loginMutation.mutate(payload, {
       onSuccess: (result) => {
-        localStorage.setItem('toptannext_access_token', result.accessToken);
+        setAccessToken(result.accessToken);
         router.push('/');
       },
     });

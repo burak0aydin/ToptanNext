@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+
+<html class="light" lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ToptanNext | Kullanıcı Bilgilerim</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#521300",
+                        "primary-container": "#1a56db",
+                        "tertiary-fixed-dim": "#ffb59a",
+                        "outline": "#737686",
+                        "on-surface-variant": "#434654",
+                        "primary": "#003fb1",
+                        "surface-tint": "#1353d8",
+                        "inverse-primary": "#b5c4ff",
+                        "primary-fixed": "#dbe1ff",
+                        "secondary-fixed": "#ffdbd0",
+                        "primary-fixed-dim": "#b5c4ff",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed-variant": "#852400",
+                        "surface-bright": "#f7f9fb",
+                        "surface-container-lowest": "#ffffff",
+                        "outline-variant": "#c3c5d7",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed-variant": "#003dab",
+                        "on-error": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface": "#f7f9fb",
+                        "on-error-container": "#93000a",
+                        "surface-container-high": "#e6e8ea",
+                        "secondary-fixed-dim": "#ffb59e",
+                        "surface-dim": "#d8dadc",
+                        "surface-container": "#eceef0",
+                        "on-tertiary-fixed": "#380d00",
+                        "surface-container-low": "#f2f4f6",
+                        "secondary-container": "#fd591e",
+                        "tertiary": "#852b00",
+                        "tertiary-container": "#ad3b00",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-primary": "#ffffff",
+                        "surface-variant": "#e0e3e5",
+                        "background": "#f7f9fb",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-tertiary": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "on-surface": "#191c1e",
+                        "on-primary-fixed": "#00174d",
+                        "on-primary-container": "#d4dcff",
+                        "secondary": "#ae3200",
+                        "on-secondary-fixed": "#3a0b00",
+                        "on-tertiary-fixed-variant": "#802a00",
+                        "on-background": "#191c1e",
+                        "on-tertiary-container": "#ffd4c5",
+                        "tertiary-fixed": "#ffdbcf"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #F7F9FB; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center px-6 py-3 w-full sticky top-0 z-50 bg-[#F7F9FB] dark:bg-slate-900 border-b border-slate-200/50 dark:border-slate-800">
+<div class="flex items-center gap-8">
+<div class="text-xl font-bold text-[#003FB1] dark:text-blue-400 font-headline">
+            Toptan<span class="text-secondary-container">Next</span>
+</div>
+<div class="hidden md:flex relative group">
+<span class="absolute inset-y-0 left-3 flex items-center text-outline">
+<span class="material-symbols-outlined text-sm">search</span>
+</span>
+<input class="pl-10 pr-4 py-2 w-80 bg-surface-container-lowest border-none rounded-xl text-sm focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Ürün, kategori veya marka ara..." type="text"/>
+</div>
+</div>
+<nav class="flex items-center space-x-6">
+<button class="flex flex-col items-center text-slate-600 hover:text-primary transition-colors group">
+<span class="material-symbols-outlined" data-icon="mail">mail</span>
+<span class="text-[10px] font-medium mt-0.5">Mesajlar</span>
+</button>
+<button class="flex flex-col items-center text-slate-600 hover:text-primary transition-colors group">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+<span class="text-[10px] font-medium mt-0.5">Sepet</span>
+</button>
+<button class="flex flex-col items-center text-[#003FB1] border-b-2 border-[#003FB1] pb-1">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="text-[10px] font-medium mt-0.5">Profil</span>
+</button>
+</nav>
+</header>
+<div class="max-w-[1440px] mx-auto flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="hidden md:flex flex-col h-full w-72 p-4 space-y-2 bg-white dark:bg-slate-950 border-r border-slate-200/50">
+<div class="px-4 py-6 mb-4">
+<h2 class="font-['Inter'] text-sm font-semibold text-[#003FB1]">Hesabım</h2>
+<p class="text-xs text-slate-500">ToptanNext Üyesi</p>
+</div>
+<nav class="space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-[#003FB1] hover:bg-slate-50 dark:hover:bg-slate-900 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="package_2">package_2</span>
+<span class="font-['Inter'] text-sm font-medium">Siparişlerim</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-[#003FB1] hover:bg-slate-50 dark:hover:bg-slate-900 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+<span class="font-['Inter'] text-sm font-medium">Favorilerim</span>
+</a>
+<div>
+<div class="flex items-center gap-3 px-4 py-3 text-[#003FB1] font-semibold">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-['Inter'] text-sm font-medium">Kişisel Bilgilerim</span>
+</div>
+<div class="ml-11 mt-1 space-y-1 border-l border-slate-100">
+<a class="block px-4 py-2 text-sm text-[#003FB1] font-semibold bg-primary/5 rounded-r-lg border-l-2 border-[#003FB1]" href="#">Kullanıcı Bilgilerim</a>
+<a class="block px-4 py-2 text-sm text-slate-500 hover:text-primary transition-colors" href="#">Adres Bilgilerim</a>
+<a class="block px-4 py-2 text-sm text-slate-500 hover:text-primary transition-colors" href="#">Kayıtlı Kartlarım</a>
+<a class="block px-4 py-2 text-sm text-slate-500 hover:text-primary transition-colors" href="#">Duyuru Tercihlerim</a>
+<a class="block px-4 py-2 text-sm text-slate-500 hover:text-primary transition-colors" href="#">Şifre Değişikliği</a>
+</div>
+</div>
+</nav>
+<div class="pt-8 mt-auto border-t border-slate-100">
+<a class="flex items-center gap-3 px-4 py-3 text-error hover:bg-error/5 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-['Inter'] text-sm font-medium">Çıkış Yap</span>
+</a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 p-8 md:p-12">
+<div class="max-w-4xl">
+<!-- Page Header -->
+<header class="mb-10">
+<h1 class="text-2xl font-bold text-on-surface mb-2 font-headline">Kullanıcı Bilgilerim</h1>
+<p class="text-on-surface-variant text-sm">Hesap bilgilerinizi buradan güncelleyebilir ve tercihlerinizi yönetebilirsiniz.</p>
+</header>
+<!-- Input Fields Area -->
+<div class="bg-surface-container-lowest p-8 rounded-xl shadow-sm border border-outline-variant/10">
+<form class="space-y-8">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="block text-xs font-semibold text-outline uppercase tracking-tight" for="name">Ad</label>
+<input class="w-full px-4 py-3 rounded-xl border-outline-variant bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none" id="name" type="text" value="Ahmet"/>
+</div>
+<div class="space-y-2">
+<label class="block text-xs font-semibold text-outline uppercase tracking-tight" for="surname">Soyad</label>
+<input class="w-full px-4 py-3 rounded-xl border-outline-variant bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none" id="surname" type="text" value="Yılmaz"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="block text-xs font-semibold text-outline uppercase tracking-tight" for="email">E-Posta Adresi</label>
+<div class="relative">
+<span class="absolute inset-y-0 left-4 flex items-center text-outline">
+<span class="material-symbols-outlined text-sm">mail</span>
+</span>
+<input class="w-full pl-11 pr-4 py-3 rounded-xl border-outline-variant bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none" id="email" type="email" value="ahmet.yilmaz@toptan.com"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="block text-xs font-semibold text-outline uppercase tracking-tight" for="phone">Cep Telefonu</label>
+<div class="flex gap-3">
+<div class="relative w-24 flex-shrink-0">
+<span class="absolute inset-y-0 left-3 flex items-center text-outline">
+<span class="material-symbols-outlined text-sm">globe_asia</span>
+</span>
+<input class="w-full pl-9 pr-3 py-3 rounded-xl border-outline-variant bg-slate-50 text-on-surface-variant font-medium border-2 text-center" disabled="" type="text" value="+90"/>
+</div>
+<div class="relative flex-1">
+<span class="absolute inset-y-0 left-4 flex items-center text-outline">
+<span class="material-symbols-outlined text-sm">phone_iphone</span>
+</span>
+<input class="w-full pl-11 pr-4 py-3 rounded-xl border-outline-variant bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none" id="phone" type="tel" value="532 000 00 00"/>
+</div>
+</div>
+</div>
+<div class="pt-6 flex justify-end">
+<button class="flex items-center gap-2 px-8 py-3.5 bg-primary text-on-primary rounded-xl font-semibold shadow-xl shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all" type="submit">
+<span>Değişiklikleri Kaydet</span>
+<span class="material-symbols-outlined text-sm">save</span>
+</button>
+</div>
+</form>
+</div>
+<!-- Footer Info / Meta -->
+<div class="mt-16 pt-8 border-t border-outline-variant/30 grid grid-cols-1 md:grid-cols-3 gap-8">
+<div class="flex items-start gap-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">verified_user</span>
+</div>
+<div>
+<h4 class="text-sm font-semibold">Güvenli Veri</h4>
+<p class="text-xs text-on-surface-variant mt-1">Verileriniz 256-bit SSL sertifikası ile korunmaktadır.</p>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">update</span>
+</div>
+<div>
+<h4 class="text-sm font-semibold">Hesap Bilgileri Güncelliği</h4>
+<p class="text-xs text-on-surface-variant mt-1">Hesabınızdaki bilgiler en son 12 Ekim 2023 tarihinde kontrol edildi.</p>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">help</span>
+</div>
+<div>
+<h4 class="text-sm font-semibold">Destek</h4>
+<p class="text-xs text-on-surface-variant mt-1">Yardıma mı ihtiyacınız var? Destek ekibimize ulaşın.</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

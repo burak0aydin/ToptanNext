@@ -3,8 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-
-const ACCESS_TOKEN_KEY = 'toptannext_access_token';
+import { clearAccessToken, hasAccessToken } from '@/lib/auth-token';
 
 export function AccountNavLink() {
   const router = useRouter();
@@ -14,7 +13,7 @@ export function AccountNavLink() {
 
   useEffect(() => {
     const syncLoginState = () => {
-      setIsLoggedIn(Boolean(window.localStorage.getItem(ACCESS_TOKEN_KEY)));
+      setIsLoggedIn(hasAccessToken());
     };
 
     syncLoginState();
@@ -52,11 +51,15 @@ export function AccountNavLink() {
   };
 
   const handleLogout = () => {
-    window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+    clearAccessToken();
     setIsLoggedIn(false);
     setIsMenuOpen(false);
     router.push('/');
     router.refresh();
+  };
+
+  const handleMenuItemClick = () => {
+    setIsMenuOpen(false);
   };
 
   if (!isLoggedIn) {
@@ -86,48 +89,49 @@ export function AccountNavLink() {
         <span className='text-xs font-bold'>Profilim</span>
       </button>
 
-        {isMenuOpen ? (
-          <div className='absolute right-0 top-full z-50 w-56 pt-2'>
-            <div className='overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl'>
-              <div className='px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400'>
-                Hesabım
-              </div>
-
-              <button
-                type='button'
-                className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
-              >
-                <span className='material-symbols-outlined text-[20px]'>receipt_long</span>
-                Siparişlerim
-              </button>
-
-              <button
-                type='button'
-                className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
-              >
-                <span className='material-symbols-outlined text-[20px]'>favorite</span>
-                Favorilerim
-              </button>
-
-              <button
-                type='button'
-                className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
-              >
-                <span className='material-symbols-outlined text-[20px]'>person</span>
-                Kullanıcı Bilgilerim
-              </button>
-
-              <div className='my-1 border-t border-slate-100' />
-
-              <button
-                type='button'
-                className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-red-600 transition-colors hover:bg-red-50'
-                onClick={handleLogout}
-              >
-                <span className='material-symbols-outlined text-[20px]'>logout</span>
-                Çıkış Yap
-              </button>
+      {isMenuOpen ? (
+        <div className='absolute right-0 top-full z-50 w-56 pt-2'>
+          <div className='overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl'>
+            <div className='px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400'>
+              Hesabım
             </div>
+
+            <button
+              type='button'
+              className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
+            >
+              <span className='material-symbols-outlined text-[20px]'>receipt_long</span>
+              Siparişlerim
+            </button>
+
+            <button
+              type='button'
+              className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
+            >
+              <span className='material-symbols-outlined text-[20px]'>favorite</span>
+              Favorilerim
+            </button>
+
+            <Link
+              className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
+              href='/kullanici-bilgilerim'
+              onClick={handleMenuItemClick}
+            >
+              <span className='material-symbols-outlined text-[20px]'>person</span>
+              Kullanıcı Bilgilerim
+            </Link>
+
+            <div className='my-1 border-t border-slate-100' />
+
+            <button
+              type='button'
+              className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-red-600 transition-colors hover:bg-red-50'
+              onClick={handleLogout}
+            >
+              <span className='material-symbols-outlined text-[20px]'>logout</span>
+              Çıkış Yap
+            </button>
+        </div>
         </div>
       ) : null}
     </div>
