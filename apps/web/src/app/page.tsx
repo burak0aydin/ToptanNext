@@ -1,4 +1,5 @@
-import { AccountNavLink } from './components/AccountNavLink';
+import { MainFooter } from './components/MainFooter';
+import { MainHeader } from './components/MainHeader';
 
 export default function Home() {
   const sectors = [
@@ -83,70 +84,10 @@ export default function Home() {
   ];
 
   return (
-    <div className='bg-background text-on-surface antialiased'>
-      <header className='sticky top-0 z-50 border-b border-slate-100 bg-white shadow-sm'>
-        <nav className='relative mx-auto flex w-full max-w-[1920px] items-center justify-between px-6 py-3'>
-          <span className='text-2xl font-bold tracking-tighter text-[#003FB1]'>
-            Toptan<span className='text-[#FF5A1F]'>Next</span>
-          </span>
+    <div className='flex min-h-screen flex-col bg-background text-on-surface antialiased'>
+      <MainHeader />
 
-          <div className='mx-12 hidden max-w-3xl flex-1 items-center gap-1 rounded-xl border border-outline-variant/30 bg-surface-container-low px-4 py-2 lg:flex'>
-            <span className='material-symbols-outlined text-outline'>search</span>
-            <input
-              className='w-full border-none bg-transparent text-sm text-on-surface-variant focus:ring-0'
-              placeholder='Urun, kategori veya marka ara...'
-              type='text'
-            />
-          </div>
-
-          <div className='flex items-center gap-6'>
-            <button
-              aria-label='Mesajlar'
-              className='flex items-center justify-center text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'
-            >
-              <span className='material-symbols-outlined text-[28px] leading-none'>forum</span>
-            </button>
-
-            <button
-              aria-label='Sepetim'
-              className='flex items-center justify-center text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'
-            >
-              <span className='material-symbols-outlined text-[28px] leading-none'>shopping_cart</span>
-            </button>
-
-            <AccountNavLink />
-          </div>
-        </nav>
-
-        <div className='h-10 w-full border-b border-slate-200/50 bg-slate-50'>
-          <div className='mx-auto flex h-full max-w-[1920px] items-center gap-8 px-6'>
-            <button className='flex items-center gap-2 text-sm font-semibold text-on-surface transition-colors hover:text-primary'>
-              <span className='material-symbols-outlined text-[20px]'>menu</span>
-              Kategoriler
-            </button>
-            <a className='text-sm font-semibold text-on-surface-variant transition-colors hover:text-primary' href='#'>
-              Sektorler
-            </a>
-            <a className='text-sm font-semibold text-on-surface-variant transition-colors hover:text-primary' href='#'>
-              Lojistik Cozumler
-            </a>
-            <a className='text-sm font-semibold text-on-surface-variant transition-colors hover:text-primary' href='#'>
-              ToptanNext'te Satis Yap
-            </a>
-            <div className='flex-1'></div>
-            <div className='flex items-center gap-4'>
-              <a className='text-[10px] font-bold text-on-surface-variant transition-colors hover:text-primary' href='#'>
-                App Store
-              </a>
-              <a className='text-[10px] font-bold text-on-surface-variant transition-colors hover:text-primary' href='#'>
-                Play Store
-              </a>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main>
+      <main className='flex-1'>
         <section className='relative flex h-[400px] items-center overflow-hidden bg-slate-900'>
           <div className='absolute inset-0'>
             <img
@@ -304,46 +245,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className='border-t border-slate-900 bg-slate-950 py-16 text-slate-400'>
-        <div className='container mx-auto px-6'>
-          <div className='mb-12 grid grid-cols-1 gap-12 md:grid-cols-4'>
-            <div>
-              <span className='mb-6 block text-2xl font-bold text-white'>
-                Toptan<span className='text-[#FF5A1F]'>Next</span>
-              </span>
-              <p className='mb-6 text-sm leading-relaxed'>
-                Turkiye'nin lider B2B pazaryeri platformu. Ticaretin dijital mimari.
-              </p>
-            </div>
-            <div>
-              <h5 className='mb-6 font-bold text-white'>Kurumsal</h5>
-              <ul className='space-y-4 text-sm'>
-                <li>Hakkimizda</li>
-                <li>Kariyer</li>
-                <li>Yatirimci Iliskileri</li>
-                <li>Basin Bultenleri</li>
-              </ul>
-            </div>
-            <div>
-              <h5 className='mb-6 font-bold text-white'>Destek</h5>
-              <ul className='space-y-4 text-sm'>
-                <li>Yardim Merkezi</li>
-                <li>Islem Rehberi</li>
-                <li>Iade Politikasi</li>
-                <li>Guvenli Alisveris</li>
-              </ul>
-            </div>
-            <div>
-              <h5 className='mb-6 font-bold text-white'>Iletisim</h5>
-              <ul className='space-y-4 text-sm'>
-                <li>info@toptannext.com</li>
-                <li>0850 000 00 00</li>
-                <li>Istanbul, Turkiye</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <MainFooter />
     </div>
   );
 }

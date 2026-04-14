@@ -32,3 +32,56 @@ model User {
   @@index([role])
   @@map("users")
 }
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  level     Int
+  parentId  String?  @map("parent_id")
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children Category[] @relation("CategoryHierarchy")
+  products Product[]
+
+  @@index([level])
+  @@index([parentId])
+  @@index([isActive])
+  @@map("categories")
+}
+
+model Sector {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  products Product[]
+
+  @@index([isActive])
+  @@map("sectors")
+}
+
+model Product {
+  id         String   @id @default(cuid())
+  name       String
+  slug       String   @unique
+  categoryId String   @map("category_id")
+  sectorId   String?  @map("sector_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  sector   Sector?  @relation(fields: [sectorId], references: [id], onDelete: SetNull)
+
+  @@index([categoryId])
+  @@index([sectorId])
+  @@map("products")
+}
