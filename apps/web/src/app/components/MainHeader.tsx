@@ -166,16 +166,15 @@ export function MainHeader() {
 
         {desktopMenu === 'categories' ? (
           <div
-            className='absolute left-0 top-full z-50 hidden w-full border-t border-slate-200 bg-white shadow-lg lg:block'
+            className='absolute left-0 right-0 top-full z-50 hidden w-full border-t border-slate-200 bg-white shadow-lg lg:block'
             onMouseEnter={() => setDesktopMenu('categories')}
+            onMouseLeave={() => setDesktopMenu(null)}
           >
-            <div className='mx-auto max-w-[1920px] px-6'>
-              <CategoryMegaMenu
-                categories={categoryMenuData}
-                isError={isCategoriesError}
-                isLoading={isCategoriesLoading}
-              />
-            </div>
+            <CategoryMegaMenu
+              categories={categoryMenuData}
+              isError={isCategoriesError}
+              isLoading={isCategoriesLoading}
+            />
           </div>
         ) : null}
 
@@ -183,6 +182,7 @@ export function MainHeader() {
           <div
             className='absolute left-0 top-full z-50 hidden w-full border-t border-slate-200 bg-white shadow-lg lg:block'
             onMouseEnter={() => setDesktopMenu('sectors')}
+            onMouseLeave={() => setDesktopMenu(null)}
           >
             <div className='mx-auto max-w-[1920px] px-6 py-6'>
               {isSectorsLoading ? <p className='text-sm text-slate-500'>Sektörler yükleniyor...</p> : null}

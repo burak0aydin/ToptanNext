@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 
 export type CategoryMegaMenuItem = {
@@ -29,12 +29,29 @@ type CategoryMegaMenuProps = {
   isError: boolean;
 };
 
+const VISIBLE_CATEGORY_COUNT = 7;
+const CATEGORY_ROW_HEIGHT = 64;
+const MENU_HEIGHT = VISIBLE_CATEGORY_COUNT * CATEGORY_ROW_HEIGHT;
+
+function toDisplayLabel(value: string): string {
+  const words = value
+    .toLocaleLowerCase('tr-TR')
+    .split(' ')
+    .filter(Boolean);
+
+  return words
+    .map((word) => `${word.charAt(0).toLocaleUpperCase('tr-TR')}${word.slice(1)}`)
+    .join(' ');
+}
+
 export function CategoryMegaMenu({
   categories,
   isLoading,
   isError,
 }: CategoryMegaMenuProps) {
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  const leftPanelRef = useRef<HTMLDivElement | null>(null);
+  const rightPanelRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!categories.length) {
@@ -63,11 +80,30 @@ export function CategoryMegaMenu({
     return categories.find((category) => category.id === activeCategoryId) ?? categories[0];
   }, [activeCategoryId, categories]);
 
+  const handleRightPanelScroll = () => {
+    const leftPanel = leftPanelRef.current;
+    const rightPanel = rightPanelRef.current;
+
+    if (!leftPanel || !rightPanel) {
+      return;
+    }
+
+    const rightMax = rightPanel.scrollHeight - rightPanel.clientHeight;
+    const leftMax = leftPanel.scrollHeight - leftPanel.clientHeight;
+
+    if (rightMax <= 0 || leftMax <= 0) {
+      return;
+    }
+
+    const scrollRatio = rightPanel.scrollTop / rightMax;
+    leftPanel.scrollTop = scrollRatio * leftMax;
+  };
+
   return (
-    <div className='h-[600px] w-full overflow-hidden rounded-b-2xl border border-slate-200 border-t-0 bg-white shadow-xl'>
+    <div className='w-full overflow-hidden border-b border-slate-200 bg-white shadow-xl' style={{ height: MENU_HEIGHT }}>
       <div className='flex h-full'>
         <aside className='h-full w-64 shrink-0 border-r border-slate-200 bg-slate-50'>
-          <div className='h-full overflow-y-auto'>
+          <div ref={leftPanelRef} className='h-full overflow-y-auto'>
             {isLoading ? (
               <p className='px-4 py-4 text-sm text-slate-500'>Kategoriler yükleniyor...</p>
             ) : null}
@@ -88,15 +124,21 @@ export function CategoryMegaMenu({
                   return (
                     <li key={category.id}>
                       <Link
-                        className={`flex min-h-[60px] items-center justify-between px-4 py-3 text-sm font-medium transition-colors ${
+                        className={`flex h-16 items-center justify-between px-4 py-3 text-sm font-medium transition-colors ${
                           isActive
                             ? 'bg-white text-primary'
                             : 'text-slate-700 hover:bg-white hover:text-primary'
                         }`}
                         href={category.href}
-                        onMouseEnter={() => setActiveCategoryId(category.id)}
+                        onMouseEnter={() => {
+                          setActiveCategoryId(category.id);
+
+                          if (rightPanelRef.current) {
+                            rightPanelRef.current.scrollTop = 0;
+                          }
+                        }}
                       >
-                        <span>{category.name}</span>
+                        <span>{toDisplayLabel(category.name)}</span>
                         <span className='material-symbols-outlined text-base'>chevron_right</span>
                       </Link>
                     </li>
@@ -107,7 +149,11 @@ export function CategoryMegaMenu({
           </div>
         </aside>
 
-        <section className='h-full flex-1 overflow-y-auto bg-white p-6'>
+        <section
+          ref={rightPanelRef}
+          className='h-full flex-1 overflow-y-auto bg-white p-6'
+          onScroll={handleRightPanelScroll}
+        >
           {isLoading ? <p className='text-sm text-slate-500'>Alt kategoriler hazırlanıyor...</p> : null}
           {isError ? <p className='text-sm text-red-600'>Alt kategori listesi yüklenemedi.</p> : null}
 
@@ -117,7 +163,7 @@ export function CategoryMegaMenu({
                 className='inline-flex items-center gap-1 text-base font-bold text-primary hover:underline'
                 href={activeCategory.href}
               >
-                {activeCategory.name}
+                {toDisplayLabel(activeCategory.name)}
                 <span className='material-symbols-outlined text-base'>chevron_right</span>
               </Link>
 
@@ -129,7 +175,7 @@ export function CategoryMegaMenu({
                         className='inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline'
                         href={group.href}
                       >
-                        {group.title}
+                        {toDisplayLabel(group.title)}
                         <span className='material-symbols-outlined text-sm'>chevron_right</span>
                       </Link>
 
@@ -140,7 +186,7 @@ export function CategoryMegaMenu({
                             className='text-sm text-slate-600 transition-colors hover:text-primary hover:underline'
                             href={item.href}
                           >
-                            {item.name}
+                            {toDisplayLabel(item.name)}
                           </Link>
                         ))}
                       </div>
