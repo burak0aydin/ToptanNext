@@ -9,6 +9,7 @@ describe('AuthService', () => {
   let service: AuthService;
 
   const usersServiceMock = {
+    findById: jest.fn(),
     findByEmail: jest.fn(),
     findByEmailWithPassword: jest.fn(),
     createUser: jest.fn(),
@@ -16,6 +17,20 @@ describe('AuthService', () => {
 
   const jwtServiceMock = {
     signAsync: jest.fn(),
+    verifyAsync: jest.fn(),
+  };
+
+  const configServiceMock = {
+    get: jest.fn((key: string, fallbackValue?: string) => {
+      if (key === 'JWT_SECRET') {
+        return 'test-secret';
+      }
+      if (key === 'JWT_REFRESH_EXPIRES_IN') {
+        return '30d';
+      }
+
+      return fallbackValue;
+    }),
   };
 
   const baseUser = {
@@ -30,14 +45,20 @@ describe('AuthService', () => {
   };
 
   beforeEach(() => {
-    service = new AuthService(usersServiceMock as unknown as UsersService, jwtServiceMock as unknown as JwtService);
+    service = new AuthService(
+      usersServiceMock as unknown as UsersService,
+      jwtServiceMock as unknown as JwtService,
+      configServiceMock as never,
+    );
     jest.clearAllMocks();
   });
 
   it('should register a new user and return token', async () => {
     usersServiceMock.findByEmailWithPassword.mockResolvedValue(null);
     usersServiceMock.createUser.mockResolvedValue(baseUser);
-    jwtServiceMock.signAsync.mockResolvedValue('signed-token');
+    jwtServiceMock.signAsync
+      .mockResolvedValueOnce('signed-access-token')
+      .mockResolvedValueOnce('signed-refresh-token');
     jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed-password' as never);
 
     const result = await service.register({
@@ -53,8 +74,9 @@ describe('AuthService', () => {
       email: 'buyer@example.com',
       passwordHash: 'hashed-password',
     });
-    expect(jwtServiceMock.signAsync).toHaveBeenCalled();
-    expect(result.accessToken).toBe('signed-token');
+    expect(jwtServiceMock.signAsync).toHaveBeenCalledTimes(2);
+    expect(result.accessToken).toBe('signed-access-token');
+    expect(result.refreshToken).toBe('signed-refresh-token');
   });
 
   it('should reject register if email already exists', async () => {
@@ -76,7 +98,9 @@ describe('AuthService', () => {
       passwordHash: 'hashed-password',
     });
     usersServiceMock.findByEmail.mockResolvedValue(baseUser);
-    jwtServiceMock.signAsync.mockResolvedValue('signed-token');
+    jwtServiceMock.signAsync
+      .mockResolvedValueOnce('signed-access-token')
+      .mockResolvedValueOnce('signed-refresh-token');
     jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
 
     const result = await service.login({
@@ -84,7 +108,8 @@ describe('AuthService', () => {
       password: 'Password123',
     });
 
-    expect(result.accessToken).toBe('signed-token');
+    expect(result.accessToken).toBe('signed-access-token');
+    expect(result.refreshToken).toBe('signed-refresh-token');
     expect(result.user).toEqual(baseUser);
   });
 

@@ -1,4 +1,4 @@
-import { getAccessToken } from './auth-token';
+import { clearAccessToken, getAccessToken, setAccessToken } from './auth-token';
 
 type ApiSuccessResponse<TData> = {
   success: true;
@@ -22,7 +22,10 @@ type RequestJsonOptions<TBody> = {
   body?: TBody;
   auth?: boolean;
   headers?: Record<string, string>;
+  _retryAfterRefresh?: boolean;
 };
+
+let refreshTokenRequest: Promise<string | null> | null = null;
 
 function resolveApiMessage(payload: unknown): string {
   if (!payload || typeof payload !== 'object') {
@@ -68,10 +71,12 @@ export async function requestJson<TData, TBody = unknown>(
     headers['Content-Type'] = 'application/json';
   }
 
+  let hasAuthHeader = false;
   if (options.auth) {
     const accessToken = getAccessToken();
     if (accessToken) {
       headers.Authorization = `Bearer ${accessToken}`;
+      hasAuthHeader = true;
     }
   }
 
@@ -93,9 +98,60 @@ export async function requestJson<TData, TBody = unknown>(
     }
   }
 
+  if (response.status === 401 && options.auth && hasAuthHeader && !options._retryAfterRefresh) {
+    const nextAccessToken = await refreshAccessToken();
+
+    if (nextAccessToken) {
+      return requestJson<TData, TBody>(path, {
+        ...options,
+        _retryAfterRefresh: true,
+      });
+    }
+  }
+
   if (!response.ok || !payload || !('success' in payload) || !payload.success) {
     throw new Error(resolveApiMessage(payload));
   }
 
   return payload.data;
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (refreshTokenRequest) {
+    return refreshTokenRequest;
+  }
+
+  refreshTokenRequest = (async () => {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const responseText = await response.text();
+    let payload: ApiResponse<{ accessToken: string }> | null = null;
+
+    if (responseText) {
+      try {
+        payload = JSON.parse(responseText) as ApiResponse<{ accessToken: string }>;
+      } catch {
+        payload = null;
+      }
+    }
+
+    if (!response.ok || !payload || !('success' in payload) || !payload.success) {
+      clearAccessToken();
+      return null;
+    }
+
+    const nextAccessToken = payload.data.accessToken;
+    setAccessToken(nextAccessToken);
+    return nextAccessToken;
+  })().finally(() => {
+    refreshTokenRequest = null;
+  });
+
+  return refreshTokenRequest;
 }

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { clearAccessToken, hasAccessToken } from '@/lib/auth-token';
+import { requestJson } from '@/lib/api';
 
 export function AccountNavLink() {
   const router = useRouter();
@@ -50,7 +51,15 @@ export function AccountNavLink() {
     }, 120);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await requestJson<{ loggedOut: boolean }, undefined>('/auth/logout', {
+        method: 'POST',
+      });
+    } catch {
+      // Client-side token cleanup still ensures immediate logout UX.
+    }
+
     clearAccessToken();
     setIsLoggedIn(false);
     setIsMenuOpen(false);
@@ -126,7 +135,9 @@ export function AccountNavLink() {
             <button
               type='button'
               className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-red-600 transition-colors hover:bg-red-50'
-              onClick={handleLogout}
+              onClick={() => {
+                void handleLogout();
+              }}
             >
               <span className='material-symbols-outlined text-[20px]'>logout</span>
               Çıkış Yap
