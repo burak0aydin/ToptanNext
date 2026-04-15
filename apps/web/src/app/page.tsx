@@ -1,51 +1,9 @@
 import { MainFooter } from './components/MainFooter';
+import { FeaturedSectorsCarousel } from './components/FeaturedSectorsCarousel';
 import { HomeHeroSlider } from './components/HomeHeroSlider';
 import { MainHeader } from './components/MainHeader';
 
 export default function Home() {
-  const sectors = [
-    {
-      title: 'Oteller',
-      image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuATa7MW03Vy6yYzqUZZWXlKql0_dNKGC5WrmwRNgROWfDUJ7mBkjmIP9FWq2YhTlVn6xlVoF7H-Uv-X5x9UUgVhizGcXo6bzp4c6ZDZS25-vR9rTWVxjR-KFvtdhQ8tQgWvX9YVpdkcC-OCgW0PlszIFBvBkOo5j8CaMnEsLGncLvBFwV5lWVhZtWEvEvUq4ifyMRkj5-1oA_nSlaoAfvmWYitcbb3zF_T_PIU_s7UIb4uYwCXQcd7nYx6j0AQZJmousA39UoT3Spc',
-    },
-    {
-      title: 'Restoran & Kafe',
-      image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuDRd-YWx1Y9h-8xhSKtOMQlm0TwqIAW-zfPTy_ogsXmVLhoe1I-SPefDOqy5yxt_1SjSowJ78eVT3AEnr1LA_K8chEM6Kl4xjqBsoJte3CPADxmXYTzFhnxCGOiEExfFy2C-3juBvDayhYRYKQk3j_UWPZF2PZPPCdESYogY4z74FhJWeTmhfQAPGJvo3RlhT8gojIafkzwnjfisAXLy-I4DLN4l_EffJYV0QKaKVnvaMZ3H-RmUc4JTR-vTTB1l7ByEKwhSQFNNQk',
-    },
-    {
-      title: 'Marketler',
-      image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuCm-ZmHxv0Cfme9TEItFTgYcJDAFykW91pPvhZpaxL7eax2zUnytz2UTDPaSqjrs3M5qNZLJWgtRPn3MsNQ2808MTVmx9GC9mWWoOEILWuwpVodyFRf7cHr09zfHluGJ5le6-QQFFbmek_qPEseP5J1UTJUgcA0dBNqwyHgDxcLiGkzPu1zbL5nbdHk7fjd5Inw_YSZ0_cbupPvQz3PBd14N1rU9-EoAYYXPniQMmNOXr2GToNAeLU8Q7NeGnzTdQb-0kg1LeI-NAY',
-    },
-    {
-      title: 'Magazalar',
-      image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuBbdtvI5k7kdDtu-Q14MA4vRBouBwApJbssCTphD4oWW45MR9CSgvB_-ltyLjaFtyaM2Va58MNFrDMeUhbFx43egrhA0XUPW5TDUbexUICgcjheBp6xPtACn_5YLNxQ7WWS5NJRXp72f0Rhe_XI31ZRTyZTLDhH3jEAMdcqccpsX09OaLrM1x1v9XHAWoPrx_509fghLK936vVuUg4L-6U2etFM1VPQf7z6zwcJsAHVmJFSs5bzHOhG--I_D9_Zi4mjj2Jazx7MRPM',
-    },
-    {
-      title: 'Ofisler',
-      image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuAtmroIq7w4E60Hmkg7-Eyy7sONa34EnBCNUKlflIWT3lnRDZ0gecLA5wL-NVxFfdioJdRh13dvgjWeaBj6w9tSx2b91aCpBRhi7cAJYamq49TmzeGsG74gKij9tjaZONeasgf2DaT6oq8Fm3KLForX_lRwo8qK24LboWjaxgvylxB42awLLGuZoNNx-CB412MGBRp1UOkxLqpKW5mgLEvLx3N1UBeOuZ12Ga7GzJC7I054kxBn6tYfznCk9rds8z9jvImt9NzqftE',
-    },
-    {
-      title: 'Insaat & Yapi',
-      image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuBpCsF7DeAYhOtxI80pQ2C-vs4oKQz2AdDBVir-H-c21cZTys5lZWOurp76XhswIO4h27CXKv5f-UgMDJVMUCUhuqtESx6FJNd6aONSuSRZFTK6Mkp0vNWZJR8p_dy7RZ2s9A9dxX5NxzJXjqdamG6pYC_n6O7mbjytoYiGCoVJautRMhhOMPO-SHEj4loPPHrmY0uQjKVf7pPyhnPJIg3OWY2vmoff7zrg0CjPpORjpBEEdCHG9LVA06R9LEksKiNeqx3h094pKfg',
-    },
-    {
-      title: 'Saglik & Medikal',
-      image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuAD0e_Z8sTSOSJQQs73gtrxKQYa3b-xqC1jHxo8goYkisS0S-SqOo_zRMJxAM2Y1KQaD-PQpqFoP7-KNRBLKNsyQYFHS3FP3u9h8oKheoQAi986H97LQrDNGvg_cDokQmcbRc2wlEnjjzrQe0EcLG6WXEmZPU2jGIPCtJAf4Kn_O-q90jV1G950mB5hoXdYqV_iGWr0A0-6Cf4HbI8t3TWobPTxgtlwSglW-PCFtzKgVl_Fr_80qbTT1W3p_m90sjRDABED7d5En6A',
-    },
-    {
-      title: 'Tarim & Hayvancilik',
-      image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuCgbGWeUXfGR3T2SsVxOMB6uust7bL_qzIsBWP4yCUqthzOpoBSo2nEUPT67DuEtWtjPnhgE0hBSrT0uxu-EmoxaYkqmHJtF52g_LTQRa4KuqRN17lLIjHIwQ41toZ_YBu2UO66F2milJLxnMlxaM3Zm9joojn2CaVTTGW82N5tPC_FppVZg1w8gQPmrym2RDTKCw7k9_aS7GvelNZlBmH_06yoxCOgzkqK7GY9vy1iRUOSDmqOQ4aiT6wm1Ci9W1nKDC5YYkR1NmI',
-    },
-  ];
-
   const products = [
     {
       sku: 'MSM: TX-9042',
@@ -91,34 +49,7 @@ export default function Home() {
       <main className='flex-1'>
         <HomeHeroSlider />
 
-        <section className='bg-white py-12'>
-          <div className='container mx-auto px-6'>
-            <div className='mb-8 flex items-center justify-between'>
-              <h2 className='text-2xl font-bold text-on-surface'>One Cikan Sektorler</h2>
-              <div className='flex items-center gap-2'>
-                <button className='flex h-10 w-10 items-center justify-center rounded-full border border-outline-variant'>
-                  <span className='material-symbols-outlined'>chevron_left</span>
-                </button>
-                <button className='flex h-10 w-10 items-center justify-center rounded-full border border-outline-variant'>
-                  <span className='material-symbols-outlined'>chevron_right</span>
-                </button>
-              </div>
-            </div>
-
-            <div className='hide-scrollbar flex gap-8 overflow-x-auto pb-4 lg:justify-between'>
-              {sectors.map((sector) => (
-                <div key={sector.title} className='group flex min-w-[100px] flex-col items-center gap-3'>
-                  <div className='h-20 w-20 overflow-hidden rounded-full border-2 border-transparent bg-surface-container-low shadow-sm transition-all group-hover:border-primary'>
-                    <img className='h-full w-full object-cover' src={sector.image} alt={sector.title} />
-                  </div>
-                  <span className='text-center text-xs font-semibold text-on-surface group-hover:text-primary'>
-                    {sector.title}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        <FeaturedSectorsCarousel />
 
         <section className='bg-[#F8FAFC] py-16'>
           <div className='container mx-auto px-6'>

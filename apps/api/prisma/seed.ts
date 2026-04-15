@@ -569,7 +569,7 @@ const SECTOR_SEED = [
   'Kafe & Restoranlar',
   'Süpermarketler',
   'Giyim Mağazaları',
-  'Elektronik Mağazaları',
+  'Elektronik',
   'Kozmetik Mağazaları',
   'Petshoplar',
   'Spor Salonları',
@@ -579,7 +579,7 @@ const SECTOR_SEED = [
   'Oto Servisleri',
   'Lojistik Firmaları',
   'Okullar',
-  'Organizasyon Firmaları',
+  'Organizasyon',
   'İnşaat Firmaları',
 ];
 
