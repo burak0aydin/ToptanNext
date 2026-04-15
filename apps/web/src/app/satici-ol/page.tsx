@@ -159,7 +159,7 @@ export default function SaticiOlPage() {
 
       <main className='max-w-7xl mx-auto w-full px-4 py-8 md:py-12 flex flex-col gap-8 md:grid md:grid-cols-[18rem_minmax(0,1fr)] md:items-start'>
         <aside className='w-full md:w-[18rem] md:min-w-[18rem] md:max-w-[18rem]'>
-          <div className='h-auto sticky top-24 flex flex-col gap-4 p-6 overflow-y-auto bg-slate-50 rounded-xl border border-slate-100'>
+          <div className='h-auto flex flex-col gap-4 p-6 bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-sm'>
             <div className='mb-4'>
               <h2 className='text-lg font-bold text-blue-900'>Satıcı Başvuru Formu</h2>
               <p className='text-slate-500 text-xs font-medium'>ToptanNext Pazaryeri</p>

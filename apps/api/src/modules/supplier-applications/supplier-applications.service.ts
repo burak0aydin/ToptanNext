@@ -3,14 +3,43 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { promises as fs } from 'fs';
+import path from 'path';
 import { ReviewSupplierApplicationDto } from './dto/review-supplier-application.dto';
 import { UpsertSupplierApplicationContactFinanceDto } from './dto/upsert-supplier-application-contact-finance.dto';
+import { UpsertSupplierApplicationDocumentsDto } from './dto/upsert-supplier-application-documents.dto';
 import { UpsertSupplierApplicationDto } from './dto/upsert-supplier-application.dto';
 import {
+  SupplierApplicationDocumentFileRecord,
   SupplierApplicationAdminListItem,
   SupplierApplicationRecord,
+  SupplierApplicationUploadedDocumentInput,
   SupplierApplicationsRepository,
 } from './supplier-applications.repository';
+
+type SupplierApplicationDocumentType =
+  | 'TAX_CERTIFICATE'
+  | 'SIGNATURE_CIRCULAR'
+  | 'TRADE_REGISTRY_GAZETTE'
+  | 'ACTIVITY_CERTIFICATE';
+
+export const supplierApplicationDocumentFieldMap = {
+  taxCertificate: 'TAX_CERTIFICATE',
+  signatureCircular: 'SIGNATURE_CIRCULAR',
+  tradeRegistryGazette: 'TRADE_REGISTRY_GAZETTE',
+  activityCertificate: 'ACTIVITY_CERTIFICATE',
+} as const;
+
+export type SupplierApplicationDocumentFieldName =
+  keyof typeof supplierApplicationDocumentFieldMap;
+
+export type UploadedSupplierApplicationDocument = {
+  fieldName: SupplierApplicationDocumentFieldName;
+  originalName: string;
+  mimeType: string;
+  fileSize: number;
+  filePath: string;
+};
 
 @Injectable()
 export class SupplierApplicationsService {
@@ -100,6 +129,149 @@ export class SupplierApplicationsService {
       status: dto.status,
       reviewNote: this.normalizeOptionalText(dto.reviewNote),
     });
+  }
+
+  async findByIdForAdmin(id: string): Promise<SupplierApplicationRecord> {
+    const application = await this.supplierApplicationsRepository.findById(id);
+
+    if (!application) {
+      throw new NotFoundException('Tedarikçi başvurusu bulunamadı.');
+    }
+
+    return application;
+  }
+
+  async upsertDocumentsForUser(
+    userId: string,
+    dto: UpsertSupplierApplicationDocumentsDto,
+    uploadedDocuments: UploadedSupplierApplicationDocument[],
+  ): Promise<SupplierApplicationRecord> {
+    if (!dto.approvedSupplierAgreement) {
+      throw new BadRequestException(
+        'Tedarikçi iş ortaklığı sözleşmesini onaylamalısınız.',
+      );
+    }
+
+    if (!dto.approvedKvkkAgreement) {
+      throw new BadRequestException('KVKK aydınlatma metnini onaylamalısınız.');
+    }
+
+    const existing =
+      await this.supplierApplicationsRepository.findByUserId(userId);
+
+    if (!existing) {
+      throw new NotFoundException(
+        'Önce şirket kimlik bilgileri adımını tamamlayınız.',
+      );
+    }
+
+    const documentsToUpsert = uploadedDocuments.map(
+      (document): SupplierApplicationUploadedDocumentInput => ({
+        documentType: supplierApplicationDocumentFieldMap[document.fieldName],
+        originalName: document.originalName,
+        mimeType: document.mimeType,
+        fileSize: document.fileSize,
+        filePath: document.filePath,
+      }),
+    );
+
+    const previousFilePathByType = new Map<
+      SupplierApplicationDocumentType,
+      string
+    >();
+
+    for (const document of documentsToUpsert) {
+      const previous =
+        await this.supplierApplicationsRepository.findDocumentByUserIdAndType(
+          userId,
+          document.documentType,
+        );
+      if (previous) {
+        previousFilePathByType.set(document.documentType, previous.filePath);
+      }
+    }
+
+    const updated =
+      await this.supplierApplicationsRepository.upsertDocumentsAndAgreementsByUserId(
+        {
+          userId,
+          approvedSupplierAgreement: dto.approvedSupplierAgreement,
+          approvedKvkkAgreement: dto.approvedKvkkAgreement,
+          approvedCommercialMessage: dto.approvedCommercialMessage,
+          documents: documentsToUpsert,
+        },
+      );
+
+    for (const document of documentsToUpsert) {
+      const previousFilePath = previousFilePathByType.get(
+        document.documentType,
+      );
+      if (!previousFilePath || previousFilePath === document.filePath) {
+        continue;
+      }
+
+      await this.removeFileIfExists(previousFilePath);
+    }
+
+    return updated;
+  }
+
+  async getMyDocumentByType(
+    userId: string,
+    documentType: SupplierApplicationDocumentType,
+  ): Promise<SupplierApplicationDocumentFileRecord> {
+    const document =
+      await this.supplierApplicationsRepository.findDocumentByUserIdAndType(
+        userId,
+        documentType,
+      );
+
+    if (!document) {
+      throw new NotFoundException('Belge bulunamadı.');
+    }
+
+    return document;
+  }
+
+  async getAdminDocumentByType(
+    supplierApplicationId: string,
+    documentType: SupplierApplicationDocumentType,
+  ): Promise<SupplierApplicationDocumentFileRecord> {
+    const existing = await this.supplierApplicationsRepository.findById(
+      supplierApplicationId,
+    );
+
+    if (!existing) {
+      throw new NotFoundException('Tedarikçi başvurusu bulunamadı.');
+    }
+
+    const document =
+      await this.supplierApplicationsRepository.findDocumentByApplicationIdAndType(
+        supplierApplicationId,
+        documentType,
+      );
+
+    if (!document) {
+      throw new NotFoundException('Belge bulunamadı.');
+    }
+
+    return document;
+  }
+
+  resolveDocumentAbsolutePath(filePath: string): string {
+    return path.isAbsolute(filePath)
+      ? filePath
+      : path.join(process.cwd(), filePath);
+  }
+
+  private async removeFileIfExists(filePath: string): Promise<void> {
+    const absolutePath = this.resolveDocumentAbsolutePath(filePath);
+
+    try {
+      await fs.unlink(absolutePath);
+    } catch {
+      // Ignore missing files during replacement cleanup.
+    }
   }
 
   private normalizeOptionalText(value: string | undefined): string | null {

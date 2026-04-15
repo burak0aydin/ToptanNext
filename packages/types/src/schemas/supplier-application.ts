@@ -8,6 +8,13 @@ export const supplierApplicationReviewStatusValues = [
   'REJECTED',
 ] as const;
 
+export const supplierApplicationDocumentTypeValues = [
+  'TAX_CERTIFICATE',
+  'SIGNATURE_CIRCULAR',
+  'TRADE_REGISTRY_GAZETTE',
+  'ACTIVITY_CERTIFICATE',
+] as const;
+
 export const supplierCompanyTypeSchema = z
   .string()
   .min(1, 'Şirket Türü alan bilgisi zorunlu bir alandır.')
@@ -132,8 +139,26 @@ export const supplierApplicationStepTwoSchema = z.object({
   }
 });
 
+export const supplierApplicationStepThreeSchema = z.object({
+  approvedSupplierAgreement: z
+    .boolean()
+    .refine((value) => value, {
+      message: 'Tedarikçi iş ortaklığı sözleşmesini onaylamalısınız.',
+    }),
+  approvedKvkkAgreement: z
+    .boolean()
+    .refine((value) => value, {
+      message: 'KVKK aydınlatma metnini onaylamalısınız.',
+    }),
+  approvedCommercialMessage: z.boolean(),
+});
+
 export type SupplierCompanyType = z.infer<typeof supplierCompanyTypeSchema>;
 export type SupplierApplicationStepOneDto = z.infer<typeof supplierApplicationStepOneSchema>;
 export type SupplierApplicationReviewStatus =
   (typeof supplierApplicationReviewStatusValues)[number];
 export type SupplierApplicationStepTwoDto = z.infer<typeof supplierApplicationStepTwoSchema>;
+export type SupplierApplicationDocumentType =
+  (typeof supplierApplicationDocumentTypeValues)[number];
+export type SupplierApplicationStepThreeDto =
+  z.infer<typeof supplierApplicationStepThreeSchema>;

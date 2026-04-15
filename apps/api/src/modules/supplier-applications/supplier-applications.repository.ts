@@ -3,6 +3,11 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 type SupplierApplicationReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+type SupplierApplicationDocumentType =
+  | 'TAX_CERTIFICATE'
+  | 'SIGNATURE_CIRCULAR'
+  | 'TRADE_REGISTRY_GAZETTE'
+  | 'ACTIVITY_CERTIFICATE';
 
 export type SupplierApplicationRecord = {
   id: string;
@@ -32,8 +37,32 @@ export type SupplierApplicationRecord = {
   reviewStatus: SupplierApplicationReviewStatus;
   reviewNote: string | null;
   reviewedAt: Date | null;
+  approvedSupplierAgreement: boolean;
+  approvedKvkkAgreement: boolean;
+  approvedCommercialMessage: boolean;
+  documents: SupplierApplicationDocumentRecord[];
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type SupplierApplicationDocumentRecord = {
+  id: string;
+  documentType: SupplierApplicationDocumentType;
+  originalName: string;
+  mimeType: string;
+  fileSize: number;
+  uploadedAt: Date;
+};
+
+export type SupplierApplicationDocumentFileRecord = {
+  id: string;
+  supplierApplicationId: string;
+  documentType: SupplierApplicationDocumentType;
+  originalName: string;
+  filePath: string;
+  mimeType: string;
+  fileSize: number;
+  uploadedAt: Date;
 };
 
 export type SupplierApplicationAdminListItem = {
@@ -85,6 +114,22 @@ export type UpdateSupplierApplicationReviewInput = {
   reviewNote: string | null;
 };
 
+export type SupplierApplicationUploadedDocumentInput = {
+  documentType: SupplierApplicationDocumentType;
+  originalName: string;
+  filePath: string;
+  mimeType: string;
+  fileSize: number;
+};
+
+export type UpsertSupplierApplicationDocumentsInput = {
+  userId: string;
+  approvedSupplierAgreement: boolean;
+  approvedKvkkAgreement: boolean;
+  approvedCommercialMessage: boolean;
+  documents: SupplierApplicationUploadedDocumentInput[];
+};
+
 @Injectable()
 export class SupplierApplicationsRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -117,6 +162,22 @@ export class SupplierApplicationsRepository {
     reviewStatus: true,
     reviewNote: true,
     reviewedAt: true,
+    approvedSupplierAgreement: true,
+    approvedKvkkAgreement: true,
+    approvedCommercialMessage: true,
+    documents: {
+      select: {
+        id: true,
+        documentType: true,
+        originalName: true,
+        mimeType: true,
+        fileSize: true,
+        uploadedAt: true,
+      },
+      orderBy: {
+        uploadedAt: 'desc',
+      },
+    },
     createdAt: true,
     updatedAt: true,
   } as const;
@@ -248,5 +309,104 @@ export class SupplierApplicationsRepository {
     });
 
     return updated as unknown as SupplierApplicationRecord;
+  }
+
+  async upsertDocumentsAndAgreementsByUserId(
+    input: UpsertSupplierApplicationDocumentsInput,
+  ): Promise<SupplierApplicationRecord> {
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const application = await tx.supplierApplication.update({
+        where: { userId: input.userId },
+        data: {
+          approvedSupplierAgreement: input.approvedSupplierAgreement,
+          approvedKvkkAgreement: input.approvedKvkkAgreement,
+          approvedCommercialMessage: input.approvedCommercialMessage,
+        } as never,
+        select: {
+          id: true,
+        },
+      });
+
+      for (const document of input.documents) {
+        await (tx as any).supplierApplicationDocument.upsert({
+          where: {
+            supplierApplicationId_documentType: {
+              supplierApplicationId: application.id,
+              documentType: document.documentType,
+            },
+          },
+          create: {
+            supplierApplicationId: application.id,
+            documentType: document.documentType,
+            originalName: document.originalName,
+            filePath: document.filePath,
+            mimeType: document.mimeType,
+            fileSize: document.fileSize,
+          },
+          update: {
+            originalName: document.originalName,
+            filePath: document.filePath,
+            mimeType: document.mimeType,
+            fileSize: document.fileSize,
+            uploadedAt: new Date(),
+          },
+        });
+      }
+
+      return tx.supplierApplication.findUniqueOrThrow({
+        where: { userId: input.userId },
+        select: this.baseSelect,
+      });
+    });
+
+    return updated;
+  }
+
+  async findDocumentByUserIdAndType(
+    userId: string,
+    documentType: SupplierApplicationDocumentType,
+  ): Promise<SupplierApplicationDocumentFileRecord | null> {
+    return (this.prisma as any).supplierApplicationDocument.findFirst({
+      where: {
+        documentType,
+        supplierApplication: {
+          userId,
+        },
+      },
+      select: {
+        id: true,
+        supplierApplicationId: true,
+        documentType: true,
+        originalName: true,
+        filePath: true,
+        mimeType: true,
+        fileSize: true,
+        uploadedAt: true,
+      },
+    });
+  }
+
+  async findDocumentByApplicationIdAndType(
+    supplierApplicationId: string,
+    documentType: SupplierApplicationDocumentType,
+  ): Promise<SupplierApplicationDocumentFileRecord | null> {
+    return (this.prisma as any).supplierApplicationDocument.findUnique({
+      where: {
+        supplierApplicationId_documentType: {
+          supplierApplicationId,
+          documentType,
+        },
+      },
+      select: {
+        id: true,
+        supplierApplicationId: true,
+        documentType: true,
+        originalName: true,
+        filePath: true,
+        mimeType: true,
+        fileSize: true,
+        uploadedAt: true,
+      },
+    });
   }
 }

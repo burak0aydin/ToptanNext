@@ -1,4 +1,4 @@
-import { clearAccessToken, getAccessToken, setAccessToken } from './auth-token';
+import { clearAccessToken, getAccessToken, setAccessToken } from "./auth-token";
 
 type ApiSuccessResponse<TData> = {
   success: true;
@@ -15,10 +15,11 @@ type ApiErrorResponse = {
 
 type ApiResponse<TData> = ApiSuccessResponse<TData> | ApiErrorResponse;
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1";
 
 type RequestJsonOptions<TBody> = {
-  method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+  method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: TBody;
   auth?: boolean;
   headers?: Record<string, string>;
@@ -28,8 +29,8 @@ type RequestJsonOptions<TBody> = {
 let refreshTokenRequest: Promise<string | null> | null = null;
 
 function resolveApiMessage(payload: unknown): string {
-  if (!payload || typeof payload !== 'object') {
-    return 'Beklenmeyen bir sunucu hatası oluştu.';
+  if (!payload || typeof payload !== "object") {
+    return "Beklenmeyen bir sunucu hatası oluştu.";
   }
 
   const maybeError = payload as {
@@ -37,24 +38,30 @@ function resolveApiMessage(payload: unknown): string {
     message?: string | string[];
   };
 
-  if (typeof maybeError.error?.message === 'string' && maybeError.error.message.length > 0) {
+  if (
+    typeof maybeError.error?.message === "string" &&
+    maybeError.error.message.length > 0
+  ) {
     return maybeError.error.message;
   }
 
-  if (typeof maybeError.message === 'string' && maybeError.message.length > 0) {
+  if (typeof maybeError.message === "string" && maybeError.message.length > 0) {
     return maybeError.message;
   }
 
   if (Array.isArray(maybeError.message) && maybeError.message.length > 0) {
-    return maybeError.message.join(' ');
+    return maybeError.message.join(" ");
   }
 
-  return 'İstek işlenirken bir hata oluştu.';
+  return "İstek işlenirken bir hata oluştu.";
 }
 
-export async function postJson<TBody, TData>(path: string, body: TBody): Promise<TData> {
+export async function postJson<TBody, TData>(
+  path: string,
+  body: TBody,
+): Promise<TData> {
   return requestJson<TData, TBody>(path, {
-    method: 'POST',
+    method: "POST",
     body,
   });
 }
@@ -63,12 +70,21 @@ export async function requestJson<TData, TBody = unknown>(
   path: string,
   options: RequestJsonOptions<TBody> = {},
 ): Promise<TData> {
+  const isFormDataBody =
+    options.body !== undefined &&
+    typeof FormData !== "undefined" &&
+    options.body instanceof FormData;
+
   const headers: Record<string, string> = {
     ...(options.headers ?? {}),
   };
 
-  if (options.body !== undefined && !headers['Content-Type']) {
-    headers['Content-Type'] = 'application/json';
+  if (
+    options.body !== undefined &&
+    !isFormDataBody &&
+    !headers["Content-Type"]
+  ) {
+    headers["Content-Type"] = "application/json";
   }
 
   let hasAuthHeader = false;
@@ -81,10 +97,15 @@ export async function requestJson<TData, TBody = unknown>(
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: options.method ?? 'GET',
-    credentials: 'include',
+    method: options.method ?? "GET",
+    credentials: "include",
     headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    body:
+      options.body === undefined
+        ? undefined
+        : isFormDataBody
+          ? (options.body as FormData)
+          : JSON.stringify(options.body),
   });
 
   const responseText = await response.text();
@@ -98,7 +119,12 @@ export async function requestJson<TData, TBody = unknown>(
     }
   }
 
-  if (response.status === 401 && options.auth && hasAuthHeader && !options._retryAfterRefresh) {
+  if (
+    response.status === 401 &&
+    options.auth &&
+    hasAuthHeader &&
+    !options._retryAfterRefresh
+  ) {
     const nextAccessToken = await refreshAccessToken();
 
     if (nextAccessToken) {
@@ -109,7 +135,7 @@ export async function requestJson<TData, TBody = unknown>(
     }
   }
 
-  if (!response.ok || !payload || !('success' in payload) || !payload.success) {
+  if (!response.ok || !payload || !("success" in payload) || !payload.success) {
     throw new Error(resolveApiMessage(payload));
   }
 
@@ -123,10 +149,10 @@ async function refreshAccessToken(): Promise<string | null> {
 
   refreshTokenRequest = (async () => {
     const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include',
+      method: "POST",
+      credentials: "include",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
     });
 
@@ -135,13 +161,20 @@ async function refreshAccessToken(): Promise<string | null> {
 
     if (responseText) {
       try {
-        payload = JSON.parse(responseText) as ApiResponse<{ accessToken: string }>;
+        payload = JSON.parse(responseText) as ApiResponse<{
+          accessToken: string;
+        }>;
       } catch {
         payload = null;
       }
     }
 
-    if (!response.ok || !payload || !('success' in payload) || !payload.success) {
+    if (
+      !response.ok ||
+      !payload ||
+      !("success" in payload) ||
+      !payload.success
+    ) {
       clearAccessToken();
       return null;
     }

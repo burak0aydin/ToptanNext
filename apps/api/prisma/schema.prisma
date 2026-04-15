@@ -25,6 +25,13 @@ enum SupplierApplicationReviewStatus {
   REJECTED
 }
 
+enum SupplierApplicationDocumentType {
+  TAX_CERTIFICATE
+  SIGNATURE_CIRCULAR
+  TRADE_REGISTRY_GAZETTE
+  ACTIVITY_CERTIFICATE
+}
+
 model User {
   id           String    @id @default(cuid())
   fullName     String?
@@ -72,18 +79,40 @@ model SupplierApplication {
   contactRole     String?             @map("contact_role")
   contactPhone    String?             @map("contact_phone")
   contactEmail    String?             @map("contact_email")
-  reviewStatus    SupplierApplicationReviewStatus @default(PENDING) @map("review_status")
-  reviewNote      String?             @map("review_note")
-  reviewedAt      DateTime?           @map("reviewed_at")
-  createdAt       DateTime            @default(now()) @map("created_at")
-  updatedAt       DateTime            @updatedAt @map("updated_at")
+  reviewStatus             SupplierApplicationReviewStatus @default(PENDING) @map("review_status")
+  reviewNote               String?             @map("review_note")
+  reviewedAt               DateTime?           @map("reviewed_at")
+  approvedSupplierAgreement Boolean            @default(false) @map("approved_supplier_agreement")
+  approvedKvkkAgreement    Boolean             @default(false) @map("approved_kvkk_agreement")
+  approvedCommercialMessage Boolean            @default(false) @map("approved_commercial_message")
+  createdAt                DateTime            @default(now()) @map("created_at")
+  updatedAt                DateTime            @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User                           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents SupplierApplicationDocument[]
 
   @@index([companyType])
   @@index([activitySector])
   @@index([reviewStatus])
   @@map("supplier_applications")
+}
+
+model SupplierApplicationDocument {
+  id                    String                          @id @default(cuid())
+  supplierApplicationId String                          @map("supplier_application_id")
+  documentType          SupplierApplicationDocumentType @map("document_type")
+  originalName          String                          @map("original_name")
+  filePath              String                          @map("file_path")
+  mimeType              String                          @map("mime_type")
+  fileSize              Int                             @map("file_size")
+  uploadedAt            DateTime                        @default(now()) @map("uploaded_at")
+  updatedAt             DateTime                        @updatedAt @map("updated_at")
+
+  supplierApplication SupplierApplication @relation(fields: [supplierApplicationId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierApplicationId, documentType])
+  @@index([documentType])
+  @@map("supplier_application_documents")
 }
 
 model Category {
