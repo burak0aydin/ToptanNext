@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 type HeroSlide = {
   id: number;
@@ -51,6 +52,9 @@ export function HomeHeroSlider() {
   }, [isPaused]);
 
   const activeSlide = SLIDES[activeIndex];
+  const isSellerCta = activeSlide.secondaryButtonLabel
+    .toLocaleLowerCase('tr-TR')
+    .includes('satıcı ol');
 
   return (
     <section
@@ -89,12 +93,21 @@ export function HomeHeroSlider() {
             >
               Fırsatları Keşfet
             </button>
-            <button
-              className='inline-flex w-[280px] items-center justify-center whitespace-nowrap rounded-xl border border-[#ffa17f90] bg-[rgba(255,91,31,0.07)] px-8 py-3 text-base font-bold text-white backdrop-blur-sm transition-colors hover:bg-[#ff5b1f]'
-              type='button'
-            >
-              {activeSlide.secondaryButtonLabel}
-            </button>
+            {isSellerCta ? (
+              <Link
+                className='inline-flex w-[280px] items-center justify-center whitespace-nowrap rounded-xl border border-[#ffa17f90] bg-[rgba(255,91,31,0.07)] px-8 py-3 text-base font-bold text-white backdrop-blur-sm transition-colors hover:bg-[#ff5b1f]'
+                href='/satici-ol'
+              >
+                {activeSlide.secondaryButtonLabel}
+              </Link>
+            ) : (
+              <button
+                className='inline-flex w-[280px] items-center justify-center whitespace-nowrap rounded-xl border border-[#ffa17f90] bg-[rgba(255,91,31,0.07)] px-8 py-3 text-base font-bold text-white backdrop-blur-sm transition-colors hover:bg-[#ff5b1f]'
+                type='button'
+              >
+                {activeSlide.secondaryButtonLabel}
+              </button>
+            )}
           </div>
         </div>
       </div>

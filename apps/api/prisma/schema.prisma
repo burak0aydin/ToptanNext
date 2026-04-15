@@ -13,6 +13,12 @@ enum Role {
   BUYER
 }
 
+enum SupplierCompanyType {
+  SAHIS
+  LIMITED
+  ANONIM
+}
+
 model User {
   id           String    @id @default(cuid())
   fullName     String?
@@ -28,9 +34,31 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  supplierApplication SupplierApplication?
+
   @@index([email])
   @@index([role])
   @@map("users")
+}
+
+model SupplierApplication {
+  id              String              @id @default(cuid())
+  userId          String              @unique @map("user_id")
+  companyName     String              @map("company_name")
+  companyType     SupplierCompanyType @map("company_type")
+  vknOrTckn       String              @map("vkn_or_tckn")
+  taxOffice       String              @map("tax_office")
+  mersisNo        String              @map("mersis_no")
+  tradeRegistryNo String?             @map("trade_registry_no")
+  activitySector  String              @map("activity_sector")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyType])
+  @@index([activitySector])
+  @@map("supplier_applications")
 }
 
 model Category {

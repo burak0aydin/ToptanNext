@@ -147,9 +147,12 @@ export function MainHeader() {
               Sektörler
             </button>
 
-            <a className='py-2 text-sm font-semibold text-on-surface-variant transition-colors hover:text-primary' href='#'>
+            <Link
+              className='py-2 text-sm font-semibold text-on-surface-variant transition-colors hover:text-primary'
+              href='/satici-ol'
+            >
               Satıcı Ol
-            </a>
+            </Link>
             <a className='py-2 text-sm font-semibold text-on-surface-variant transition-colors hover:text-primary' href='#'>
               Lojistik
             </a>
@@ -263,6 +266,13 @@ export function MainHeader() {
                   ))}
                 </div>
               ) : null}
+
+              <Link
+                className='block rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 transition-colors hover:bg-[#EEF4FF] hover:text-primary'
+                href='/satici-ol'
+              >
+                Satıcı Ol
+              </Link>
             </div>
           </div>
         ) : null}
