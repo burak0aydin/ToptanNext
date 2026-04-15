@@ -10,6 +10,10 @@ body {
   color: #191c1e;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 a {
   transition: color 0.2s ease;
 }

@@ -19,6 +19,12 @@ enum SupplierCompanyType {
   ANONIM
 }
 
+enum SupplierApplicationReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
   id           String    @id @default(cuid())
   fullName     String?
@@ -51,6 +57,24 @@ model SupplierApplication {
   mersisNo        String              @map("mersis_no")
   tradeRegistryNo String?             @map("trade_registry_no")
   activitySector  String              @map("activity_sector")
+  city            String              @map("city")
+  district        String              @map("district")
+  referenceCode   String?             @map("reference_code")
+  companyIban     String?             @map("company_iban")
+  kepAddress      String?             @map("kep_address")
+  isEInvoiceTaxpayer Boolean?         @map("is_e_invoice_taxpayer")
+  businessPhone   String?             @map("business_phone")
+  headquartersAddress String?         @map("headquarters_address")
+  warehouseSameAsHeadquarters Boolean? @map("warehouse_same_as_headquarters")
+  warehouseAddress String?            @map("warehouse_address")
+  contactFirstName String?            @map("contact_first_name")
+  contactLastName String?             @map("contact_last_name")
+  contactRole     String?             @map("contact_role")
+  contactPhone    String?             @map("contact_phone")
+  contactEmail    String?             @map("contact_email")
+  reviewStatus    SupplierApplicationReviewStatus @default(PENDING) @map("review_status")
+  reviewNote      String?             @map("review_note")
+  reviewedAt      DateTime?           @map("reviewed_at")
   createdAt       DateTime            @default(now()) @map("created_at")
   updatedAt       DateTime            @updatedAt @map("updated_at")
 
@@ -58,6 +82,7 @@ model SupplierApplication {
 
   @@index([companyType])
   @@index([activitySector])
+  @@index([reviewStatus])
   @@map("supplier_applications")
 }
 

@@ -46,4 +46,19 @@ export class UpsertSupplierApplicationDto {
   @MinLength(1, { message: 'Faaliyet Alanı alan bilgisi zorunlu bir alandır.' })
   @MaxLength(120, { message: 'Faaliyet alanı en fazla 120 karakter olabilir.' })
   activitySector!: string;
+
+  @IsString({ message: 'İl metin olmalıdır.' })
+  @MinLength(1, { message: 'İl alan bilgisi zorunlu bir alandır.' })
+  @MaxLength(80, { message: 'İl en fazla 80 karakter olabilir.' })
+  city!: string;
+
+  @IsString({ message: 'İlçe metin olmalıdır.' })
+  @MinLength(1, { message: 'İlçe alan bilgisi zorunlu bir alandır.' })
+  @MaxLength(80, { message: 'İlçe en fazla 80 karakter olabilir.' })
+  district!: string;
+
+  @IsOptional()
+  @IsString({ message: 'Referans kodu metin olmalıdır.' })
+  @MaxLength(60, { message: 'Referans kodu en fazla 60 karakter olabilir.' })
+  referenceCode?: string;
 }

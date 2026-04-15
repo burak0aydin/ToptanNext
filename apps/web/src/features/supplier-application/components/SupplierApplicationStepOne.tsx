@@ -22,6 +22,9 @@ const EMPTY_FORM: SupplierApplicationStepOneDto = {
   mersisNo: '',
   tradeRegistryNo: '',
   activitySector: '',
+  city: '',
+  district: '',
+  referenceCode: '',
 };
 
 const COMPANY_TYPE_OPTIONS = [
@@ -80,6 +83,9 @@ export function SupplierApplicationStepOne() {
           mersisNo: existingApplication.mersisNo,
           tradeRegistryNo: existingApplication.tradeRegistryNo ?? '',
           activitySector: existingApplication.activitySector,
+          city: existingApplication.city,
+          district: existingApplication.district,
+          referenceCode: existingApplication.referenceCode ?? '',
         });
       } catch (error) {
         if (!isMounted) {
@@ -123,6 +129,9 @@ export function SupplierApplicationStepOne() {
     'mersisNo',
     'tradeRegistryNo',
     'activitySector',
+    'city',
+    'district',
+    'referenceCode',
   ]);
 
   const hasStartedFilling = watchedValues.some(
@@ -144,6 +153,9 @@ export function SupplierApplicationStepOne() {
         mersisNo: saved.mersisNo,
         tradeRegistryNo: saved.tradeRegistryNo ?? '',
         activitySector: saved.activitySector,
+        city: saved.city,
+        district: saved.district,
+        referenceCode: saved.referenceCode ?? '',
       });
 
       setSubmitSuccessMessage('Şirket kimlik bilgileri başarıyla kaydedildi.');
@@ -374,6 +386,51 @@ export function SupplierApplicationStepOne() {
               </div>
               {errors.activitySector ? (
                 <p className='mt-1 text-xs text-red-600'>{errors.activitySector.message}</p>
+              ) : null}
+            </label>
+
+            <label>
+              <span className='mb-2 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant'>
+                İl
+              </span>
+              <input
+                className='w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary'
+                placeholder='İl giriniz'
+                type='text'
+                {...register('city')}
+              />
+              {errors.city ? (
+                <p className='mt-1 text-xs text-red-600'>{errors.city.message}</p>
+              ) : null}
+            </label>
+
+            <label>
+              <span className='mb-2 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant'>
+                İlçe
+              </span>
+              <input
+                className='w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary'
+                placeholder='İlçe giriniz'
+                type='text'
+                {...register('district')}
+              />
+              {errors.district ? (
+                <p className='mt-1 text-xs text-red-600'>{errors.district.message}</p>
+              ) : null}
+            </label>
+
+            <label className='md:col-span-2'>
+              <span className='mb-2 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant'>
+                Referans Kodu <span className='normal-case font-normal opacity-50'>(Opsiyonel)</span>
+              </span>
+              <input
+                className='w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary'
+                placeholder='Varsa referans kodunuzu giriniz'
+                type='text'
+                {...register('referenceCode')}
+              />
+              {errors.referenceCode ? (
+                <p className='mt-1 text-xs text-red-600'>{errors.referenceCode.message}</p>
               ) : null}
             </label>
 

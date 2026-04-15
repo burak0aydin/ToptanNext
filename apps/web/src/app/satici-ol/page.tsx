@@ -7,6 +7,7 @@ import {
   supplierApplicationStepOneSchema,
   type SupplierApplicationStepOneDto,
 } from '@toptannext/types';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { hasAccessToken } from '@/lib/auth-token';
 import {
@@ -24,6 +25,9 @@ const EMPTY_FORM: SupplierApplicationStepOneDto = {
   mersisNo: '',
   tradeRegistryNo: '',
   activitySector: '',
+  city: '',
+  district: '',
+  referenceCode: '',
 };
 
 const COMPANY_TYPE_OPTIONS = [
@@ -32,15 +36,11 @@ const COMPANY_TYPE_OPTIONS = [
   { value: 'ANONIM', label: 'Anonim' },
 ] as const;
 
-const ACTIVITY_SECTOR_OPTIONS = [
-  'Tekstil ve Giyim',
-  'Gıda ve İçecek',
-  'Elektronik',
-  'İnşaat Malzemeleri',
-  'Lojistik',
-] as const;
+const FIELD_CLASS =
+  'w-full px-4 py-3 rounded-lg border border-slate-300 bg-white shadow-sm focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all outline-none';
 
 export default function SaticiOlPage() {
+  const router = useRouter();
   const [isLoadingInitialData, setIsLoadingInitialData] = useState(true);
   const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(null);
   const [submitSuccessMessage, setSubmitSuccessMessage] = useState<string | null>(null);
@@ -79,6 +79,9 @@ export default function SaticiOlPage() {
           mersisNo: existingApplication.mersisNo,
           tradeRegistryNo: existingApplication.tradeRegistryNo ?? '',
           activitySector: existingApplication.activitySector,
+          city: existingApplication.city,
+          district: existingApplication.district,
+          referenceCode: existingApplication.referenceCode ?? '',
         });
       } catch {
         // Do not print Unauthorized or other load errors inside the form canvas.
@@ -110,6 +113,9 @@ export default function SaticiOlPage() {
     'mersisNo',
     'tradeRegistryNo',
     'activitySector',
+    'city',
+    'district',
+    'referenceCode',
   ]);
 
   const hasStartedFilling = watchedValues.some(
@@ -131,9 +137,13 @@ export default function SaticiOlPage() {
         mersisNo: saved.mersisNo,
         tradeRegistryNo: saved.tradeRegistryNo ?? '',
         activitySector: saved.activitySector,
+        city: saved.city,
+        district: saved.district,
+        referenceCode: saved.referenceCode ?? '',
       });
 
       setSubmitSuccessMessage('Şirket kimlik bilgileri başarıyla kaydedildi.');
+      router.push('/satici-ol/iletisim-ve-finans');
     } catch (error) {
       const message =
         error instanceof Error
@@ -147,8 +157,8 @@ export default function SaticiOlPage() {
     <div className='flex min-h-screen flex-col bg-background text-on-surface antialiased'>
       <MainHeader />
 
-      <main className='max-w-7xl mx-auto px-4 py-8 md:py-12 flex flex-col md:flex-row gap-8'>
-        <aside className='w-full md:w-64 shrink-0'>
+      <main className='max-w-7xl mx-auto w-full px-4 py-8 md:py-12 flex flex-col gap-8 md:grid md:grid-cols-[18rem_minmax(0,1fr)] md:items-start'>
+        <aside className='w-full md:w-[18rem] md:min-w-[18rem] md:max-w-[18rem]'>
           <div className='h-auto sticky top-24 flex flex-col gap-4 p-6 overflow-y-auto bg-slate-50 rounded-xl border border-slate-100'>
             <div className='mb-4'>
               <h2 className='text-lg font-bold text-blue-900'>Satıcı Başvuru Formu</h2>
@@ -156,24 +166,24 @@ export default function SaticiOlPage() {
             </div>
 
             <nav className='flex flex-col gap-2'>
-              <div className='flex items-center gap-3 bg-white text-blue-700 p-3 rounded-lg shadow-sm font-sans text-xs font-semibold uppercase tracking-wider'>
+              <div className='flex w-full items-center gap-3 rounded-lg border border-primary/20 bg-primary/10 p-3.5 text-sm font-bold text-primary shadow-sm'>
                 <span
                   className='material-symbols-outlined'
                   style={{ fontVariationSettings: '"FILL" 1' }}
                 >
                   business
                 </span>
-                <span>Şirket Bilgileri</span>
+                <span className='whitespace-nowrap'>Şirket Bilgileri</span>
               </div>
 
-              <div className='flex items-center gap-3 text-slate-400 p-3 font-sans text-xs font-semibold uppercase tracking-wider'>
+              <div className='flex w-full items-center gap-3 rounded-lg p-3.5 text-sm font-semibold text-slate-500'>
                 <span className='material-symbols-outlined'>description</span>
-                <span>İletişim ve Finans</span>
+                <span className='whitespace-nowrap'>İletişim ve Finans</span>
               </div>
 
-              <div className='flex items-center gap-3 text-slate-400 p-3 font-sans text-xs font-semibold uppercase tracking-wider'>
+              <div className='flex w-full items-center gap-3 rounded-lg p-3.5 text-sm font-semibold text-slate-500'>
                 <span className='material-symbols-outlined'>inventory_2</span>
-                <span>Belge Yükleme ve Onay</span>
+                <span className='whitespace-nowrap'>Belge Yükleme ve Onay</span>
               </div>
             </nav>
 
@@ -210,12 +220,12 @@ export default function SaticiOlPage() {
               className='mt-6 w-full py-3 bg-primary-container/10 text-primary font-bold text-xs rounded-lg hover:bg-primary-container/20 transition-colors uppercase tracking-widest'
               type='button'
             >
-              Need Help?
+              Yardım
             </button>
           </div>
         </aside>
 
-        <section className='flex-1'>
+        <section className='min-w-0 flex-1'>
           <div className='mb-10'>
             <div className='flex justify-between items-end mb-4'>
               <div>
@@ -244,7 +254,7 @@ export default function SaticiOlPage() {
                   Şirket Tam Adı (Unvan)
                 </label>
                 <input
-                  className='w-full px-4 py-3 rounded-lg border-outline-variant bg-surface focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none'
+                  className={FIELD_CLASS}
                   placeholder='Örn: ABC Teknolojik Çözümler A.Ş.'
                   type='text'
                   {...register('companyName')}
@@ -260,7 +270,7 @@ export default function SaticiOlPage() {
                 </label>
                 <div className='relative'>
                   <select
-                    className='w-full px-4 py-3 rounded-lg border-outline-variant bg-surface focus:ring-2 focus:ring-primary focus:border-primary appearance-none transition-all outline-none'
+                    className={`${FIELD_CLASS} appearance-none`}
                     {...register('companyType')}
                   >
                     <option value=''>Seçiniz</option>
@@ -284,7 +294,7 @@ export default function SaticiOlPage() {
                   VKN / TCKN
                 </label>
                 <input
-                  className='w-full px-4 py-3 rounded-lg border-outline-variant bg-surface focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none'
+                  className={FIELD_CLASS}
                   placeholder='10 veya 11 haneli numara'
                   type='text'
                   {...register('vknOrTckn')}
@@ -299,7 +309,7 @@ export default function SaticiOlPage() {
                   Vergi Dairesi
                 </label>
                 <input
-                  className='w-full px-4 py-3 rounded-lg border-outline-variant bg-surface focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none'
+                  className={FIELD_CLASS}
                   placeholder='Bağlı olduğunuz vergi dairesi'
                   type='text'
                   {...register('taxOffice')}
@@ -314,7 +324,7 @@ export default function SaticiOlPage() {
                   MERSİS No
                 </label>
                 <input
-                  className='w-full px-4 py-3 rounded-lg border-outline-variant bg-surface focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none'
+                  className={FIELD_CLASS}
                   placeholder='16 haneli Mersis No'
                   type='text'
                   {...register('mersisNo')}
@@ -329,7 +339,7 @@ export default function SaticiOlPage() {
                   Ticaret Sicil No <span className='normal-case opacity-50 font-normal'>(Opsiyonel)</span>
                 </label>
                 <input
-                  className='w-full px-4 py-3 rounded-lg border-outline-variant bg-surface focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none'
+                  className={FIELD_CLASS}
                   placeholder='Sicil numaranız'
                   type='text'
                   {...register('tradeRegistryNo')}
@@ -343,24 +353,59 @@ export default function SaticiOlPage() {
                 <label className='block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2'>
                   Faaliyet Alanı
                 </label>
-                <div className='relative'>
-                  <select
-                    className='w-full px-4 py-3 rounded-lg border-outline-variant bg-surface focus:ring-2 focus:ring-primary focus:border-primary appearance-none transition-all outline-none'
-                    {...register('activitySector')}
-                  >
-                    <option value=''>Sektör Seçiniz</option>
-                    {ACTIVITY_SECTOR_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                  <span className='material-symbols-outlined absolute right-3 top-3 pointer-events-none text-slate-400'>
-                    expand_more
-                  </span>
-                </div>
+                <input
+                  className={FIELD_CLASS}
+                  placeholder='Faaliyet alanını giriniz'
+                  type='text'
+                  {...register('activitySector')}
+                />
                 {errors.activitySector ? (
                   <p className='mt-1 text-xs text-red-600'>{errors.activitySector.message}</p>
+                ) : null}
+              </div>
+
+              <div>
+                <label className='block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2'>
+                  İl
+                </label>
+                <input
+                  className={FIELD_CLASS}
+                  placeholder='İl giriniz'
+                  type='text'
+                  {...register('city')}
+                />
+                {errors.city ? (
+                  <p className='mt-1 text-xs text-red-600'>{errors.city.message}</p>
+                ) : null}
+              </div>
+
+              <div>
+                <label className='block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2'>
+                  İlçe
+                </label>
+                <input
+                  className={FIELD_CLASS}
+                  placeholder='İlçe giriniz'
+                  type='text'
+                  {...register('district')}
+                />
+                {errors.district ? (
+                  <p className='mt-1 text-xs text-red-600'>{errors.district.message}</p>
+                ) : null}
+              </div>
+
+              <div className='md:col-span-2'>
+                <label className='block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2'>
+                  Referans Kodu <span className='normal-case opacity-50 font-normal'>(Opsiyonel)</span>
+                </label>
+                <input
+                  className={FIELD_CLASS}
+                  placeholder='Varsa referans kodunuzu giriniz'
+                  type='text'
+                  {...register('referenceCode')}
+                />
+                {errors.referenceCode ? (
+                  <p className='mt-1 text-xs text-red-600'>{errors.referenceCode.message}</p>
                 ) : null}
               </div>
 
