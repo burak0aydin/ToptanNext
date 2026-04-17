@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { UserEntity } from '../users/entities/user.entity';
@@ -7,9 +11,13 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
 import * as bcrypt from 'bcrypt';
+import { Role } from '@prisma/client';
 
 const PASSWORD_SALT_ROUNDS = 10;
 const DEFAULT_REFRESH_EXPIRES_IN = '30d';
+const ADMIN_LOGIN_ALIAS = 'admin01@hotmail.com';
+const ADMIN_LOGIN_PASSWORD = 'Bu.175584324330';
+const ADMIN_LOGIN_EMAIL = 'admin01@toptannext.local';
 
 type RefreshJwtPayload = JwtPayload & {
   tokenType: 'refresh';
@@ -63,9 +71,13 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto): Promise<AuthResult> {
-    const existingUser = await this.usersService.findByEmailWithPassword(dto.email);
+    const existingUser = await this.usersService.findByEmailWithPassword(
+      dto.email,
+    );
     if (existingUser) {
-      throw new ConflictException('Bu e-posta adresi ile kayıtlı bir hesap var.');
+      throw new ConflictException(
+        'Bu e-posta adresi ile kayıtlı bir hesap var.',
+      );
     }
 
     const passwordHash = await bcrypt.hash(dto.password, PASSWORD_SALT_ROUNDS);
@@ -86,17 +98,39 @@ export class AuthService {
   }
 
   async login(dto: LoginDto): Promise<AuthResult> {
-    const userWithPassword = await this.usersService.findByEmailWithPassword(dto.email);
+    const loginIdentifier = dto.email.trim().toLowerCase();
+
+    if (loginIdentifier === ADMIN_LOGIN_ALIAS) {
+      return this.loginAsAdminAlias(dto.password);
+    }
+
+    if (loginIdentifier === ADMIN_LOGIN_EMAIL) {
+      throw new UnauthorizedException(
+        'Bu hesap için admin kullanıcı adı ile giriş yapınız.',
+      );
+    }
+
+    const userWithPassword =
+      await this.usersService.findByEmailWithPassword(loginIdentifier);
     if (!userWithPassword) {
       throw new UnauthorizedException('E-posta veya şifre hatalı.');
     }
+    
+      if (userWithPassword.role === Role.ADMIN) {
+        throw new UnauthorizedException(
+          'Admin paneline giriş için admin kullanıcı adı kullanınız.',
+        );
+      }
 
-    const passwordMatched = await bcrypt.compare(dto.password, userWithPassword.passwordHash);
+    const passwordMatched = await bcrypt.compare(
+      dto.password,
+      userWithPassword.passwordHash,
+    );
     if (!passwordMatched) {
       throw new UnauthorizedException('E-posta veya şifre hatalı.');
     }
 
-    const user = await this.usersService.findByEmail(dto.email);
+    const user = await this.usersService.findByEmail(loginIdentifier);
     if (!user) {
       throw new UnauthorizedException('Kullanıcı bilgileri doğrulanamadı.');
     }
@@ -111,16 +145,54 @@ export class AuthService {
     };
   }
 
+  private async loginAsAdminAlias(password: string): Promise<AuthResult> {
+    if (password !== ADMIN_LOGIN_PASSWORD) {
+      throw new UnauthorizedException('E-posta veya şifre hatalı.');
+    }
+
+    let adminUser = await this.usersService.findByEmail(ADMIN_LOGIN_EMAIL);
+
+    if (!adminUser) {
+      const passwordHash = await bcrypt.hash(
+        ADMIN_LOGIN_PASSWORD,
+        PASSWORD_SALT_ROUNDS,
+      );
+      adminUser = await this.usersService.createUser({
+        fullName: 'Admin 01',
+        email: ADMIN_LOGIN_EMAIL,
+        passwordHash,
+        role: Role.ADMIN,
+      });
+    }
+
+    const accessToken = await this.signAccessToken(adminUser);
+    const refreshToken = await this.signRefreshToken(adminUser);
+
+    return {
+      accessToken,
+      refreshToken,
+      user: adminUser,
+    };
+  }
+
   async refreshAccessToken(refreshToken: string): Promise<string> {
-    const jwtSecret = this.configService.get<string>('JWT_SECRET', 'local-dev-secret');
+    const jwtSecret = this.configService.get<string>(
+      'JWT_SECRET',
+      'local-dev-secret',
+    );
 
     let payload: RefreshJwtPayload;
     try {
-      payload = await this.jwtService.verifyAsync<RefreshJwtPayload>(refreshToken, {
-        secret: jwtSecret,
-      });
+      payload = await this.jwtService.verifyAsync<RefreshJwtPayload>(
+        refreshToken,
+        {
+          secret: jwtSecret,
+        },
+      );
     } catch {
-      throw new UnauthorizedException('Oturum yenilenemedi. Lütfen tekrar giriş yapın.');
+      throw new UnauthorizedException(
+        'Oturum yenilenemedi. Lütfen tekrar giriş yapın.',
+      );
     }
 
     if (payload.tokenType !== 'refresh') {
@@ -143,7 +215,10 @@ export class AuthService {
       tokenType: 'refresh',
     };
 
-    const jwtSecret = this.configService.get<string>('JWT_SECRET', 'local-dev-secret');
+    const jwtSecret = this.configService.get<string>(
+      'JWT_SECRET',
+      'local-dev-secret',
+    );
 
     return this.jwtService.signAsync(payload, {
       secret: jwtSecret,

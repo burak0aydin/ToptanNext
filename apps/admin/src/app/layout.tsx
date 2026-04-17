@@ -3,11 +3,11 @@ import { Inter } from "next/font/google";
 import { QueryProvider } from "./providers";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin", "latin-ext"] });
 
 export const metadata: Metadata = {
   title: "ToptanNext Admin",
-  description: "ToptanNext admin uygulamasi",
+  description: "ToptanNext admin uygulaması",
 };
 
 export default function RootLayout({
@@ -16,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="tr">
       <body className={inter.className}>
         <QueryProvider>{children}</QueryProvider>
       </body>

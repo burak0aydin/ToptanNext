@@ -1,3 +1,37 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getAccessToken } from "@/lib/auth-token";
+
+type JwtPayload = {
+  role?: "ADMIN" | "SUPPLIER" | "BUYER";
+  email?: string;
+};
+
+const parseJwtPayload = (token: string | null): JwtPayload | null => {
+  if (!token) {
+    return null;
+  }
+
+  const parts = token.split(".");
+  if (parts.length < 2) {
+    return null;
+  }
+
+  try {
+    const base64Payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const normalizedPayload = base64Payload.padEnd(
+      Math.ceil(base64Payload.length / 4) * 4,
+      "=",
+    );
+    const payloadJson = atob(normalizedPayload);
+    return JSON.parse(payloadJson) as JwtPayload;
+  } catch {
+    return null;
+  }
+};
+
 const sideNavItems = [
   { icon: "group", label: "Kullanıcı Yönetimi" },
   { icon: "how_to_reg", label: "Satıcı Başvuruları" },
@@ -126,7 +160,30 @@ const incomeChartDays = [
   { label: "Paz", incomeHeight: "h-[35%]" },
 ] as const;
 
-export default function Home() {
+export default function AdminDashboardPage() {
+  const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState(false);
+
+  useEffect(() => {
+    const payload = parseJwtPayload(getAccessToken());
+    if (payload?.role !== "ADMIN") {
+      router.replace("/login");
+      return;
+    }
+
+    setIsAuthorized(true);
+  }, [router]);
+
+  if (!isAuthorized) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-surface">
+        <p className="text-sm font-medium text-slate-500">
+          Yetki kontrol ediliyor...
+        </p>
+      </main>
+    );
+  }
+
   return (
     <div className="bg-surface text-on-surface antialiased">
       <aside className="fixed left-0 top-0 z-50 flex h-screen w-64 flex-col overflow-y-auto border-r border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
@@ -168,10 +225,14 @@ export default function Home() {
 
         <div className="border-t border-slate-200 p-4 dark:border-slate-800">
           <div className="rounded-xl border border-primary/10 bg-primary/5 p-4">
-            <p className="mb-1 text-xs font-semibold text-primary">Sistem Durumu</p>
+            <p className="mb-1 text-xs font-semibold text-primary">
+              Sistem Durumu
+            </p>
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-emerald-500" />
-              <span className="text-[11px] text-slate-600">Tüm Servisler Aktif</span>
+              <span className="text-[11px] text-slate-600">
+                Tüm Servisler Aktif
+              </span>
             </div>
           </div>
         </div>
@@ -193,8 +254,12 @@ export default function Home() {
 
         <div className="flex items-center gap-4">
           <div className="mr-2 flex flex-col items-end">
-            <span className="text-sm font-semibold text-on-surface">Burak Aydın</span>
-            <span className="text-[10px] font-medium text-slate-500">Süper Admin</span>
+            <span className="text-sm font-semibold text-on-surface">
+              Burak Aydın
+            </span>
+            <span className="text-[10px] font-medium text-slate-500">
+              Süper Admin
+            </span>
           </div>
           <div className="h-10 w-10 rounded-full border-2 border-primary/20 p-0.5">
             <img
@@ -218,7 +283,9 @@ export default function Home() {
               </p>
             </div>
             <button className="flex items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-2 text-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-container">
-              <span className="material-symbols-outlined text-sm">download</span>
+              <span className="material-symbols-outlined text-sm">
+                download
+              </span>
               Rapor İndir
             </button>
           </div>
@@ -230,7 +297,9 @@ export default function Home() {
                 className="flex items-center gap-5 rounded-xl border border-surface-container bg-surface-container-lowest p-6 shadow-sm"
               >
                 <div className={`flex h-14 w-14 items-center justify-center rounded-full ${card.iconBg}`}>
-                  <span className="material-symbols-outlined text-3xl">{card.icon}</span>
+                  <span className="material-symbols-outlined text-3xl">
+                    {card.icon}
+                  </span>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -239,7 +308,9 @@ export default function Home() {
                   <h3 className="mt-1 text-3xl font-bold">{card.value}</h3>
                   {card.hasUpTrend ? (
                     <p className="mt-1 flex items-center gap-1 text-xs font-medium text-emerald-600">
-                      <span className="material-symbols-outlined text-[14px]">trending_up</span>
+                      <span className="material-symbols-outlined text-[14px]">
+                        trending_up
+                      </span>
                       {card.delta}
                     </p>
                   ) : (
@@ -253,7 +324,9 @@ export default function Home() {
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
             <section className="space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-base font-bold text-on-surface">Bekleyen Satıcı Başvuruları</h4>
+                <h4 className="text-base font-bold text-on-surface">
+                  Bekleyen Satıcı Başvuruları
+                </h4>
                 <span className="animate-pulse rounded-lg bg-orange-500 px-3 py-1 text-xs font-black text-white">
                   12 YENİ
                 </span>
@@ -262,8 +335,12 @@ export default function Home() {
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-surface-container bg-surface-container-low">
-                      <th className="px-4 py-3 font-semibold text-slate-600">Firma Adı</th>
-                      <th className="px-4 py-3 font-semibold text-slate-600">Sektör</th>
+                      <th className="px-4 py-3 font-semibold text-slate-600">
+                        Firma Adı
+                      </th>
+                      <th className="px-4 py-3 font-semibold text-slate-600">
+                        Sektör
+                      </th>
                       <th className="px-4 py-3" />
                     </tr>
                   </thead>
@@ -275,8 +352,12 @@ export default function Home() {
                       >
                         <td className="px-4 py-4">
                           <div className="flex flex-col">
-                            <span className="font-bold text-on-surface">{row.companyName}</span>
-                            <span className="text-[11px] text-slate-500">{row.time}</span>
+                            <span className="font-bold text-on-surface">
+                              {row.companyName}
+                            </span>
+                            <span className="text-[11px] text-slate-500">
+                              {row.time}
+                            </span>
                           </div>
                         </td>
                         <td className="px-4 py-4 text-slate-600">{row.sector}</td>
@@ -294,7 +375,9 @@ export default function Home() {
 
             <section className="space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-base font-bold text-on-surface">Bekleyen Lojistik Başvuruları</h4>
+                <h4 className="text-base font-bold text-on-surface">
+                  Bekleyen Lojistik Başvuruları
+                </h4>
                 <span className="animate-pulse rounded-lg bg-blue-600 px-3 py-1 text-xs font-black text-white">
                   3 YENİ
                 </span>
@@ -303,8 +386,12 @@ export default function Home() {
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-surface-container bg-surface-container-low">
-                      <th className="px-4 py-3 font-semibold text-slate-600">Firma Adı</th>
-                      <th className="px-4 py-3 font-semibold text-slate-600">Bölge</th>
+                      <th className="px-4 py-3 font-semibold text-slate-600">
+                        Firma Adı
+                      </th>
+                      <th className="px-4 py-3 font-semibold text-slate-600">
+                        Bölge
+                      </th>
                       <th className="px-4 py-3 text-right" />
                     </tr>
                   </thead>
@@ -316,8 +403,12 @@ export default function Home() {
                       >
                         <td className="px-4 py-4">
                           <div className="flex flex-col">
-                            <span className="font-bold text-on-surface">{row.companyName}</span>
-                            <span className="text-[11px] text-slate-500">{row.time}</span>
+                            <span className="font-bold text-on-surface">
+                              {row.companyName}
+                            </span>
+                            <span className="text-[11px] text-slate-500">
+                              {row.time}
+                            </span>
                           </div>
                         </td>
                         <td className="px-4 py-4 text-slate-600">{row.region}</td>
@@ -339,7 +430,9 @@ export default function Home() {
               <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
                 <div>
                   <h4 className="text-lg font-bold text-on-surface">Büyüme Analizi</h4>
-                  <p className="text-sm text-slate-500">Son 30 günlük yeni kayıt dağılımı</p>
+                  <p className="text-sm text-slate-500">
+                    Son 30 günlük yeni kayıt dağılımı
+                  </p>
                 </div>
                 <div className="flex items-center rounded-lg bg-surface-container-low p-1">
                   <button className="rounded-md bg-white px-4 py-1.5 text-xs font-bold text-primary shadow-sm">

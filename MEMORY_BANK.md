@@ -10,8 +10,8 @@
 ## 🗓️ SON GÜNCELLEME
 
 ```
-Tarih     : 2026-04-10
-Oturum    : Sprint 2 — Auth (Register/Login) Full-Stack Uygulamasi
+Tarih     : 2026-04-17
+Oturum    : Sprint 7 — Admin Dashboard Stitch Birebir Entegrasyonu
 Güncelleyen: Ajan
 ```
 
@@ -24,9 +24,9 @@ Sprint    : [ ] Sprint 1 - Altyapı  [ ] Sprint 2 - Auth  [ ] Sprint 3 - Ürün 
            [ ] Sprint 4 - Tedarikçi [ ] Sprint 5 - Alıcı [ ] Sprint 6 - Mesajlaşma
            [ ] Sprint 7 - Admin     [ ] Sprint 8 - Polish
 
-Aktif Sprint : Sprint 2
-Son Tamamlanan Görev : Sprint 2 / 08 Giris yap (backend + frontend + test)
-Sıradaki Görev : Sprint 2 / 09 Email dogrulama (backend + frontend + test)
+Aktif Sprint : Sprint 7
+Son Tamamlanan Görev : Sprint 7 / 34 Admin dashboard (frontend - Stitch birebir)
+Sıradaki Görev : Sprint 7 / 35 Kullanici yonetimi ekranlari (frontend)
 ```
 
 ---
@@ -110,6 +110,7 @@ apps/web/src/features/auth/components/SocialAuthButtons.tsx — Sosyal buton gor
 apps/web/src/features/auth/hooks/useAuthMutations.ts      — TanStack Query login/register mutationlari
 apps/web/src/features/auth/api/auth.api.ts                — Auth API istemcisi
 apps/web/src/lib/api.ts                                   — Generic POST JSON helper (error parse dahil)
+apps/web/src/app/admin/page.tsx                           — Admin dashboard route'u (Stitch tasarimina birebir yakin)
 apps/web/src/app/providers.tsx                            — TanStack Query client provider
 apps/web/src/app/globals.css                              — Frontend global stil token temeli
 apps/web/tailwind.config.ts                               — Brand/accent tokenlari + packages/ui content scan
@@ -122,8 +123,16 @@ apps/web/.env.example                                     — Web ortam degisken
 ```
 apps/admin/src/app/layout.tsx     — Admin root layout + QueryProvider entegrasyonu
 apps/admin/src/app/providers.tsx  — Admin TanStack Query client provider
-apps/admin/src/app/page.tsx       — Admin altyapi hazir placeholder sayfasi
+apps/admin/src/app/page.tsx       — Admin dashboard (Stitch referansli birebir arayuz)
+apps/admin/src/app/globals.css    — Material Symbols + admin global stil tokenlari
+apps/admin/tailwind.config.ts     — Stitch renk tokenlarina uyarlanmis admin tema ayari
 apps/admin/.env.example           — Admin ortam degiskenleri sablonu
+```
+
+### Kök Dizin
+
+```
+PROJE_HAKKINDA_BILGILER.md        — Proje klasor/dosya amaclari ve mimari sinirlar dokumani
 ```
 
 ### Ortak Paketler — packages/
@@ -177,6 +186,12 @@ Modeller                : User eklendi (Supplier ve Product bir sonraki sprint k
 
 2026-04-10 | UI tekrarini azaltmak icin Button/Input/Checkbox bilesenleri packages/ui icine tasindi.
            Gerekce: auth disindaki sonraki ekranlarda da ortak component tekrar kullanimi.
+
+2026-04-17 | Admin dashboard ekrani Stitch HTML referansina birebir yakin olacak sekilde apps/admin ve apps/web admin route'una tasindi.
+           Gerekce: frontend hizli entegrasyon asamasinda tasarim sapmasini sifira yakin tutmak.
+
+2026-04-17 | TR karakter guvencesi icin layout font subset'leri latin-ext'e cekildi ve html lang tr standardize edildi.
+           Gerekce: i/ı, g/ğ, s/ş gibi karakterlerde render bozulmasini onlemek.
 ```
 
 ---
@@ -233,86 +248,39 @@ zod@4.x
 ## 🔄 SON OTURUM ÖZETİ
 
 ```
-Oturum Tarihi  : 2026-04-10
+Oturum Tarihi  : 2026-04-17
 Yapılan İşler  :
-  - Stitch login/register tasarimlari analiz edilerek auth component parcasi cikarildi
-  - Prisma User modeline fullName alani eklendi
-  - Auth backend katmani tamamlandi (UsersRepository, UsersService, AuthService, AuthController)
-  - bcrypt ile sifre hashleme/verify ve JWT token uretimi eklendi
-  - POST /api/v1/auth/register ve POST /api/v1/auth/login endpointleri aktif edildi
-  - users.repository, users.service, auth.service ve auth.controller unit testleri yazildi
-  - Frontend auth sayfalari Stitch referansli layout ile apps/web/(auth) altina tasindi
-  - Login/Register formlari React Hook Form + Zod resolver ile baglandi
-  - API cagirilari TanStack Query useMutation ile yonetildi
-  - Ortak Button/Input/Checkbox bilesenleri packages/ui altina cikarildi
+  - Proje yapisi analiz edilerek klasor/dosya sorumluluklari cikarildi
+  - Kök dizinde PROJE_HAKKINDA_BILGILER.md dokumani olusturuldu
+  - stitch_exports'taki admin-overview HTML referansi admin arayuze tasindi
+  - apps/web/src/app/admin/page.tsx sayfasi birebir yakin dashboard ile guncellendi
+  - apps/admin/src/app/page.tsx placeholder kaldirilip birebir yakin dashboard ile degistirildi
+  - Admin tailwind tema tokenlari Stitch renk setiyle uyumlu hale getirildi
+  - TR karakter goruntuleme guvencesi icin web/admin layout Inter latin-ext + lang=tr ayari yapildi
+  - Proje gelistirme ortami pnpm dev:fresh ile calistirilip web/api/admin ayaga kalkisi dogrulandi
 
 Oluşturulan Dosyalar:
-  - apps/api/src/prisma/prisma.module.ts
-  - apps/api/src/prisma/prisma.service.ts
-  - apps/api/src/modules/users/users.module.ts
-  - apps/api/src/modules/users/users.repository.ts
-  - apps/api/src/modules/users/users.service.ts
-  - apps/api/src/modules/users/entities/user.entity.ts
-  - apps/api/src/modules/users/users.repository.spec.ts
-  - apps/api/src/modules/users/users.service.spec.ts
-  - apps/api/src/modules/auth/auth.module.ts
-  - apps/api/src/modules/auth/auth.controller.ts
-  - apps/api/src/modules/auth/auth.service.ts
-  - apps/api/src/modules/auth/dto/login.dto.ts
-  - apps/api/src/modules/auth/dto/register.dto.ts
-  - apps/api/src/modules/auth/strategies/jwt.strategy.ts
-  - apps/api/src/modules/auth/auth.controller.spec.ts
-  - apps/api/src/modules/auth/auth.service.spec.ts
-  - apps/web/src/app/(auth)/layout.tsx
-  - apps/web/src/app/(auth)/login/page.tsx
-  - apps/web/src/app/(auth)/register/page.tsx
-  - apps/web/src/features/auth/components/AuthScreen.tsx
-  - apps/web/src/features/auth/components/LoginForm.tsx
-  - apps/web/src/features/auth/components/RegisterForm.tsx
-  - apps/web/src/features/auth/components/SocialAuthButtons.tsx
-  - apps/web/src/features/auth/hooks/useAuthMutations.ts
-  - apps/web/src/features/auth/api/auth.api.ts
-  - apps/web/src/lib/api.ts
-  - packages/types/src/schemas/auth.ts
-  - packages/types/src/schemas/index.ts
-  - packages/ui/src/components/Button.tsx
-  - packages/ui/src/components/Input.tsx
-  - packages/ui/src/components/Checkbox.tsx
-  - packages/ui/src/components/index.ts
+  - PROJE_HAKKINDA_BILGILER.md
 
 Değiştirilen Dosyalar:
-  - apps/api/prisma/schema.prisma
-  - apps/api/src/main.ts
-  - apps/api/src/app.module.ts
-  - apps/api/package.json
-  - apps/web/package.json
-  - apps/web/next.config.mjs
-  - apps/web/tailwind.config.ts
+  - apps/web/src/app/admin/page.tsx
+  - apps/admin/src/app/page.tsx
+  - apps/admin/src/app/layout.tsx
+  - apps/admin/src/app/globals.css
+  - apps/admin/tailwind.config.ts
   - apps/web/src/app/layout.tsx
-  - apps/web/src/app/globals.css
-  - apps/web/src/app/page.tsx
-  - packages/types/package.json
-  - packages/types/src/index.ts
-  - packages/ui/package.json
-  - packages/ui/src/index.ts
   - MEMORY_BANK.md
 
 Çalışan Testler:
-  - pnpm --filter @toptannext/types type-check
-  - pnpm --filter @toptannext/ui type-check
-  - pnpm --filter api type-check
-  - pnpm --filter api test -- --runInBand
-  - pnpm --filter api build
-  - pnpm --filter web type-check
-  - pnpm --filter web build
+  - pnpm dev:fresh (web/api/admin startup dogrulandi)
 
 Bekleyen / Yarım Kalan:
-  - Sprint 1 / 04 kapsaminda Supplier ve Product modelleri halen eksik
-  - Sprint 2 / 09 Email dogrulama akisi baslatilmadi
-  - Sprint 2 / 10 JWT refresh token akisi baslatilmadi
+  - Admin dashboard verileri su an statik; API baglantisi sonraki adim
+  - Web admin route'unda no-img-element lint uyarisi var (tasarim birebirligi korunarak birakildi)
 
 Bir Sonraki Oturuma Not:
-  - Auth frontend sayfalarina token bazli redirect/middleware entegrasyonu eklenmeli.
+  - Admin menu modulleri (Kullanici, Basvuru, Urun) icin ayri sayfa/component parcalama yap.
+  - Admin dashboard kart ve tablolarini API endpointlerine bagla.
 ```
 
 ---
