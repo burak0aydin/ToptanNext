@@ -15,6 +15,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { CreateSectorDto } from './dto/create-sector.dto';
+import { ReorderSectorsDto } from './dto/reorder-sectors.dto';
 import { UpdateSectorDto } from './dto/update-sector.dto';
 import { SectorsService } from './sectors.service';
 
@@ -34,6 +35,20 @@ export class SectorsController {
       success: true,
       data,
       message: 'Sektör listesi başarıyla getirildi.',
+    };
+  }
+
+  @Get('admin')
+  @UseGuards(AuthGuard('jwt'))
+  async getAllForAdmin(@Req() req: AuthenticatedRequest) {
+    this.ensureAdmin(req.user.role);
+
+    const data = await this.sectorsService.getAllForAdmin();
+
+    return {
+      success: true,
+      data,
+      message: 'Yönetim için sektör listesi başarıyla getirildi.',
     };
   }
 
@@ -83,6 +98,23 @@ export class SectorsController {
       success: true,
       data,
       message: 'Sektör başarıyla silindi.',
+    };
+  }
+
+  @Put('admin/reorder')
+  @UseGuards(AuthGuard('jwt'))
+  async reorder(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: ReorderSectorsDto,
+  ) {
+    this.ensureAdmin(req.user.role);
+
+    const data = await this.sectorsService.reorder(dto);
+
+    return {
+      success: true,
+      data,
+      message: 'Sektör sıralaması başarıyla güncellendi.',
     };
   }
 

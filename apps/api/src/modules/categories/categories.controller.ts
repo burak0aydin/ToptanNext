@@ -17,6 +17,7 @@ import { Request } from 'express';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
+import { ReorderCategoriesDto } from './dto/reorder-categories.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
 type AuthenticatedRequest = Request & {
@@ -35,6 +36,20 @@ export class CategoriesController {
       success: true,
       data,
       message: 'Kategori ağacı başarıyla getirildi.',
+    };
+  }
+
+  @Get('admin/tree')
+  @UseGuards(AuthGuard('jwt'))
+  async getAdminTree(@Req() req: AuthenticatedRequest) {
+    this.ensureAdmin(req.user.role);
+
+    const data = await this.categoriesService.getAdminTree();
+
+    return {
+      success: true,
+      data,
+      message: 'Yönetim için kategori ağacı başarıyla getirildi.',
     };
   }
 
@@ -107,6 +122,23 @@ export class CategoriesController {
       success: true,
       data,
       message: 'Kategori başarıyla silindi.',
+    };
+  }
+
+  @Put('admin/reorder')
+  @UseGuards(AuthGuard('jwt'))
+  async reorder(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: ReorderCategoriesDto,
+  ) {
+    this.ensureAdmin(req.user.role);
+
+    const data = await this.categoriesService.reorder(dto);
+
+    return {
+      success: true,
+      data,
+      message: 'Kategori sıralaması başarıyla güncellendi.',
     };
   }
 

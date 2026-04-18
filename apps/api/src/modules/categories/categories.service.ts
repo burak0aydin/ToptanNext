@@ -5,6 +5,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { CreateCategoryDto } from './dto/create-category.dto';
+import { ReorderCategoriesDto } from './dto/reorder-categories.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import {
   CategoryRecord,
@@ -20,6 +21,30 @@ export type CategoryTreeNode = {
   level: number;
   children: CategoryTreeNode[];
 };
+
+export type AdminCategoryTreeNode = {
+  id: string;
+  name: string;
+  slug: string;
+  level: number;
+  parentId: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  children: AdminCategoryTreeNode[];
+};
+
+type CategoryTreeBuilderNode = {
+  id: string;
+  name: string;
+  slug: string;
+  level: number;
+  parentId: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  children: CategoryTreeBuilderNode[];
+};
+
+const APPEND_SORT_ORDER = 2_147_483_647;
 
 export type CategoryFlatNode = {
   id: string;
@@ -37,45 +62,21 @@ export class CategoriesService {
   constructor(private readonly categoriesRepository: CategoriesRepository) {}
 
   async getTree(): Promise<CategoryTreeNode[]> {
-    const categories = await this.categoriesRepository.findAllActive();
-    const map = new Map<string, CategoryTreeNode>();
+    const categories = await this.categoriesRepository.findAll({ includeInactive: false });
+    const roots = this.buildTree(categories);
 
-    categories.forEach((category) => {
-      map.set(category.id, {
-        id: category.id,
-        name: category.name,
-        slug: category.slug,
-        level: category.level,
-        children: [],
-      });
-    });
-
-    const roots: CategoryTreeNode[] = [];
-
-    categories.forEach((category) => {
-      const node = map.get(category.id);
-      if (!node) {
-        return;
-      }
-
-      if (!category.parentId) {
-        roots.push(node);
-        return;
-      }
-
-      const parentNode = map.get(category.parentId);
-      if (!parentNode) {
-        return;
-      }
-
-      parentNode.children.push(node);
-    });
-
-    return roots;
+    return roots.map((node) => this.toPublicTreeNode(node));
   }
 
-  async getFlat(leafOnly = true): Promise<CategoryFlatNode[]> {
-    const categories = await this.categoriesRepository.findAllActive();
+  async getAdminTree(): Promise<AdminCategoryTreeNode[]> {
+    const categories = await this.categoriesRepository.findAll({ includeInactive: true });
+    const roots = this.buildTree(categories);
+
+    return roots.map((node) => this.toAdminTreeNode(node));
+  }
+
+  async getFlat(leafOnly = true, includeInactive = false): Promise<CategoryFlatNode[]> {
+    const categories = await this.categoriesRepository.findAll({ includeInactive });
     const categoryMap = new Map<string, CategoryRecord>();
 
     categories.forEach((category) => {
@@ -144,7 +145,7 @@ export class CategoriesService {
       slug,
       level,
       parentId: parent?.id ?? null,
-      sortOrder: dto.sortOrder ?? 0,
+      sortOrder: dto.sortOrder ?? APPEND_SORT_ORDER,
       isActive: dto.isActive ?? true,
     };
 
@@ -235,6 +236,27 @@ export class CategoriesService {
     return this.categoriesRepository.deleteById(id);
   }
 
+  async reorder(dto: ReorderCategoriesDto): Promise<CategoryRecord[]> {
+    const ids = dto.items.map((item) => item.id);
+    const uniqueIds = new Set(ids);
+
+    if (uniqueIds.size !== ids.length) {
+      throw new BadRequestException('Aynı kategori birden fazla kez gönderilemez.');
+    }
+
+    const existing = await this.categoriesRepository.findManyByIds([...uniqueIds]);
+    if (existing.length !== uniqueIds.size) {
+      const existingIds = new Set(existing.map((item) => item.id));
+      const missingIds = [...uniqueIds].filter((id) => !existingIds.has(id));
+
+      throw new NotFoundException(
+        `Bazı kategoriler bulunamadı: ${missingIds.join(', ')}`,
+      );
+    }
+
+    return this.categoriesRepository.updateSortOrders(dto.items);
+  }
+
   private async resolveParent(parentId: string | null): Promise<CategoryRecord | null> {
     if (!parentId) {
       return null;
@@ -293,6 +315,83 @@ export class CategoriesService {
       candidate = `${scopedBaseSlug}-${index}`;
       index += 1;
     }
+  }
+
+  private buildTree(categories: CategoryRecord[]): CategoryTreeBuilderNode[] {
+    const map = new Map<string, CategoryTreeBuilderNode>();
+
+    categories.forEach((category) => {
+      map.set(category.id, {
+        id: category.id,
+        name: category.name,
+        slug: category.slug,
+        level: category.level,
+        parentId: category.parentId,
+        sortOrder: category.sortOrder,
+        isActive: category.isActive,
+        children: [],
+      });
+    });
+
+    const roots: CategoryTreeBuilderNode[] = [];
+
+    categories.forEach((category) => {
+      const node = map.get(category.id);
+      if (!node) {
+        return;
+      }
+
+      if (!category.parentId) {
+        roots.push(node);
+        return;
+      }
+
+      const parentNode = map.get(category.parentId);
+      if (!parentNode) {
+        roots.push(node);
+        return;
+      }
+
+      parentNode.children.push(node);
+    });
+
+    this.sortTree(roots);
+    return roots;
+  }
+
+  private sortTree(nodes: CategoryTreeBuilderNode[]): void {
+    nodes.sort((a, b) => {
+      if (a.sortOrder !== b.sortOrder) {
+        return a.sortOrder - b.sortOrder;
+      }
+
+      return a.name.localeCompare(b.name, 'tr-TR');
+    });
+
+    nodes.forEach((node) => this.sortTree(node.children));
+  }
+
+  private toPublicTreeNode(node: CategoryTreeBuilderNode): CategoryTreeNode {
+    return {
+      id: node.id,
+      name: node.name,
+      slug: node.slug,
+      level: node.level,
+      children: node.children.map((child) => this.toPublicTreeNode(child)),
+    };
+  }
+
+  private toAdminTreeNode(node: CategoryTreeBuilderNode): AdminCategoryTreeNode {
+    return {
+      id: node.id,
+      name: node.name,
+      slug: node.slug,
+      level: node.level,
+      parentId: node.parentId,
+      sortOrder: node.sortOrder,
+      isActive: node.isActive,
+      children: node.children.map((child) => this.toAdminTreeNode(child)),
+    };
   }
 
   private slugify(value: string): string {

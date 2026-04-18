@@ -4,20 +4,32 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CreateSectorDto } from './dto/create-sector.dto';
+import { ReorderSectorsDto } from './dto/reorder-sectors.dto';
 import { UpdateSectorDto } from './dto/update-sector.dto';
 import {
   CreateSectorInput,
+  ReorderSectorInput,
   SectorRecord,
   SectorsRepository,
   UpdateSectorInput,
 } from './sectors.repository';
 
+const APPEND_SORT_ORDER = 2_147_483_647;
+
 @Injectable()
 export class SectorsService {
   constructor(private readonly sectorsRepository: SectorsRepository) {}
 
+  async getAll(includeInactive = false): Promise<SectorRecord[]> {
+    return this.sectorsRepository.findAll({ includeInactive });
+  }
+
   async getAllActive(): Promise<SectorRecord[]> {
-    return this.sectorsRepository.findAllActive();
+    return this.getAll(false);
+  }
+
+  async getAllForAdmin(): Promise<SectorRecord[]> {
+    return this.getAll(true);
   }
 
   async getById(id: string): Promise<SectorRecord> {
@@ -37,7 +49,7 @@ export class SectorsService {
     const input: CreateSectorInput = {
       name,
       slug,
-      sortOrder: dto.sortOrder ?? 0,
+      sortOrder: dto.sortOrder ?? APPEND_SORT_ORDER,
       isActive: dto.isActive ?? true,
     };
 
@@ -72,6 +84,32 @@ export class SectorsService {
   async delete(id: string): Promise<SectorRecord> {
     await this.getById(id);
     return this.sectorsRepository.deleteById(id);
+  }
+
+  async reorder(dto: ReorderSectorsDto): Promise<SectorRecord[]> {
+    const ids = dto.items.map((item) => item.id);
+    const uniqueIds = new Set(ids);
+
+    if (uniqueIds.size !== ids.length) {
+      throw new BadRequestException('Aynı sektör birden fazla kez gönderilemez.');
+    }
+
+    const existing = await this.sectorsRepository.findManyByIds([...uniqueIds]);
+    if (existing.length !== uniqueIds.size) {
+      const existingIds = new Set(existing.map((item) => item.id));
+      const missingIds = [...uniqueIds].filter((id) => !existingIds.has(id));
+
+      throw new NotFoundException(
+        `Bazı sektörler bulunamadı: ${missingIds.join(', ')}`,
+      );
+    }
+
+    const reorderInput: ReorderSectorInput[] = dto.items.map((item) => ({
+      id: item.id,
+      sortOrder: item.sortOrder,
+    }));
+
+    return this.sectorsRepository.updateSortOrders(reorderInput);
   }
 
   private normalizeRequiredText(value: string): string {
