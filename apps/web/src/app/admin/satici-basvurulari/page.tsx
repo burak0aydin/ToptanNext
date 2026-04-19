@@ -77,6 +77,15 @@ function sanitizeFileName(value: string): string {
     .toLowerCase();
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function downloadBlob(blob: Blob, fileName: string): void {
   if (typeof window === "undefined") {
     return;
@@ -120,46 +129,18 @@ function makeUniqueFileName(fileName: string, used: Map<string, number>): string
 async function downloadApplicationDetailPdf(
   application: SupplierApplicationRecord,
 ): Promise<Blob> {
-  const jsPdfModule = await import("jspdf");
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    throw new Error("PDF oluşturma yalnızca tarayıcı ortamında kullanılabilir.");
+  }
+
+  const [html2canvasModule, jsPdfModule] = await Promise.all([
+    import("html2canvas"),
+    import("jspdf"),
+  ]);
+  const html2canvas = html2canvasModule.default;
   const { jsPDF } = jsPdfModule;
 
-  const doc = new jsPDF({
-    unit: "pt",
-    format: "a4",
-  });
-
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 40;
-  const lineHeight = 14;
-  const maxWidth = pageWidth - margin * 2;
-  let cursorY = margin;
-
-  const writeText = (text: string, bold = false) => {
-    doc.setFont("helvetica", bold ? "bold" : "normal");
-    const lines = doc.splitTextToSize(text, maxWidth) as string[];
-
-    for (const line of lines) {
-      if (cursorY > pageHeight - margin) {
-        doc.addPage();
-        cursorY = margin;
-      }
-
-      doc.text(line, margin, cursorY);
-      cursorY += lineHeight;
-    }
-
-    cursorY += 4;
-  };
-
-  writeText("Satıcı Başvuru Detayı", true);
-  writeText(`Firma: ${application.companyName}`);
-  writeText(`Dışa Aktarım Tarihi: ${formatDate(new Date().toISOString())}`);
-  writeText("", false);
-
-  writeText("Başvuru Bilgileri", true);
-
-  const detailRows = [
+  const detailRows: Array<[string, string]> = [
     ["Başvuru ID", application.id],
     ["Kullanıcı ID", application.userId],
     ["Firma Unvanı", application.companyName],
@@ -203,24 +184,102 @@ async function downloadApplicationDetailPdf(
     ["Güncellenme", formatDate(application.updatedAt)],
   ];
 
-  for (const [label, value] of detailRows) {
-    writeText(`${label}: ${value}`);
-  }
+  const rowsHtml = detailRows
+    .map(
+      ([label, value]) =>
+        `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`,
+    )
+    .join("");
 
-  writeText("", false);
-  writeText("Yüklenen Belgeler", true);
+  const documentsHtml =
+    application.documents.length === 0
+      ? `<p class="muted">Belge bulunmuyor.</p>`
+      : `<table class="doc-table"><thead><tr><th>Tür</th><th>Dosya</th><th>Boyut</th><th>İçerik Türü</th><th>Yüklenme</th></tr></thead><tbody>${application.documents
+          .map(
+            (documentItem) =>
+              `<tr><td>${escapeHtml(documentItem.documentType)}</td><td>${escapeHtml(documentItem.originalName)}</td><td>${escapeHtml(formatFileSizeMb(documentItem.fileSize))}</td><td>${escapeHtml(documentItem.mimeType)}</td><td>${escapeHtml(formatDate(documentItem.uploadedAt))}</td></tr>`,
+          )
+          .join("")}</tbody></table>`;
 
-  if (application.documents.length === 0) {
-    writeText("Belge bulunmuyor.");
-  } else {
-    for (const document of application.documents) {
-      writeText(
-        `${document.documentType} | ${document.originalName} | ${formatFileSizeMb(document.fileSize)} | ${document.mimeType} | ${formatDate(document.uploadedAt)}`,
-      );
+  const renderContainer = document.createElement("div");
+  renderContainer.style.position = "fixed";
+  renderContainer.style.left = "-10000px";
+  renderContainer.style.top = "0";
+  renderContainer.style.width = "794px";
+  renderContainer.style.padding = "32px";
+  renderContainer.style.background = "#ffffff";
+  renderContainer.style.color = "#0f172a";
+  renderContainer.style.zIndex = "-1";
+  renderContainer.style.boxSizing = "border-box";
+  renderContainer.innerHTML = `
+    <style>
+      .supplier-pdf-root { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; line-height: 1.45; }
+      .supplier-pdf-root h1 { margin: 0 0 8px; font-size: 24px; font-weight: 700; color: #0f172a; }
+      .supplier-pdf-root h2 { margin: 26px 0 10px; font-size: 18px; font-weight: 700; color: #0f172a; }
+      .supplier-pdf-root p { margin: 0; font-size: 13px; color: #1e293b; }
+      .supplier-pdf-root .meta { margin-bottom: 14px; }
+      .supplier-pdf-root .meta p + p { margin-top: 4px; }
+      .supplier-pdf-root .detail-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+      .supplier-pdf-root .detail-table th,
+      .supplier-pdf-root .detail-table td { border: 1px solid #e2e8f0; padding: 8px 10px; font-size: 12px; vertical-align: top; text-align: left; word-break: break-word; }
+      .supplier-pdf-root .detail-table th { width: 35%; background: #f8fafc; color: #334155; font-weight: 600; }
+      .supplier-pdf-root .doc-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+      .supplier-pdf-root .doc-table th,
+      .supplier-pdf-root .doc-table td { border: 1px solid #e2e8f0; padding: 8px 10px; font-size: 12px; vertical-align: top; text-align: left; word-break: break-word; }
+      .supplier-pdf-root .doc-table th { background: #f8fafc; color: #334155; font-weight: 600; }
+      .supplier-pdf-root .muted { margin-top: 8px; color: #64748b; }
+    </style>
+    <div class="supplier-pdf-root">
+      <h1>Satıcı Başvuru Detayı</h1>
+      <div class="meta">
+        <p><strong>Firma:</strong> ${escapeHtml(application.companyName)}</p>
+        <p><strong>Dışa Aktarım Tarihi:</strong> ${escapeHtml(formatDate(new Date().toISOString()))}</p>
+      </div>
+      <h2>Başvuru Bilgileri</h2>
+      <table class="detail-table">
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+      <h2>Yüklenen Belgeler</h2>
+      ${documentsHtml}
+    </div>
+  `;
+
+  document.body.appendChild(renderContainer);
+
+  try {
+    const canvas = await html2canvas(renderContainer, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false,
+    });
+
+    const pdf = new jsPDF({
+      unit: "pt",
+      format: "a4",
+    });
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imageWidth = pageWidth;
+    const imageHeight = (canvas.height * imageWidth) / canvas.width;
+    const imageData = canvas.toDataURL("image/png");
+
+    let renderedHeight = 0;
+    pdf.addImage(imageData, "PNG", 0, 0, imageWidth, imageHeight);
+
+    while (renderedHeight + pageHeight < imageHeight) {
+      renderedHeight += pageHeight;
+      pdf.addPage();
+      pdf.addImage(imageData, "PNG", 0, -renderedHeight, imageWidth, imageHeight);
     }
-  }
 
-  return doc.output("blob");
+    return pdf.output("blob");
+  } finally {
+    renderContainer.remove();
+  }
 }
 
 export default function AdminSupplierApplicationsPage() {
@@ -388,6 +447,7 @@ export default function AdminSupplierApplicationsPage() {
       zip.file(`${baseFileName}-detay.pdf`, pdfBlob);
 
       const usedNames = new Map<string, number>();
+      const usedErrorLogNames = new Map<string, number>();
       const failedDocuments: string[] = [];
       for (const document of application.documents) {
         try {
@@ -408,6 +468,23 @@ export default function AdminSupplierApplicationsPage() {
             error instanceof Error ? error.message : "Belge indirilemedi.";
           failedDocuments.push(
             `${document.documentType} (${document.originalName}): ${reason}`,
+          );
+
+          const rawLogName =
+            `${sanitizeFileName(document.originalName)}-hata-log.txt`;
+          const uniqueLogName = makeUniqueFileName(
+            rawLogName !== "-hata-log.txt" ? rawLogName : "belge-hata-log.txt",
+            usedErrorLogNames,
+          );
+
+          zip.file(
+            `belgeler/${uniqueLogName}`,
+            [
+              "Bu dosya indirilemedi.",
+              `Belge Türü: ${document.documentType}`,
+              `Dosya Adı: ${document.originalName}`,
+              `Hata: ${reason}`,
+            ].join("\n"),
           );
         }
       }

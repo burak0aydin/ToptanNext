@@ -5,10 +5,16 @@ import type {
   SupplierApplicationStepTwoDto,
 } from "@toptannext/types";
 import { requestJson } from "@/lib/api";
-import { getAccessToken } from "@/lib/auth-token";
+import {
+  clearAccessToken,
+  getAccessToken,
+  setAccessToken,
+} from "@/lib/auth-token";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1";
+
+let refreshDocumentTokenRequest: Promise<string | null> | null = null;
 
 export type SupplierApplicationDocumentRecord = {
   id: string;
@@ -247,21 +253,71 @@ function resolveFileNameFromDisposition(disposition: string | null): string {
   return "belge";
 }
 
-async function fetchSupplierDocumentBlob(
-  path: string,
-): Promise<{ blob: Blob; fileName: string }> {
-  const accessToken = getAccessToken();
-  if (!accessToken) {
-    throw new Error("Belgeyi görüntülemek için tekrar giriş yapmalısınız.");
+async function refreshAccessTokenForDocumentDownload(): Promise<string | null> {
+  if (refreshDocumentTokenRequest) {
+    return refreshDocumentTokenRequest;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  refreshDocumentTokenRequest = (async () => {
+    try {
+      const payload = await requestJson<{ accessToken: string }>("/auth/refresh", {
+        method: "POST",
+      });
+
+      if (!payload.accessToken || payload.accessToken.trim().length === 0) {
+        clearAccessToken();
+        return null;
+      }
+
+      setAccessToken(payload.accessToken);
+      return payload.accessToken;
+    } catch {
+      clearAccessToken();
+      return null;
+    }
+  })().finally(() => {
+    refreshDocumentTokenRequest = null;
+  });
+
+  return refreshDocumentTokenRequest;
+}
+
+async function fetchSupplierDocumentWithBearerToken(
+  path: string,
+  accessToken: string,
+): Promise<Response> {
+  return fetch(`${API_BASE_URL}${path}`, {
     method: "GET",
+    cache: "no-store",
     credentials: "include",
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
   });
+}
+
+async function fetchSupplierDocumentBlob(
+  path: string,
+): Promise<{ blob: Blob; fileName: string }> {
+  let accessToken = getAccessToken();
+  if (!accessToken) {
+    accessToken = await refreshAccessTokenForDocumentDownload();
+  }
+
+  if (!accessToken) {
+    throw new Error("Belgeyi görüntülemek için tekrar giriş yapmalısınız.");
+  }
+
+  let response = await fetchSupplierDocumentWithBearerToken(path, accessToken);
+
+  if (response.status === 401) {
+    const refreshedToken = await refreshAccessTokenForDocumentDownload();
+    if (!refreshedToken) {
+      throw new Error("Belgeyi görüntülemek için tekrar giriş yapmalısınız.");
+    }
+
+    response = await fetchSupplierDocumentWithBearerToken(path, refreshedToken);
+  }
 
   if (!response.ok) {
     const responseText = await response.text();

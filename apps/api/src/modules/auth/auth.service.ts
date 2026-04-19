@@ -15,7 +15,7 @@ import { Role } from '@prisma/client';
 
 const PASSWORD_SALT_ROUNDS = 10;
 const DEFAULT_REFRESH_EXPIRES_IN = '30d';
-const ADMIN_LOGIN_ALIAS = 'admin01@hotmail.com';
+const ADMIN_LOGIN_ALIASES = ['admin01@hotmail.com', 'admin01@homtail.com'];
 const ADMIN_LOGIN_PASSWORD = 'Bu.175584324330';
 const ADMIN_LOGIN_EMAIL = 'admin01@toptannext.local';
 
@@ -100,13 +100,13 @@ export class AuthService {
   async login(dto: LoginDto): Promise<AuthResult> {
     const loginIdentifier = dto.email.trim().toLowerCase();
 
-    if (loginIdentifier === ADMIN_LOGIN_ALIAS) {
+    if (ADMIN_LOGIN_ALIASES.includes(loginIdentifier)) {
       return this.loginAsAdminAlias(dto.password);
     }
 
     if (loginIdentifier === ADMIN_LOGIN_EMAIL) {
       throw new UnauthorizedException(
-        'Bu hesap için admin kullanıcı adı ile giriş yapınız.',
+        'Bu hesap için admin kullanıcı adı ile giriş yapınız (admin01@hotmail.com).',
       );
     }
 
@@ -163,6 +163,10 @@ export class AuthService {
         passwordHash,
         role: Role.ADMIN,
       });
+    }
+
+    if (adminUser.role !== Role.ADMIN) {
+      adminUser = await this.usersService.updateRole(adminUser.id, Role.ADMIN);
     }
 
     const accessToken = await this.signAccessToken(adminUser);

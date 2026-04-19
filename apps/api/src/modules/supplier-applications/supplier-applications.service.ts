@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { existsSync } from 'fs';
 import { promises as fs } from 'fs';
-import path from 'path';
+import * as path from 'path';
 import { ReviewSupplierApplicationDto } from './dto/review-supplier-application.dto';
 import { UpsertSupplierApplicationContactFinanceDto } from './dto/upsert-supplier-application-contact-finance.dto';
 import { UpsertSupplierApplicationDocumentsDto } from './dto/upsert-supplier-application-documents.dto';

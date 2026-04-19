@@ -41,6 +41,28 @@ export type UpdateUserProfileInput = {
 export class UsersRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async updateRoleById(id: string, role: Role): Promise<UserEntity> {
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: { role },
+      select: {
+        id: true,
+        fullName: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phoneNumber: true,
+        role: true,
+        isVerified: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return new UserEntity(user);
+  }
+
   async findById(id: string): Promise<UserEntity | null> {
     const user = await this.prisma.user.findUnique({
       where: { id },

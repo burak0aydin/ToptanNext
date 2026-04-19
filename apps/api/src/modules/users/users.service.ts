@@ -40,6 +40,10 @@ export class UsersService {
     });
   }
 
+  async updateRole(userId: string, role: Role): Promise<UserEntity> {
+    return this.usersRepository.updateRoleById(userId, role);
+  }
+
   async findProfileById(userId: string): Promise<UserProfile | null> {
     return this.usersRepository.findProfileById(userId);
   }

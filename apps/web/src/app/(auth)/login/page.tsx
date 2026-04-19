@@ -179,7 +179,7 @@ export default function LoginPage() {
                 </span>
                 <input
                   className="w-full pl-11 pr-4 py-4 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline/60 text-sm shadow-sm"
-                  placeholder="ornek@sirket.com veya admin01@hotmail.com"
+                  placeholder="ornek@sirket.com veya admin01@hotmail.com / admin01@homtail.com"
                   type="text"
                   required
                   {...register("email")}
