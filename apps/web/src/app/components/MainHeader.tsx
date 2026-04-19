@@ -127,13 +127,13 @@ export function MainHeader() {
             <span className='material-symbols-outlined text-[28px] leading-none'>forum</span>
           </button>
 
-          <button
-            aria-label='Sepetim'
+          <Link
+            aria-label='Siparişlerim'
             className='flex items-center justify-center text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'
-            type='button'
+            href='/siparislerim'
           >
-            <span className='material-symbols-outlined text-[28px] leading-none'>shopping_cart</span>
-          </button>
+            <span className='material-symbols-outlined text-[28px] leading-none'>package_2</span>
+          </Link>
 
           <AccountNavLink />
         </div>

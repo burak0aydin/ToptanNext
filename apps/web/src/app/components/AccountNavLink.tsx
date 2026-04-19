@@ -3,18 +3,25 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { clearAccessToken, hasAccessToken } from '@/lib/auth-token';
+import {
+  clearAccessToken,
+  getUserRoleFromToken,
+  hasAccessToken,
+  type AppUserRole,
+} from '@/lib/auth-token';
 import { requestJson } from '@/lib/api';
 
 export function AccountNavLink() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState<AppUserRole | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const closeTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     const syncLoginState = () => {
       setIsLoggedIn(hasAccessToken());
+      setUserRole(getUserRoleFromToken());
     };
 
     syncLoginState();
@@ -62,6 +69,7 @@ export function AccountNavLink() {
 
     clearAccessToken();
     setIsLoggedIn(false);
+    setUserRole(null);
     setIsMenuOpen(false);
     router.push('/');
     router.refresh();
@@ -92,10 +100,13 @@ export function AccountNavLink() {
       <button
         type='button'
         className='flex items-center gap-2 text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'
-        onClick={() => setIsMenuOpen((prev) => !prev)}
+        onClick={() => {
+          setIsMenuOpen(false);
+          router.push('/siparislerim');
+        }}
       >
         <span className='material-symbols-outlined text-[28px] leading-none'>account_circle</span>
-        <span className='text-xs font-bold'>Profilim</span>
+        <span className='text-xs font-bold'>Hesabım</span>
       </button>
 
       {isMenuOpen ? (
@@ -105,21 +116,23 @@ export function AccountNavLink() {
               Hesabım
             </div>
 
-            <button
-              type='button'
+            <Link
               className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
+              href='/siparislerim'
+              onClick={handleMenuItemClick}
             >
-              <span className='material-symbols-outlined text-[20px]'>receipt_long</span>
+              <span className='material-symbols-outlined text-[20px]'>package_2</span>
               Siparişlerim
-            </button>
+            </Link>
 
-            <button
-              type='button'
+            <Link
               className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
+              href='/favorilerim'
+              onClick={handleMenuItemClick}
             >
               <span className='material-symbols-outlined text-[20px]'>favorite</span>
               Favorilerim
-            </button>
+            </Link>
 
             <Link
               className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
@@ -127,8 +140,19 @@ export function AccountNavLink() {
               onClick={handleMenuItemClick}
             >
               <span className='material-symbols-outlined text-[20px]'>person</span>
-              Kullanıcı Bilgilerim
+              Kişisel Bilgilerim
             </Link>
+
+            {userRole === 'SUPPLIER' ? (
+              <Link
+                className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
+                href='/satici-panelim'
+                onClick={handleMenuItemClick}
+              >
+                <span className='material-symbols-outlined text-[20px]'>storefront</span>
+                Satıcı Panelim
+              </Link>
+            ) : null}
 
             <div className='my-1 border-t border-slate-100' />
 

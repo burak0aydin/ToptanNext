@@ -1,5 +1,11 @@
 const ACCESS_TOKEN_KEY = 'toptannext_access_token';
 
+export type AppUserRole = 'ADMIN' | 'SUPPLIER' | 'BUYER';
+
+type JwtPayload = {
+  role?: AppUserRole;
+};
+
 function readCookie(name: string): string | null {
   if (typeof document === 'undefined') {
     return null;
@@ -52,4 +58,33 @@ export function clearAccessToken(): void {
 
 export function hasAccessToken(): boolean {
   return Boolean(getAccessToken());
+}
+
+function parseJwtPayload(token: string | null): JwtPayload | null {
+  if (!token) {
+    return null;
+  }
+
+  const parts = token.split('.');
+  if (parts.length < 2) {
+    return null;
+  }
+
+  try {
+    const base64Payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const normalizedPayload = base64Payload.padEnd(
+      Math.ceil(base64Payload.length / 4) * 4,
+      '=',
+    );
+
+    const payloadJson = atob(normalizedPayload);
+    return JSON.parse(payloadJson) as JwtPayload;
+  } catch {
+    return null;
+  }
+}
+
+export function getUserRoleFromToken(): AppUserRole | null {
+  const payload = parseJwtPayload(getAccessToken());
+  return payload?.role ?? null;
 }
