@@ -122,6 +122,17 @@ export default function SaticiBasvuruSonucuPage() {
     return STATUS_UI[application.reviewStatus];
   }, [application]);
 
+  const isApprovedApplication = application?.reviewStatus === "APPROVED";
+
+  const sidebarButtonClassName =
+    "flex w-full items-center gap-3 rounded-lg p-3.5 text-sm font-semibold text-slate-500 text-left";
+
+  const sidebarEnabledClassName =
+    " transition-colors hover:bg-slate-100";
+
+  const sidebarDisabledClassName =
+    " cursor-not-allowed opacity-50";
+
   return (
     <div className="flex min-h-screen flex-col bg-background text-on-surface antialiased">
       <MainHeader />
@@ -140,8 +151,9 @@ export default function SaticiBasvuruSonucuPage() {
 
             <nav className="flex flex-col gap-2">
               <button
-                className="flex w-full items-center gap-3 rounded-lg p-3.5 text-sm font-semibold text-slate-500 text-left"
+                className={`${sidebarButtonClassName}${isApprovedApplication ? sidebarDisabledClassName : sidebarEnabledClassName}`}
                 type="button"
+                disabled={isApprovedApplication}
                 onClick={() => router.push("/satici-ol")}
               >
                 <span className="material-symbols-outlined">business</span>
@@ -149,8 +161,9 @@ export default function SaticiBasvuruSonucuPage() {
               </button>
 
               <button
-                className="flex w-full items-center gap-3 rounded-lg p-3.5 text-sm font-semibold text-slate-500 text-left"
+                className={`${sidebarButtonClassName}${isApprovedApplication ? sidebarDisabledClassName : sidebarEnabledClassName}`}
                 type="button"
+                disabled={isApprovedApplication}
                 onClick={() => router.push("/satici-ol/iletisim-ve-finans")}
               >
                 <span className="material-symbols-outlined">description</span>
@@ -158,8 +171,9 @@ export default function SaticiBasvuruSonucuPage() {
               </button>
 
               <button
-                className="flex w-full items-center gap-3 rounded-lg p-3.5 text-sm font-semibold text-slate-500 text-left"
+                className={`${sidebarButtonClassName}${isApprovedApplication ? sidebarDisabledClassName : sidebarEnabledClassName}`}
                 type="button"
+                disabled={isApprovedApplication}
                 onClick={() => router.push("/satici-ol/belge-yukleme-ve-onay")}
               >
                 <span className="material-symbols-outlined">inventory_2</span>

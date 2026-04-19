@@ -236,15 +236,23 @@ export default function SaticiOlIletisimVeFinansPage() {
                 <span className="whitespace-nowrap">İletişim ve Finans</span>
               </div>
 
-              <div className="flex w-full items-center gap-3 rounded-lg p-3.5 text-sm font-semibold text-slate-500">
+              <button
+                className="flex w-full items-center gap-3 rounded-lg p-3.5 text-left text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-100"
+                type="button"
+                onClick={() => router.push(STEP_THREE_PATH)}
+              >
                 <span className="material-symbols-outlined">inventory_2</span>
                 <span className="whitespace-nowrap">Belge Yükleme ve Onay</span>
-              </div>
+              </button>
 
-              <div className="flex w-full items-center gap-3 rounded-lg p-3.5 text-sm font-semibold text-slate-500">
+              <button
+                className="flex w-full items-center gap-3 rounded-lg p-3.5 text-left text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-100"
+                type="button"
+                onClick={() => router.push(RESULT_PAGE_PATH)}
+              >
                 <span className="material-symbols-outlined">task_alt</span>
                 <span className="whitespace-nowrap">Satıcı Başvuru Sonucu</span>
-              </div>
+              </button>
             </nav>
 
             <div className="mt-8 pt-6 border-t border-slate-200">

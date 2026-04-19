@@ -182,20 +182,32 @@ export default function SaticiOlPage() {
                 <span className='whitespace-nowrap'>Şirket Bilgileri</span>
               </div>
 
-              <div className='flex w-full items-center gap-3 rounded-lg p-3.5 text-sm font-semibold text-slate-500'>
+              <button
+                className='flex w-full items-center gap-3 rounded-lg p-3.5 text-left text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-100'
+                type='button'
+                onClick={() => router.push('/satici-ol/iletisim-ve-finans')}
+              >
                 <span className='material-symbols-outlined'>description</span>
                 <span className='whitespace-nowrap'>İletişim ve Finans</span>
-              </div>
+              </button>
 
-              <div className='flex w-full items-center gap-3 rounded-lg p-3.5 text-sm font-semibold text-slate-500'>
+              <button
+                className='flex w-full items-center gap-3 rounded-lg p-3.5 text-left text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-100'
+                type='button'
+                onClick={() => router.push('/satici-ol/belge-yukleme-ve-onay')}
+              >
                 <span className='material-symbols-outlined'>inventory_2</span>
                 <span className='whitespace-nowrap'>Belge Yükleme ve Onay</span>
-              </div>
+              </button>
 
-              <div className='flex w-full items-center gap-3 rounded-lg p-3.5 text-sm font-semibold text-slate-500'>
+              <button
+                className='flex w-full items-center gap-3 rounded-lg p-3.5 text-left text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-100'
+                type='button'
+                onClick={() => router.push('/satici-ol/basvuru-sonucu')}
+              >
                 <span className='material-symbols-outlined'>task_alt</span>
                 <span className='whitespace-nowrap'>Satıcı Başvuru Sonucu</span>
-              </div>
+              </button>
             </nav>
 
             <div className='mt-8 pt-6 border-t border-slate-200'>

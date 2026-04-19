@@ -341,12 +341,27 @@ export class SupplierApplicationsRepository {
     input: UpsertSupplierApplicationDocumentsInput,
   ): Promise<SupplierApplicationRecord> {
     const updated = await this.prisma.$transaction(async (tx) => {
+      const currentApplication = await tx.supplierApplication.findUniqueOrThrow({
+        where: { userId: input.userId },
+        select: {
+          id: true,
+          reviewStatus: true,
+        },
+      });
+
       const application = await tx.supplierApplication.update({
         where: { userId: input.userId },
         data: {
           approvedSupplierAgreement: input.approvedSupplierAgreement,
           approvedKvkkAgreement: input.approvedKvkkAgreement,
           approvedCommercialMessage: input.approvedCommercialMessage,
+          ...(currentApplication.reviewStatus === 'REJECTED'
+            ? {
+                reviewStatus: 'PENDING',
+                reviewNote: null,
+                reviewedAt: null,
+              }
+            : {}),
         } as never,
         select: {
           id: true,

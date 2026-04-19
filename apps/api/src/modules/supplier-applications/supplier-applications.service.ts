@@ -58,6 +58,13 @@ export class SupplierApplicationsService {
     userId: string,
     dto: UpsertSupplierApplicationDto,
   ): Promise<SupplierApplicationRecord> {
+    const existing = await this.supplierApplicationsRepository.findByUserId(userId);
+    if (existing && existing.reviewStatus === 'APPROVED') {
+      throw new BadRequestException(
+        'Başvurunuz onaylandığı için bilgiler yeniden düzenlenemez.',
+      );
+    }
+
     return this.supplierApplicationsRepository.upsertByUserId({
       userId,
       companyName: dto.companyName.trim(),
@@ -83,6 +90,12 @@ export class SupplierApplicationsService {
     if (!existing) {
       throw new NotFoundException(
         'Önce şirket kimlik bilgileri adımını tamamlayınız.',
+      );
+    }
+
+    if (existing.reviewStatus === 'APPROVED') {
+      throw new BadRequestException(
+        'Başvurunuz onaylandığı için bilgiler yeniden düzenlenemez.',
       );
     }
 
@@ -170,6 +183,12 @@ export class SupplierApplicationsService {
     if (!existing) {
       throw new NotFoundException(
         'Önce şirket kimlik bilgileri adımını tamamlayınız.',
+      );
+    }
+
+    if (existing.reviewStatus === 'APPROVED') {
+      throw new BadRequestException(
+        'Başvurunuz onaylandığı için yeniden başvuru gönderemezsiniz.',
       );
     }
 

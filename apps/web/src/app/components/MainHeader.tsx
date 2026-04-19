@@ -4,6 +4,8 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { requestJson } from '@/lib/api';
+import { hasAccessToken } from '@/lib/auth-token';
+import { fetchMySupplierApplication } from '@/features/supplier-application/api/supplier-application.api';
 import { AccountNavLink } from './AccountNavLink';
 import {
   CategoryMegaMenu,
@@ -56,6 +58,19 @@ export function MainHeader() {
     queryKey: ['nav', 'sectors'],
     queryFn: fetchSectors,
   });
+
+  const {
+    data: mySupplierApplication,
+  } = useQuery({
+    queryKey: ['nav', 'supplier-application', 'me'],
+    queryFn: fetchMySupplierApplication,
+    enabled: hasAccessToken(),
+    retry: false,
+  });
+
+  const supplierApplyHref = mySupplierApplication
+    ? '/satici-ol/basvuru-sonucu'
+    : '/satici-ol';
 
   const categoryMenuData = useMemo<CategoryMegaMenuCategory[]>(() => {
     return categories.map((root) => ({
@@ -149,7 +164,7 @@ export function MainHeader() {
 
             <Link
               className='py-2 text-sm font-semibold text-on-surface-variant transition-colors hover:text-primary'
-              href='/satici-ol'
+              href={supplierApplyHref}
             >
               Satıcı Ol
             </Link>
@@ -269,7 +284,7 @@ export function MainHeader() {
 
               <Link
                 className='block rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 transition-colors hover:bg-[#EEF4FF] hover:text-primary'
-                href='/satici-ol'
+                href={supplierApplyHref}
               >
                 Satıcı Ol
               </Link>
