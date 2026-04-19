@@ -5,6 +5,10 @@ import type {
   SupplierApplicationStepTwoDto,
 } from "@toptannext/types";
 import { requestJson } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth-token";
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1";
 
 export type SupplierApplicationDocumentRecord = {
   id: string;
@@ -56,6 +60,26 @@ export type SupplierApplicationRecord = {
   documents: SupplierApplicationDocumentRecord[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type SupplierApplicationAdminListItem = {
+  id: string;
+  userId: string;
+  companyName: string;
+  companyType: "SAHIS" | "LIMITED" | "ANONIM";
+  vknOrTckn: string;
+  activitySector: string;
+  reviewStatus: "PENDING" | "APPROVED" | "REJECTED";
+  reviewNote: string | null;
+  contactEmail: string | null;
+  userEmail: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ReviewSupplierApplicationPayload = {
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  reviewNote?: string;
 };
 
 export async function fetchMySupplierApplication(): Promise<SupplierApplicationRecord | null> {
@@ -123,12 +147,205 @@ export async function upsertMySupplierDocuments(
     formData.append("activityCertificate", payload.activityCertificate);
   }
 
-  return requestJson<SupplierApplicationRecord, FormData>(
-    "/supplier-applications/me/documents",
+  try {
+    return await requestJson<SupplierApplicationRecord, FormData>(
+      "/supplier-applications/me/documents",
+      {
+        method: "PUT",
+        auth: true,
+        body: formData,
+      },
+    );
+  } catch (error) {
+    if (error instanceof Error && /file too large/i.test(error.message)) {
+      throw new Error("Yüklenen dosya 15 MB sınırını aşıyor.");
+    }
+
+    throw error;
+  }
+}
+
+export async function fetchSupplierApplicationsForAdmin(): Promise<
+  SupplierApplicationAdminListItem[]
+> {
+  return requestJson<SupplierApplicationAdminListItem[]>(
+    "/supplier-applications/admin",
+    {
+      auth: true,
+    },
+  );
+}
+
+export async function fetchSupplierApplicationByIdForAdmin(
+  id: string,
+): Promise<SupplierApplicationRecord> {
+  return requestJson<SupplierApplicationRecord>(
+    `/supplier-applications/admin/${id}`,
+    {
+      auth: true,
+    },
+  );
+}
+
+export async function reviewSupplierApplicationByAdmin(
+  id: string,
+  payload: ReviewSupplierApplicationPayload,
+): Promise<SupplierApplicationRecord> {
+  return requestJson<SupplierApplicationRecord, ReviewSupplierApplicationPayload>(
+    `/supplier-applications/admin/${id}/review`,
     {
       method: "PUT",
       auth: true,
-      body: formData,
+      body: payload,
     },
   );
+}
+
+function resolveApiErrorMessage(payload: unknown): string {
+  if (!payload || typeof payload !== "object") {
+    return "Belge alınırken bir sorun oluştu.";
+  }
+
+  const maybeError = payload as {
+    error?: { message?: string };
+    message?: string | string[];
+  };
+
+  if (
+    typeof maybeError.error?.message === "string" &&
+    maybeError.error.message.length > 0
+  ) {
+    return maybeError.error.message;
+  }
+
+  if (typeof maybeError.message === "string" && maybeError.message.length > 0) {
+    return maybeError.message;
+  }
+
+  if (Array.isArray(maybeError.message) && maybeError.message.length > 0) {
+    return maybeError.message.join(" ");
+  }
+
+  return "Belge alınırken bir sorun oluştu.";
+}
+
+function resolveFileNameFromDisposition(disposition: string | null): string {
+  if (!disposition) {
+    return "belge";
+  }
+
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1]);
+  }
+
+  const basicMatch = disposition.match(/filename="?([^";]+)"?/i);
+  if (basicMatch?.[1]) {
+    return decodeURIComponent(basicMatch[1]);
+  }
+
+  return "belge";
+}
+
+async function fetchSupplierDocumentBlob(
+  path: string,
+): Promise<{ blob: Blob; fileName: string }> {
+  const accessToken = getAccessToken();
+  if (!accessToken) {
+    throw new Error("Belgeyi görüntülemek için tekrar giriş yapmalısınız.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const responseText = await response.text();
+    let payload: unknown = null;
+    if (responseText) {
+      try {
+        payload = JSON.parse(responseText) as unknown;
+      } catch {
+        payload = null;
+      }
+    }
+
+    throw new Error(resolveApiErrorMessage(payload));
+  }
+
+  return {
+    blob: await response.blob(),
+    fileName: resolveFileNameFromDisposition(
+      response.headers.get("content-disposition"),
+    ),
+  };
+}
+
+export async function fetchSupplierApplicationDocumentForAdmin(
+  applicationId: string,
+  documentType: SupplierApplicationDocumentType,
+): Promise<{ blob: Blob; fileName: string }> {
+  return fetchSupplierDocumentBlob(
+    `/supplier-applications/admin/${applicationId}/documents/${documentType}`,
+  );
+}
+
+function triggerBlobDownload(blob: Blob, fileName: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const objectUrl = window.URL.createObjectURL(blob);
+  const tempLink = document.createElement("a");
+  tempLink.href = objectUrl;
+  tempLink.download = fileName;
+  tempLink.style.display = "none";
+  document.body.appendChild(tempLink);
+  tempLink.click();
+  tempLink.remove();
+
+  window.setTimeout(() => {
+    window.URL.revokeObjectURL(objectUrl);
+  }, 60_000);
+}
+
+export async function openSupplierApplicationDocumentForAdmin(
+  applicationId: string,
+  documentType: SupplierApplicationDocumentType,
+): Promise<void> {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const { blob, fileName } = await fetchSupplierApplicationDocumentForAdmin(
+    applicationId,
+    documentType,
+  );
+  const objectUrl = window.URL.createObjectURL(blob);
+  const popupWindow = window.open(objectUrl, "_blank", "noopener,noreferrer");
+
+  if (!popupWindow) {
+    triggerBlobDownload(blob, fileName);
+  }
+
+  window.setTimeout(() => {
+    window.URL.revokeObjectURL(objectUrl);
+  }, 60_000);
+}
+
+export async function downloadSupplierApplicationDocumentForAdmin(
+  applicationId: string,
+  documentType: SupplierApplicationDocumentType,
+  fallbackFileName?: string,
+): Promise<void> {
+  const { blob, fileName } = await fetchSupplierApplicationDocumentForAdmin(
+    applicationId,
+    documentType,
+  );
+
+  triggerBlobDownload(blob, fallbackFileName ?? fileName);
 }

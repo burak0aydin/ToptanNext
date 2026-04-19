@@ -1,4 +1,4 @@
-import { SupplierCompanyType } from '@prisma/client';
+import { Role, SupplierCompanyType } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -71,6 +71,7 @@ export type SupplierApplicationAdminListItem = {
   companyName: string;
   companyType: SupplierCompanyType;
   vknOrTckn: string;
+  activitySector: string;
   reviewStatus: SupplierApplicationReviewStatus;
   reviewNote: string | null;
   contactEmail: string | null;
@@ -207,6 +208,7 @@ export class SupplierApplicationsRepository {
         companyName: true,
         companyType: true,
         vknOrTckn: true,
+        activitySector: true,
         reviewStatus: true,
         reviewNote: true,
         contactEmail: true,
@@ -226,6 +228,7 @@ export class SupplierApplicationsRepository {
       companyName: application.companyName,
       companyType: application.companyType,
       vknOrTckn: application.vknOrTckn,
+      activitySector: application.activitySector,
       reviewStatus: application.reviewStatus,
       reviewNote: application.reviewNote,
       contactEmail: application.contactEmail,
@@ -298,17 +301,40 @@ export class SupplierApplicationsRepository {
     id: string,
     input: UpdateSupplierApplicationReviewInput,
   ): Promise<SupplierApplicationRecord> {
-    const updated = await this.prisma.supplierApplication.update({
-      where: { id },
-      data: {
-        reviewStatus: input.status,
-        reviewNote: input.reviewNote,
-        reviewedAt: new Date(),
-      } as never,
-      select: this.baseSelect as never,
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const reviewedApplication = await tx.supplierApplication.update({
+        where: { id },
+        data: {
+          reviewStatus: input.status,
+          reviewNote: input.reviewNote,
+          reviewedAt: new Date(),
+        } as never,
+        select: {
+          userId: true,
+        },
+      });
+
+      if (input.status === 'APPROVED') {
+        await tx.user.update({
+          where: { id: reviewedApplication.userId },
+          data: { role: Role.SUPPLIER },
+        });
+      }
+
+      if (input.status === 'REJECTED') {
+        await tx.user.update({
+          where: { id: reviewedApplication.userId },
+          data: { role: Role.BUYER },
+        });
+      }
+
+      return tx.supplierApplication.findUniqueOrThrow({
+        where: { id },
+        select: this.baseSelect,
+      });
     });
 
-    return updated as unknown as SupplierApplicationRecord;
+    return updated;
   }
 
   async upsertDocumentsAndAgreementsByUserId(

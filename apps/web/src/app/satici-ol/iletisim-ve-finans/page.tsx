@@ -24,6 +24,7 @@ const TEXTAREA_CLASS =
   "w-full min-h-[120px] px-4 py-3 rounded-lg border border-slate-300 bg-white shadow-sm focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all outline-none resize-y";
 
 const STEP_THREE_PATH = "/satici-ol/belge-yukleme-ve-onay";
+const RESULT_PAGE_PATH = "/satici-ol/basvuru-sonucu";
 
 const EMPTY_FORM: SupplierApplicationStepTwoDto = {
   companyIban: "",
@@ -85,6 +86,11 @@ export default function SaticiOlIletisimVeFinansPage() {
           return;
         }
 
+        if (existingApplication.reviewStatus !== "REJECTED") {
+          router.replace(RESULT_PAGE_PATH);
+          return;
+        }
+
         const warehouseSameAsHeadquarters =
           existingApplication.warehouseSameAsHeadquarters ?? true;
 
@@ -118,7 +124,7 @@ export default function SaticiOlIletisimVeFinansPage() {
     return () => {
       isMounted = false;
     };
-  }, [reset]);
+  }, [reset, router]);
 
   const upsertMutation = useMutation({
     mutationKey: ["supplier-application", "upsert-contact-finance"],
@@ -233,6 +239,11 @@ export default function SaticiOlIletisimVeFinansPage() {
               <div className="flex w-full items-center gap-3 rounded-lg p-3.5 text-sm font-semibold text-slate-500">
                 <span className="material-symbols-outlined">inventory_2</span>
                 <span className="whitespace-nowrap">Belge Yükleme ve Onay</span>
+              </div>
+
+              <div className="flex w-full items-center gap-3 rounded-lg p-3.5 text-sm font-semibold text-slate-500">
+                <span className="material-symbols-outlined">task_alt</span>
+                <span className="whitespace-nowrap">Satıcı Başvuru Sonucu</span>
               </div>
             </nav>
 

@@ -184,6 +184,9 @@ export function AdminShell({ children }: AdminShellProps) {
 		setIsMobileSidebarOpen(false);
 	};
 
+	const desktopOffsetClass = isSidebarCollapsed ? "lg:left-24" : "lg:left-[19rem]";
+	const desktopMainPaddingClass = isSidebarCollapsed ? "lg:pl-24" : "lg:pl-[19rem]";
+
 	const handleLogout = async () => {
 		try {
 			await requestJson<{ loggedOut: boolean }, undefined>("/auth/logout", {
@@ -261,7 +264,7 @@ export function AdminShell({ children }: AdminShellProps) {
 			</aside>
 
 			<header
-				className={`fixed right-0 top-0 left-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm transition-all duration-300 sm:px-6 ${isSidebarCollapsed ? "lg:left-20" : "lg:left-72"}`}
+				className={`fixed right-0 top-0 left-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm transition-all duration-300 sm:px-6 ${desktopOffsetClass}`}
 			>
 				<div className="flex flex-1 items-center gap-4">
 					<button
@@ -316,7 +319,7 @@ export function AdminShell({ children }: AdminShellProps) {
 			</header>
 
 			<main
-				className={`px-4 pb-8 pt-24 transition-all duration-300 sm:px-6 ${isSidebarCollapsed ? "lg:pl-24" : "lg:pl-72"}`}
+				className={`px-4 pb-8 pt-24 transition-all duration-300 sm:px-6 ${desktopMainPaddingClass}`}
 			>
 				{children}
 			</main>

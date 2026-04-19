@@ -38,6 +38,7 @@ const COMPANY_TYPE_OPTIONS = [
 
 const FIELD_CLASS =
   'w-full px-4 py-3 rounded-lg border border-slate-300 bg-white shadow-sm focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all outline-none';
+const RESULT_PAGE_PATH = '/satici-ol/basvuru-sonucu';
 
 export default function SaticiOlPage() {
   const router = useRouter();
@@ -71,6 +72,11 @@ export default function SaticiOlPage() {
           return;
         }
 
+        if (existingApplication.reviewStatus !== 'REJECTED') {
+          router.replace(RESULT_PAGE_PATH);
+          return;
+        }
+
         reset({
           companyName: existingApplication.companyName,
           companyType: existingApplication.companyType,
@@ -97,7 +103,7 @@ export default function SaticiOlPage() {
     return () => {
       isMounted = false;
     };
-  }, [reset]);
+  }, [reset, router]);
 
   const upsertMutation = useMutation({
     mutationKey: ['supplier-application', 'upsert'],
@@ -184,6 +190,11 @@ export default function SaticiOlPage() {
               <div className='flex w-full items-center gap-3 rounded-lg p-3.5 text-sm font-semibold text-slate-500'>
                 <span className='material-symbols-outlined'>inventory_2</span>
                 <span className='whitespace-nowrap'>Belge Yükleme ve Onay</span>
+              </div>
+
+              <div className='flex w-full items-center gap-3 rounded-lg p-3.5 text-sm font-semibold text-slate-500'>
+                <span className='material-symbols-outlined'>task_alt</span>
+                <span className='whitespace-nowrap'>Satıcı Başvuru Sonucu</span>
               </div>
             </nav>
 

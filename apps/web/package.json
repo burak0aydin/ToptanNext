@@ -15,6 +15,8 @@
     "@tanstack/react-query": "^5.90.5",
     "@toptannext/types": "workspace:^",
     "@toptannext/ui": "workspace:^",
+    "jspdf": "^4.2.1",
+    "jszip": "^3.10.1",
     "next": "14.2.5",
     "react": "^18",
     "react-dom": "^18",

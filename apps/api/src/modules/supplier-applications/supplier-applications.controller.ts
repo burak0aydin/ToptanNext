@@ -1,9 +1,13 @@
 import {
+  ArgumentsHost,
   BadRequestException,
   Body,
+  Catch,
   Controller,
+  ExceptionFilter,
   ForbiddenException,
   Get,
+  NotFoundException,
   Param,
   Put,
   Req,
@@ -12,11 +16,14 @@ import {
   UploadedFiles,
   UseGuards,
   UseInterceptors,
+  UseFilters,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { AuthGuard } from '@nestjs/passport';
 import { Request, Response } from 'express';
-import { createReadStream, mkdirSync } from 'fs';
+import { MulterError } from 'multer';
+import { existsSync, mkdirSync, readFileSync } from 'fs';
 import { extname, join } from 'path';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -47,7 +54,7 @@ const SUPPLIER_DOCUMENT_UPLOAD_ROOT = join(
   'uploads',
   'supplier-documents',
 );
-const MAX_DOCUMENT_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_DOCUMENT_SIZE_BYTES = 15 * 1024 * 1024;
 const ALLOWED_DOCUMENT_MIME_TYPES = new Set([
   'application/pdf',
   'image/png',
@@ -59,6 +66,33 @@ const DOCUMENT_UPLOAD_FIELD_NAMES = Object.keys(
 const SUPPLIER_DOCUMENT_TYPES = Object.values(
   supplierApplicationDocumentFieldMap,
 );
+
+@Catch(MulterError)
+class SupplierDocumentUploadExceptionFilter implements ExceptionFilter {
+  catch(exception: MulterError, host: ArgumentsHost): void {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse<Response>();
+
+    if (exception.code === 'LIMIT_FILE_SIZE') {
+      response.status(400).json({
+        success: false,
+        error: {
+          code: 'FILE_TOO_LARGE',
+          message: 'Yüklenen dosya 15 MB sınırını aşıyor.',
+        },
+      });
+      return;
+    }
+
+    response.status(400).json({
+      success: false,
+      error: {
+        code: exception.code,
+        message: 'Belge yükleme sırasında bir hata oluştu.',
+      },
+    });
+  }
+}
 
 const supplierDocumentUploadFields = DOCUMENT_UPLOAD_FIELD_NAMES.map(
   (name) => ({
@@ -176,6 +210,7 @@ export class SupplierApplicationsController {
   }
 
   @Put('me/documents')
+  @UseFilters(SupplierDocumentUploadExceptionFilter)
   @UseInterceptors(
     FileFieldsInterceptor(
       supplierDocumentUploadFields,
@@ -354,15 +389,59 @@ export class SupplierApplicationsController {
       this.supplierApplicationsService.resolveDocumentAbsolutePath(
         document.filePath,
       );
-    const fileStream = createReadStream(absolutePath);
+
+    if (!absolutePath) {
+      throw new NotFoundException('Belge dosya yolu bulunamadı.');
+    }
+
+    if (!existsSync(absolutePath)) {
+      throw new NotFoundException('Belge dosyası sunucuda bulunamadı.');
+    }
+
+    let fileBuffer: Buffer;
+    try {
+      fileBuffer = readFileSync(absolutePath);
+    } catch (error: unknown) {
+      const code =
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        typeof (error as { code?: unknown }).code === 'string'
+          ? (error as { code: string }).code
+          : null;
+
+      if (code === 'ENOENT') {
+        throw new NotFoundException('Belge dosyası sunucuda bulunamadı.');
+      }
+
+      if (code === 'EACCES' || code === 'EPERM') {
+        throw new BadRequestException('Belge dosyasına erişilemiyor.');
+      }
+
+      throw new InternalServerErrorException(
+        'Belge dosyası okunurken beklenmeyen bir hata oluştu.',
+      );
+    }
+    const safeOriginalName =
+      typeof document.originalName === 'string' &&
+      document.originalName.trim().length > 0
+        ? document.originalName.trim()
+        : 'belge';
+
+    let encodedFileName = 'belge';
+    try {
+      encodedFileName = encodeURIComponent(safeOriginalName);
+    } catch {
+      encodedFileName = 'belge';
+    }
 
     response.setHeader('Content-Type', document.mimeType);
     response.setHeader(
       'Content-Disposition',
-      `inline; filename="${encodeURIComponent(document.originalName)}"`,
+      `inline; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`,
     );
 
-    return new StreamableFile(fileStream);
+    return new StreamableFile(fileBuffer);
   }
 
   private ensureAdmin(role: Role): void {

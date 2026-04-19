@@ -1,226 +1,350 @@
-# ToptanNext - Proje Hakkında Bilgiler
+# ToptanNext - Proje Hakkinda Bilgiler
 
-Bu dokuman proje hafiza dosyasi olarak hazirlandi.
-Amac: proje klasorlerini, dosyalari, mimari katmanlari ve calisma akisini tek yerde toplamak.
+Bu dokuman, projeyi tek bakista anlamak ve yeni bir oturumda hizli adapte olmak icin hazirlandi.
+
+Amac:
+- [x] Monorepo yapisini net gostermek
+- [x] Mimari katmanlari kutucuklu ve ok yonlu akislarla anlatmak
+- [x] Hangi kod nereye yazilir sorusuna hizli cevap vermek
+- [x] Gelistirme ve teknik notlari tek yerde toplamak
+
+---
 
 ## 1) Proje Ozeti
 
 ToptanNext, Turkiye odakli B2B toptan pazaryeri platformudur.
-Monorepo yapisinda calisir ve 3 ana uygulamadan olusur:
 
-- `apps/web`: Kullanici ve satici odakli ana frontend (Next.js 14)
-- `apps/admin`: Ayri admin frontend uygulamasi (Next.js 14)
-- `apps/api`: Backend API (NestJS 10 + Prisma)
-
-Ortak kodlar `packages/` altinda toplanir.
-
-## 2) Mimari Katmanlar (Neresi Ne?)
-
-### Frontend Katmani
-
-- `apps/web`: Son kullanici, kimlik dogrulama, profil ve satici basvuru akislari
-- `apps/admin`: Admin panel frontend uygulamasi
-
-### Backend Katmani
-
-- `apps/api/src`: Controller, Service, Repository katmanlari ile REST API
-- Auth, user profili, kategori, sektor, urun ve satici basvuru modulleri burada
-
-### Veritabani Katmani
-
-- `apps/api/prisma/schema.prisma`: Tum veri modeli tanimlari
-- `apps/api/prisma/migrations/*`: Prisma migration gecmisi
-- `apps/api/prisma/seed.ts`: Gelistirme seed verileri
-
-### Ortak Paketler
-
-- `packages/types`: Zod semalari ve ortak tipler
-- `packages/ui`: Tekrar kullanilan React UI bilesenleri
-- `packages/utils`: Ortak utility girisi
-- `packages/config`: Ortak config paketi girisi
-
-### Altyapi / DevOps Katmani
-
-- `docker-compose.yml`: Postgres, Redis, Meilisearch altyapi servisleri
-- `turbo.json`: Turborepo pipeline
-- `pnpm-workspace.yaml`: Workspace kapsami
-
-## 3) Kok Dizin Dosyalari
-
-- `README.md`: Kisa proje tanimi ve temel komutlar
-- `MEMORY_BANK.md`: Oturumlar arasi proje durum hafizasi
-- `RULES_CORE.md`: Tum gorevler icin ana kurallar
-- `RULES_FRONTEND.md`: Frontend gelistirme kurallari
-- `RULES_BACKEND.md`: Backend gelistirme kurallari
-- `RULES_DATABASE.md`: Prisma/veritabani kurallari
-- `RULES_DEVOPS.md`: Ortam, Docker, CI/CD ve git kurallari
-- `package.json`: Monorepo scriptleri (`dev`, `dev:fresh`, `build`, `test`, `lint`, `type-check`)
-- `pnpm-lock.yaml`: Bagimlilik kilit dosyasi
-- `pnpm-workspace.yaml`: `apps/*` ve `packages/*` workspace tanimi
-- `turbo.json`: Turborepo gorev bagimliliklari
-- `docker-compose.yml`: Altyapi servisleri
-
-## 4) apps/ Klasoru
-
-### 4.1 apps/admin (Next.js - Admin Frontend)
-
-- `apps/admin/package.json`: 3002 portunda admin dev/build/start scriptleri
-- `apps/admin/next.config.mjs`: Next config
-- `apps/admin/tailwind.config.ts`: Tailwind kaynak tarama ayari
-- `apps/admin/src/app/layout.tsx`: Root layout + QueryProvider
-- `apps/admin/src/app/providers.tsx`: TanStack Query provider
-- `apps/admin/src/app/globals.css`: Admin global stilleri
-- `apps/admin/src/app/page.tsx`: Admin anasayfa girisi
-- `apps/admin/public/`: Statik varliklar
-
-### 4.2 apps/web (Next.js - Ana Frontend)
-
-#### Uygulama cekirdegi
-
-- `apps/web/package.json`: 3000 portunda web scriptleri; `dev` oncesi `.next` temizligi var
-- `apps/web/src/app/layout.tsx`: Root layout (`lang="tr"`) + QueryProvider
-- `apps/web/src/app/providers.tsx`: TanStack Query provider
-- `apps/web/src/app/globals.css`: Global tema ve Material Symbols importu
-- `apps/web/src/app/page.tsx`: Ana sayfa (header, slider, sektorler, urun kesfet)
-
-#### Auth route'lari
-
-- `apps/web/src/app/(auth)/layout.tsx`: Auth segment layout
-- `apps/web/src/app/(auth)/login/page.tsx`: Giris ekrani
-- `apps/web/src/app/(auth)/register/page.tsx`: Kayit ekrani
-- `apps/web/src/app/(auth)/forgot-password/page.tsx`: Sifre sifirlama ekrani
-
-#### Admin route (web icinde)
-
-- `apps/web/src/app/admin/page.tsx`: Web uygulamasi icindeki admin panel route'u
-
-#### Profil route
-
-- `apps/web/src/app/kullanici-bilgilerim/page.tsx`: Kullanici profil goruntuleme/guncelleme ekrani
-
-#### Satici basvuru adimlari
-
-- `apps/web/src/app/satici-ol/page.tsx`: Adim 1 - Sirket bilgileri
-- `apps/web/src/app/satici-ol/iletisim-ve-finans/page.tsx`: Adim 2 - Iletisim ve finans
-- `apps/web/src/app/satici-ol/belge-yukleme-ve-onay/page.tsx`: Adim 3 - Belge yukleme ve onay
-
-#### Ortak app bilesenleri
-
-- `apps/web/src/app/components/MainHeader.tsx`: Ust gezinme
-- `apps/web/src/app/components/MainFooter.tsx`: Alt bilgi
-- `apps/web/src/app/components/HomeHeroSlider.tsx`: Ana slider
-- `apps/web/src/app/components/FeaturedSectorsCarousel.tsx`: Sektor karuseli
-- `apps/web/src/app/components/CategoryMegaMenu.tsx`: Kategori menusu
-- `apps/web/src/app/components/AccountNavLink.tsx`: Hesap link bileseni
-
-#### Feature katmani
-
-- `apps/web/src/features/auth/api/auth.api.ts`: `/auth/login` ve `/auth/register` istemcisi
-- `apps/web/src/features/auth/hooks/useAuthMutations.ts`: Auth mutation hook'lari
-- `apps/web/src/features/auth/components/*`: Auth UI bilesenleri
-- `apps/web/src/features/profile/api/profile.api.ts`: `/users/profile` API istemcisi
-- `apps/web/src/features/supplier-application/api/supplier-application.api.ts`: Satici basvuru API istemcileri
-- `apps/web/src/features/supplier-application/components/SupplierApplicationStepOne.tsx`: Basvuru adimi UI
-
-#### Lib katmani
-
-- `apps/web/src/lib/api.ts`: Merkezi fetch helper, hata cozumleme, refresh token retry
-- `apps/web/src/lib/auth-token.ts`: Access token saklama/okuma/silme helper'i
-
-### 4.3 apps/api (NestJS - Backend)
-
-#### Cekirdek
-
-- `apps/api/src/main.ts`: Global prefix (`/api/v1`), CORS, ValidationPipe
-- `apps/api/src/app.module.ts`: Modul baglantilari
-- `apps/api/src/prisma/prisma.module.ts`: Prisma modul exportu
-- `apps/api/src/prisma/prisma.service.ts`: Prisma lifecycle servisi
-
-#### Modul yapisi
-
-- `apps/api/src/modules/auth/*`: Register/login/refresh/logout, JWT ve auth servis mantigi
-- `apps/api/src/modules/users/*`: Profil goruntuleme/guncelleme ve user servis/repository
-- `apps/api/src/modules/categories/*`: Kategori agaci + admin CRUD
-- `apps/api/src/modules/sectors/*`: Sektor listesi + admin CRUD
-- `apps/api/src/modules/products/*`: Urun listeleme + olusturma endpointleri
-- `apps/api/src/modules/supplier-applications/*`: 3 adimli satici basvuru, belge yukleme, admin review akisleri
-
-#### Testler
-
-- `apps/api/src/**/*.spec.ts`: Unit testler
-- `apps/api/test/app.e2e-spec.ts`: E2E test girisi
-- `apps/api/test/jest-e2e.json`: E2E jest konfigu
-
-#### Prisma
-
-- `apps/api/prisma/schema.prisma`: User, SupplierApplication, SupplierApplicationDocument, Category, Sector, Product modelleri
-- `apps/api/prisma/migrations/*`: Model degisiklik migration gecmisi
-- `apps/api/prisma/seed.ts`: Seed verileri
-
-## 5) packages/ Klasoru
-
-### 5.1 packages/types
-
-- `packages/types/src/index.ts`: Tip export girisi
-- `packages/types/src/schemas/index.ts`: Schema export girisi
-- `packages/types/src/schemas/auth.ts`: Login/register Zod semalari
-- `packages/types/src/schemas/supplier-application.ts`: Satici basvuru adim semalari ve enum degerleri
-
-### 5.2 packages/ui
-
-- `packages/ui/src/index.ts`: UI export girisi
-- `packages/ui/src/components/index.ts`: Component export merkezi
-- `packages/ui/src/components/Button.tsx`: Ortak button
-- `packages/ui/src/components/Input.tsx`: Ortak input
-- `packages/ui/src/components/Checkbox.tsx`: Ortak checkbox
-
-### 5.3 packages/utils
-
-- `packages/utils/src/index.ts`: Utility paketi girisi (su an placeholder)
-
-### 5.4 packages/config
-
-- `packages/config/src/index.ts`: Config paketi girisi (su an placeholder)
-
-## 6) stitch_exports/
-
-- `stitch_exports/9569456776887919367/*.html`: Stitch tarafindan uretilmis referans ekran HTML'leri
-- `stitch_exports/9569456776887919367/*.jpg|*.webp`: Ekran goruntu referanslari
-
-Bu klasor, frontend entegrasyonunda hedef gorunumu birebir tasimak icin kaynak olarak kullaniliyor.
-
-## 7) Uygulamayi Calistirma Rehberi
-
-1. Klasik gelistirme baslatma:
-
-   - Kok dizinde: `pnpm dev`
-
-2. Next cache sorunu yasandiginda:
-
-   - Kok dizinde: `pnpm dev:fresh`
-
-3. Servis portlari:
-
-   - Web: `http://localhost:3000`
-   - API: `http://localhost:3001`
-   - Admin: `http://localhost:3002`
-
-4. Altyapi servisleri (opsiyonel ama API icin gerekli):
-
-   - `docker compose up -d`
-
-## 8) Bilinen Teknik Notlar (Proje Hafizasi)
-
-- Next.js stale chunk/MODULE_NOT_FOUND hatalarinda web `.next` temizligi gerekir; bu nedenle `dev:fresh` komutu var.
-- PostgreSQL 5432 cakismasi olursa Docker DB ile lokal PostgreSQL cakisabilir; 5433 test veritabani gecici cozum olabilir.
-- Prisma schema degisikliklerinden sonra `apps/api` altinda `pnpm prisma generate` calistirilmalidir.
-
-## 9) Kisa Mimari Sonuc
-
-- Frontend: `apps/web` + `apps/admin`
-- Backend: `apps/api`
-- Veritabani modeli: `apps/api/prisma/schema.prisma`
-- Ortak tip/UI: `packages/types` + `packages/ui`
-- Altyapi: `docker-compose.yml`
-
-Bu dosya proje mimarisine hizli adaptasyon ve yeni gelistirme oturumlarinda referans amacli tutulur.
+Monorepo 3 ana uygulamadan olusur:
+- [x] `apps/web` -> Kullanici + satici arayuzu (Next.js 14)
+- [x] `apps/admin` -> Admin arayuzu (Next.js 14)
+- [x] `apps/api` -> Backend API (NestJS 10 + Prisma)
+
+Ortak kodlar `packages/` altinda merkezi olarak yonetilir.
+
+---
+
+## 2) Ust Duzey Mimari (Kutucuk + Ok Akisi)
+
+```text
++------------------------------------------------------------------+
+|                           KULLANICILAR                           |
+|                  Alici / Satici / Admin Tarayicisi               |
++-------------------------------+----------------------------------+
+                                |
+                                v
++------------------------------------------------------------------+
+|                        FRONTEND KATMANI                          |
+|  [x] apps/web   (Next.js 14, port 3000)                          |
+|  [x] apps/admin (Next.js 14, port 3002)                          |
++-------------------------------+----------------------------------+
+                                |
+                                | HTTP (JSON) /api/v1
+                                v
++------------------------------------------------------------------+
+|                        BACKEND KATMANI                           |
+|  [x] apps/api (NestJS 10, port 3001)                             |
+|  [x] Controller -> Service -> Repository                          |
++-------------------------------+----------------------------------+
+                                |
+                                | Prisma Client
+                                v
++------------------------------------------------------------------+
+|                      VERITABANI KATMANI                          |
+|  [x] PostgreSQL                                                   |
+|  [x] Prisma schema + migrations + seed                           |
++-------------------------------+----------------------------------+
+                                |
+                                v
++------------------------------------------------------------------+
+|                     ALTYAPI SERVISLERI                           |
+|  [x] Redis   [x] Meilisearch   [x] Docker Compose                |
++------------------------------------------------------------------+
+```
+
+---
+
+## 3) Monorepo Haritasi (Neresi Ne Ise Yarar?)
+
+```text
+toptannext/
+|-- apps/
+|   |-- web/        -> Ana frontend (alici + satici)
+|   |-- admin/      -> Admin frontend
+|   `-- api/        -> NestJS backend
+|
+|-- packages/
+|   |-- types/      -> Ortak tipler + Zod semalari
+|   |-- ui/         -> Ortak React UI bilesenleri
+|   |-- utils/      -> Ortak yardimci fonksiyonlar
+|   `-- config/     -> Ortak config paket girisi
+|
+|-- stitch_exports/ -> Referans HTML/JPG/WEBP ekranlar
+|-- docker-compose.yml
+|-- turbo.json
+|-- pnpm-workspace.yaml
+|-- package.json
+`-- MEMORY_BANK.md
+```
+
+Kisa not:
+- [x] Paket yoneticisi: `pnpm`
+- [x] Orkestrasyon: `Turborepo`
+- [x] Workspace kapsami: `apps/*` + `packages/*`
+
+---
+
+## 4) Mimari Katmanlar - Detayli Aciklama
+
+### 4.1 Frontend Katmani
+
+```text
++---------------------------------------------------------------+
+| FRONTEND                                                      |
+| [x] apps/web                                                  |
+|     - Auth akislari (login/register/forgot-password)         |
+|     - Ana sayfa + kategori/urun kesfet                       |
+|     - Kullanici profil ekranlari                             |
+|     - Satici basvuru 3 adim akisi                            |
+|                                                               |
+| [x] apps/admin                                                |
+|     - Admin dashboard                                         |
+|     - Admin panel ekranlari                                  |
++---------------------------------------------------------------+
+```
+
+Onemli frontend klasorleri:
+- [x] `apps/web/src/app` -> Route ve sayfalar
+- [x] `apps/web/src/features` -> Domain bazli feature katmani
+- [x] `apps/web/src/lib` -> API istemcisi + auth token yardimcilari
+- [x] `apps/admin/src/app` -> Admin sayfa cekirdegi
+
+### 4.2 Backend Katmani
+
+```text
++---------------------------------------------------------------+
+| BACKEND (apps/api)                                            |
+| [x] main.ts -> global prefix: /api/v1                         |
+| [x] app.module.ts -> modul baglantilari                       |
+| [x] modules/* -> is alani bazli moduller                      |
+| [x] prisma/* -> Prisma modul + servis                         |
++---------------------------------------------------------------+
+```
+
+Mevcut backend modulleri:
+- [x] `auth`
+- [x] `users`
+- [x] `categories`
+- [x] `sectors`
+- [x] `products`
+- [x] `supplier-applications`
+
+### 4.3 Veritabani Katmani
+
+```text
++---------------------------------------------------------------+
+| DATABASE (Prisma + PostgreSQL)                                |
+| [x] schema.prisma   -> tum model tanimlari                    |
+| [x] migrations/*    -> sema degisim gecmisi                   |
+| [x] seed.ts         -> gelistirme verisi                      |
++---------------------------------------------------------------+
+```
+
+### 4.4 Ortak Paket Katmani
+
+```text
++---------------------------------------------------------------+
+| SHARED PACKAGES                                                |
+| [x] @toptannext/types  -> tipler + schema                     |
+| [x] @toptannext/ui     -> tekrar kullanilan bilesenler        |
+| [x] @toptannext/utils  -> utility fonksiyonlari               |
+| [x] @toptannext/config -> ortak config                         |
++---------------------------------------------------------------+
+```
+
+### 4.5 Altyapi / DevOps Katmani
+
+```text
++---------------------------------------------------------------+
+| INFRASTRUCTURE                                                 |
+| [x] docker-compose.yml                                         |
+|     - postgres     (5432)                                      |
+|     - postgres-test (5433)                                     |
+|     - redis        (6379)                                      |
+|     - meilisearch  (7700)                                      |
+| [x] turbo.json -> monorepo gorev bagimliliklari                |
++---------------------------------------------------------------+
+```
+
+---
+
+## 5) Uygulama Icindeki Veri Akisi (Uctan Uca)
+
+### 5.1 Genel Request Akisi
+
+```text
+[Web/Admin UI]
+    -> [apps/web/src/lib/api.ts]
+    -> [HTTP /api/v1/...]
+    -> [apps/api Controller]
+    -> [apps/api Service]
+    -> [apps/api Repository]
+    -> [PrismaService]
+    -> [PostgreSQL]
+    -> [Response]
+    -> [UI update]
+```
+
+### 5.2 Auth Refresh Akisi
+
+```text
+[Protected API cagrisi]
+    -> 401
+    -> [apps/web/src/lib/api.ts refresh mekanizmasi]
+    -> POST /auth/refresh
+    -> yeni access token
+    -> original request retry
+```
+
+---
+
+## 6) apps/ Klasoru - Derin Dizin Aciklamasi
+
+### 6.1 apps/web (Port 3000)
+
+Durum:
+- [x] Next.js 14 App Router
+- [x] TanStack Query provider yapisi var
+- [x] Auth route grubu var
+- [x] Satici basvuru route grubu var
+
+One cikan yollar:
+- [x] `src/app/(auth)/login/page.tsx`
+- [x] `src/app/(auth)/register/page.tsx`
+- [x] `src/app/(auth)/forgot-password/page.tsx`
+- [x] `src/app/kullanici-bilgilerim/page.tsx`
+- [x] `src/app/satici-ol/page.tsx`
+- [x] `src/app/satici-ol/iletisim-ve-finans/page.tsx`
+- [x] `src/app/satici-ol/belge-yukleme-ve-onay/page.tsx`
+
+### 6.2 apps/admin (Port 3002)
+
+Durum:
+- [x] Next.js 14 tabanli ayri admin uygulamasi
+- [x] Kendi layout/providers yapisi var
+- [x] Admin panelin frontend ayrimi net
+
+### 6.3 apps/api (Port 3001)
+
+Durum:
+- [x] NestJS 10
+- [x] Global prefix: `/api/v1`
+- [x] ValidationPipe acik
+- [x] Modul bazli domain ayrimi mevcut
+
+Test dosyalari:
+- [x] Unit testler -> `src/**/*.spec.ts`
+- [x] E2E test girisi -> `test/app.e2e-spec.ts`
+
+---
+
+## 7) packages/ Klasoru - Ortak Kod Stratejisi
+
+```text
+Eger bir kod hem web hem admin tarafinda kullanilacaksa:
+    -> packages/ui veya packages/types altina alinmali
+
+Eger sadece tek uygulamaya ozelse:
+    -> ilgili app altinda kalmali
+```
+
+Paket bazli durum:
+- [x] `packages/types` -> Zod semalari ve tip export'lari
+- [x] `packages/ui` -> Button, Input, Checkbox gibi temel UI parcalari
+- [x] `packages/utils` -> ortak utility girisi
+- [x] `packages/config` -> ortak config girisi
+
+---
+
+## 8) stitch_exports Rolu (Tasarim Kaynagi)
+
+```text
+stitch_exports/9569456776887919367/
+|-- *.html  -> referans ekran yapilari
+|-- *.jpg   -> ekran goruntusu referansi
+`-- *.webp  -> ekran goruntusu referansi
+```
+
+Kural:
+- [x] Frontend entegrasyonda bu klasor hedef gorunumu belirler
+- [x] Tasarim aktariminda referans bozulmamali
+
+---
+
+## 9) Gelistirme ve Calistirma Rehberi
+
+### 9.1 Temel komutlar
+
+- [x] Tum uygulamalar: `pnpm dev`
+- [x] Taze baslatma (web cache temiz): `pnpm dev:fresh`
+- [x] Build: `pnpm build`
+- [x] Test: `pnpm test`
+- [x] Type check: `pnpm type-check`
+
+### 9.2 Servis portlari
+
+- [x] Web: `http://localhost:3000`
+- [x] API: `http://localhost:3001`
+- [x] Admin: `http://localhost:3002`
+
+### 9.3 Altyapi servisleri
+
+- [x] Baslat: `docker compose up -d`
+- [x] Kaynaklar: Postgres, Postgres-test, Redis, Meilisearch
+
+---
+
+## 10) Bilinen Teknik Notlar (Repo Hafizasiyla Senkron)
+
+- [x] Next.js stale chunk/MODULE_NOT_FOUND durumunda web `.next` temizligi gerekir.
+- [x] Bunun icin `apps/web` icinde clean scripti ve kokte `pnpm dev:fresh` kullanimi mevcut.
+- [x] PostgreSQL 5432 cakismasi olursa lokal postgres docker postgres'i golgeleyebilir.
+- [x] Gecici cozum: 5433 (postgres-test) uzerinden DATABASE_URL override ile calismak.
+- [x] Prisma schema degisince `apps/api` altinda `pnpm prisma generate` calistirilmali.
+- [x] Kategori/Sektor reorder akisinda unique sort_order cakismasi, iki fazli yeniden sira yazimi ile ele alinmali.
+
+---
+
+## 11) Hizli Karar Agaci - Hangi Isi Nereye Yazacagim?
+
+```text
+[Yeni ekran mi ekleniyor?]
+    -> Evet: apps/web veya apps/admin (duruma gore)
+
+[Yeni endpoint mi gerekiyor?]
+    -> Evet: apps/api/src/modules/{domain}
+
+[Yeni DB alan/model mi gerekiyor?]
+    -> Evet: apps/api/prisma/schema.prisma + migration + prisma generate
+
+[Ortak tip mi gerekiyor?]
+    -> Evet: packages/types
+
+[Ortak UI bileseni mi gerekiyor?]
+    -> Evet: packages/ui
+```
+
+---
+
+## 12) Kisa Mimari Sonuc
+
+```text
+ToptanNext = Monorepo + Ayrik frontendler + Tek backend + Ortak paketler
+
+[x] Frontend: apps/web + apps/admin
+[x] Backend:  apps/api
+[x] Database: Prisma + PostgreSQL
+[x] Shared:   packages/types + packages/ui (+ utils/config)
+[x] Infra:    docker-compose (postgres/redis/meilisearch)
+```
+
+Bu dosya, proje mimarisini gozle canlandirmak ve yeni bir gorevde hizli karar vermek icin referans olarak kullanilmalidir.

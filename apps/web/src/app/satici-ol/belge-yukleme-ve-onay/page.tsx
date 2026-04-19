@@ -38,7 +38,7 @@ const DOCUMENT_CARDS: DocumentCardConfig[] = [
     field: "taxCertificate",
     documentType: "TAX_CERTIFICATE",
     title: "Güncel Vergi Levhası",
-    description: "PDF, PNG veya JPEG (Maks. 5MB)",
+    description: "PDF, PNG veya JPEG (Maks. 15MB)",
     icon: "description",
   },
   {
@@ -69,6 +69,9 @@ const EMPTY_FORM: SupplierApplicationStepThreeDto = {
   approvedKvkkAgreement: false,
   approvedCommercialMessage: false,
 };
+
+const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
+const RESULT_PAGE_PATH = "/satici-ol/basvuru-sonucu";
 
 export default function SaticiOlBelgeYuklemeVeOnayPage() {
   const router = useRouter();
@@ -120,6 +123,11 @@ export default function SaticiOlBelgeYuklemeVeOnayPage() {
           return;
         }
 
+        if (existingApplication.reviewStatus !== "REJECTED") {
+          router.replace(RESULT_PAGE_PATH);
+          return;
+        }
+
         reset({
           approvedSupplierAgreement:
             existingApplication.approvedSupplierAgreement,
@@ -143,7 +151,7 @@ export default function SaticiOlBelgeYuklemeVeOnayPage() {
     return () => {
       isMounted = false;
     };
-  }, [reset]);
+  }, [reset, router]);
 
   const upsertMutation = useMutation({
     mutationKey: ["supplier-application", "upsert-documents"],
@@ -201,6 +209,7 @@ export default function SaticiOlBelgeYuklemeVeOnayPage() {
       setSubmitSuccessMessage(
         "Belge yükleme ve onay bilgileri başarıyla kaydedildi.",
       );
+      router.push(RESULT_PAGE_PATH);
     } catch (error) {
       const message =
         error instanceof Error
@@ -211,6 +220,14 @@ export default function SaticiOlBelgeYuklemeVeOnayPage() {
   };
 
   const handleFileChange = (field: DocumentFieldKey, file: File | null) => {
+    if (file && file.size > MAX_FILE_SIZE_BYTES) {
+      setSubmitErrorMessage(
+        "Yüklediğiniz dosya 15 MB sınırını aşıyor. Lütfen daha küçük bir dosya seçiniz.",
+      );
+      return;
+    }
+
+    setSubmitErrorMessage(null);
     setSelectedFiles((prev) => {
       if (!file) {
         const next = { ...prev };
@@ -269,6 +286,15 @@ export default function SaticiOlBelgeYuklemeVeOnayPage() {
                 </span>
                 <span className="whitespace-nowrap">Belge Yükleme ve Onay</span>
               </div>
+
+              <button
+                className="flex w-full items-center gap-3 rounded-lg p-3.5 text-sm font-semibold text-slate-500 text-left"
+                type="button"
+                onClick={() => router.push(RESULT_PAGE_PATH)}
+              >
+                <span className="material-symbols-outlined">task_alt</span>
+                <span className="whitespace-nowrap">Satıcı Başvuru Sonucu</span>
+              </button>
             </nav>
 
             <div className="mt-8 pt-6 border-t border-slate-200">

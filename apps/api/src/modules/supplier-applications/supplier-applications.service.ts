@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { existsSync } from 'fs';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { ReviewSupplierApplicationDto } from './dto/review-supplier-application.dto';
@@ -125,9 +126,16 @@ export class SupplierApplicationsService {
       throw new NotFoundException('Tedarikçi başvurusu bulunamadı.');
     }
 
+    const normalizedReviewNote = this.normalizeOptionalText(dto.reviewNote);
+    if (dto.status === 'REJECTED' && !normalizedReviewNote) {
+      throw new BadRequestException(
+        'Başvuruyu reddetmek için red nedeni yazmanız zorunludur.',
+      );
+    }
+
     return this.supplierApplicationsRepository.updateReviewById(id, {
       status: dto.status,
-      reviewNote: this.normalizeOptionalText(dto.reviewNote),
+      reviewNote: normalizedReviewNote,
     });
   }
 
@@ -259,9 +267,56 @@ export class SupplierApplicationsService {
   }
 
   resolveDocumentAbsolutePath(filePath: string): string {
-    return path.isAbsolute(filePath)
-      ? filePath
-      : path.join(process.cwd(), filePath);
+    if (typeof filePath !== 'string' || filePath.trim().length === 0) {
+      return '';
+    }
+
+    const normalizedInputPath = filePath.trim();
+
+    if (!path.isAbsolute(normalizedInputPath)) {
+      return path.join(process.cwd(), normalizedInputPath);
+    }
+
+    if (existsSync(normalizedInputPath)) {
+      return normalizedInputPath;
+    }
+
+    const normalized = normalizedInputPath.replace(/\\/g, '/');
+    const marker = '/uploads/supplier-documents/';
+    const markerIndex = normalized.lastIndexOf(marker);
+
+    if (markerIndex === -1) {
+      return normalizedInputPath;
+    }
+
+    const relativeTail = normalized.slice(markerIndex + marker.length);
+
+    const candidates = [
+      path.join(process.cwd(), 'uploads', 'supplier-documents', relativeTail),
+      path.join(
+        process.cwd(),
+        'apps',
+        'api',
+        'uploads',
+        'supplier-documents',
+        relativeTail,
+      ),
+      path.join(
+        process.cwd(),
+        '..',
+        'apps',
+        'api',
+        'uploads',
+        'supplier-documents',
+        relativeTail,
+      ),
+    ];
+
+    const foundCandidate = candidates.find((candidatePath) =>
+      existsSync(candidatePath),
+    );
+
+    return foundCandidate ?? candidates[0];
   }
 
   private async removeFileIfExists(filePath: string): Promise<void> {
