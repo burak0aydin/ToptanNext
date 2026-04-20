@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+
+<html class="light" lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#d4dcff",
+                        "on-surface": "#191c1e",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-container": "#521300",
+                        "surface-tint": "#1353d8",
+                        "on-primary-fixed-variant": "#003dab",
+                        "primary": "#003fb1",
+                        "inverse-surface": "#2d3133",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-low": "#f2f4f6",
+                        "on-secondary-fixed": "#3a0b00",
+                        "on-secondary-fixed-variant": "#852400",
+                        "inverse-on-surface": "#eff1f3",
+                        "error-container": "#ffdad6",
+                        "on-primary": "#ffffff",
+                        "surface-container-high": "#e6e8ea",
+                        "secondary": "#ae3200",
+                        "primary-container": "#1a56db",
+                        "outline-variant": "#c3c5d7",
+                        "tertiary-container": "#ad3b00",
+                        "primary-fixed": "#dbe1ff",
+                        "on-surface-variant": "#434654",
+                        "on-primary-fixed": "#00174d",
+                        "on-tertiary-fixed": "#380d00",
+                        "on-error-container": "#93000a",
+                        "tertiary": "#852b00",
+                        "surface-container-highest": "#e0e3e5",
+                        "outline": "#737686",
+                        "surface-container": "#eceef0",
+                        "surface-variant": "#e0e3e5",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#ffdbcf",
+                        "secondary-container": "#fd591e",
+                        "on-tertiary-fixed-variant": "#802a00",
+                        "inverse-primary": "#b5c4ff",
+                        "error": "#ba1a1a",
+                        "on-error": "#ffffff",
+                        "background": "#f7f9fb",
+                        "secondary-fixed": "#ffdbd0",
+                        "on-tertiary-container": "#ffd4c5",
+                        "on-background": "#191c1e",
+                        "surface-dim": "#d8dadc",
+                        "surface-bright": "#f7f9fb",
+                        "surface": "#f7f9fb",
+                        "secondary-fixed-dim": "#ffb59e",
+                        "primary-fixed-dim": "#b5c4ff",
+                        "tertiary-fixed-dim": "#ffb59a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        /* Custom toggle styles if needed, though Tailwind peers work well */
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+<div class="flex min-h-screen">
+<!-- Predicted SideNavBar -->
+<aside class="flex flex-col h-screen sticky top-0 bg-slate-50 dark:bg-slate-900 h-screen w-64 border-r border-slate-200/50 dark:border-slate-800/50 flat no shadows font-['Inter'] text-sm font-medium">
+<div class="p-6">
+<div class="text-xl font-bold text-blue-800 dark:text-blue-300">ToptanNext</div>
+<div class="text-xs text-slate-500 mt-1 uppercase tracking-wider">Tedarici Paneli</div>
+</div>
+<nav class="flex-1 px-3 space-y-1">
+<!-- Dashboard -->
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<!-- Ürünler (Active) -->
+<a class="flex items-center gap-3 px-3 py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-r-4 border-blue-700 transition-colors duration-200 Active: scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span>Ürünler</span>
+</a>
+<!-- Siparişler -->
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+<span>Siparişler</span>
+</a>
+<!-- Mesajlar -->
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="chat">chat</span>
+<span>Mesajlar</span>
+</a>
+<!-- Finans -->
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span>Finans</span>
+</a>
+<!-- Ayarlar -->
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span>Ayarlar</span>
+</a>
+</nav>
+<div class="p-4 mt-auto border-t border-slate-200/50">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden border border-outline-variant">
+<img alt="Tedarikçi Profil Resmi" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFe6dnY4lhdwdftjoXScXOepCwGjy64QJ1nrjZRKHrVaXCPSQkcIi9bCe9PelqnD_Bx_u9j2v4XbiDkc-bkHkN4RCYeVNLxXR_BODeK8JirYATmYprjZ1zp-aXDRoA2S9jjv3orPJUOEKyHNA_-KMDdnUaRWkcU6T9ztjN6FMXbWnYyjAsSx4VAvsRbYOEBERbfpK3wzS7SVr9Jeb4nci7Fl5MBKbetzcqxrKivOKh_xCyTL_FVA5UAwNzRtC3l82grN84d_-fce4"/>
+</div>
+<div>
+<p class="text-xs font-bold text-on-surface">Ahmet Yılmaz</p>
+<p class="text-[10px] text-on-surface-variant uppercase">Global Tekstil A.Ş.</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col min-w-0">
+<!-- Predicted TopAppBar -->
+<header class="flex justify-between items-center px-8 w-full sticky top-0 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md h-16 border-b border-slate-200/50 dark:border-slate-800/50 shadow-sm dark:shadow-none font-['Inter'] text-base font-semibold">
+<div class="flex items-center gap-4 flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" data-icon="search">search</span>
+<input class="w-full bg-slate-100 border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary focus:bg-white transition-all" placeholder="Panelde ara..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="hover:bg-slate-50 dark:hover:bg-slate-900 rounded-full p-2 cursor-pointer active:opacity-70 text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="hover:bg-slate-50 dark:hover:bg-slate-900 rounded-full p-2 cursor-pointer active:opacity-70 text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+</button>
+<button class="hover:bg-slate-50 dark:hover:bg-slate-900 rounded-full p-2 cursor-pointer active:opacity-70 text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+</button>
+</div>
+</header>
+<!-- Stepper Container -->
+<div class="bg-surface py-8 px-12">
+<div class="max-w-4xl mx-auto">
+<div class="flex items-center justify-between relative">
+<!-- Connector Line -->
+<div class="absolute top-1/2 left-0 w-full h-0.5 bg-surface-container-highest -translate-y-1/2 z-0"></div>
+<div class="absolute top-1/2 left-0 w-1/3 h-0.5 bg-primary -translate-y-1/2 z-0"></div>
+<!-- Step 1 (Active) -->
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold ring-4 ring-primary-fixed">1</div>
+<span class="text-xs font-semibold text-primary">Temel Bilgiler</span>
+</div>
+<!-- Step 2 -->
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center font-bold">2</div>
+<span class="text-xs font-medium text-on-surface-variant">Fiyatlandırma &amp; Stok</span>
+</div>
+<!-- Step 3 -->
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center font-bold">3</div>
+<span class="text-xs font-medium text-on-surface-variant">Lojistik</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Page Content -->
+<div class="p-8 lg:p-12 overflow-y-auto">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-7xl mx-auto">
+<!-- Left Column: Form & Media -->
+<div class="lg:col-span-8 space-y-8">
+<!-- Form Section (Updated) -->
+<section class="bg-surface-container-lowest p-8 rounded-xl border border-outline-variant shadow-sm">
+<div class="flex items-center gap-2 mb-8">
+<span class="material-symbols-outlined text-primary" data-icon="description">description</span>
+<h2 class="text-xl font-bold tracking-tight">Temel Ürün Bilgileri</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<!-- Ürün Adı -->
+<div class="col-span-2">
+<label class="block text-sm font-bold text-on-surface-variant mb-2">Ürün Adı</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary focus:bg-white outline-none transition-all" placeholder="Örn: Pamuklu Erkek Gömlek - Toptan" type="text"/>
+</div>
+<!-- Categories (Left Side) -->
+<div class="space-y-6">
+<div>
+<label class="block text-sm font-bold text-on-surface-variant mb-2">Ana Kategori</label>
+<div class="relative">
+<select class="w-full bg-surface-container-low border border-outline-variant rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary focus:bg-white outline-none transition-all appearance-none cursor-pointer">
+<option>Kategori Seçiniz</option>
+<option>Tekstil &amp; Giyim</option>
+<option>Gıda &amp; İçecek</option>
+<option>Endüstriyel Mutfak</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
+</div>
+</div>
+<div>
+<label class="block text-sm font-bold text-on-surface-variant mb-2">Alt Kategori</label>
+<div class="relative">
+<select class="w-full bg-surface-container-low border border-outline-variant rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary focus:bg-white outline-none transition-all appearance-none cursor-pointer">
+<option>Alt Kategori Seçiniz</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
+</div>
+</div>
+<div>
+<label class="block text-sm font-bold text-on-surface-variant mb-2">Alt-alt Kategori</label>
+<div class="relative">
+<select class="w-full bg-surface-container-low border border-outline-variant rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary focus:bg-white outline-none transition-all appearance-none cursor-pointer">
+<option>Alt-alt Kategori Seçiniz</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Ürün Sektörleri (Right Side) -->
+<div>
+<label class="block text-sm font-bold text-on-surface-variant mb-2">Ürün Sektörleri</label>
+<div class="bg-surface-container-low border border-outline-variant rounded-lg p-4 min-h-[160px] flex flex-col">
+<div class="flex flex-wrap gap-2 mb-4">
+<div class="flex items-center gap-2 bg-[#E8EFFF] text-[#1A56DB] px-3 py-1.5 rounded text-sm font-medium border border-[#D0DFFF]">
+          Oteller <button class="flex items-center"><span class="material-symbols-outlined text-sm font-bold">close</span></button>
+</div>
+<div class="flex items-center gap-2 bg-[#E8EFFF] text-[#1A56DB] px-3 py-1.5 rounded text-sm font-medium border border-[#D0DFFF]">
+          Restoranlar <button class="flex items-center"><span class="material-symbols-outlined text-sm font-bold">close</span></button>
+</div>
+</div>
+<div class="mt-auto border-t border-outline-variant/30 pt-3">
+<input class="w-full bg-transparent border-none p-0 text-sm focus:ring-0 outline-none text-on-surface-variant" placeholder="Sektör ekle..." type="text"/>
+</div>
+</div>
+</div>
+<!-- Öne Çıkan Özellikler -->
+<div class="col-span-2">
+<label class="block text-sm font-bold text-on-surface-variant mb-2">Öne Çıkan Özellikler</label>
+<div class="flex flex-wrap gap-2 p-2 min-h-[46px] bg-surface-container-low border border-outline-variant rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:bg-white transition-all">
+<div class="flex items-center gap-1 bg-slate-100 text-on-surface px-2 py-1 rounded text-xs font-medium border border-outline-variant">
+        %100 Pamuk <button class="hover:text-error transition-colors"><span class="material-symbols-outlined text-xs" data-icon="close">close</span></button>
+</div>
+<input class="flex-1 min-w-[200px] bg-transparent border-none p-1 text-sm outline-none focus:ring-0" placeholder="Örn: Su Geçirmez, Organik (Enter ile ekleyin)" type="text"/>
+</div>
+</div>
+<!-- Özelleştirme Seçeneği -->
+<div class="col-span-2 space-y-4">
+<div class="flex items-center gap-3">
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+<span class="text-sm font-bold text-on-surface">Özelleştirilebilir mi?</span>
+</div>
+<div class="bg-surface-container-low border border-dashed border-outline-variant rounded-lg p-4">
+<label class="block text-sm font-bold text-on-surface-variant mb-2">Özelleştirme Açıklaması (Aktifse görünür)</label>
+<textarea class="w-full bg-white border border-outline-variant rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-primary transition-all resize-none" placeholder="Logo baskısı, özel nakış vb. detayları belirtin..." rows="2"></textarea>
+</div>
+</div>
+<!-- Ürün Açıklaması -->
+<div class="col-span-2">
+<label class="block text-sm font-bold text-on-surface-variant mb-2">Ürün Açıklaması</label>
+<div class="border border-outline-variant rounded-lg overflow-hidden">
+<div class="bg-surface-container flex gap-2 p-2 border-b border-outline-variant">
+<button class="p-1 hover:bg-surface-container-high rounded transition-colors"><span class="material-symbols-outlined text-sm" data-icon="format_bold">format_bold</span></button>
+<button class="p-1 hover:bg-surface-container-high rounded transition-colors"><span class="material-symbols-outlined text-sm" data-icon="format_italic">format_italic</span></button>
+<button class="p-1 hover:bg-surface-container-high rounded transition-colors"><span class="material-symbols-outlined text-sm" data-icon="format_list_bulleted">format_list_bulleted</span></button>
+<div class="w-[1px] bg-outline-variant mx-1"></div>
+<button class="p-1 hover:bg-surface-container-high rounded transition-colors"><span class="material-symbols-outlined text-sm" data-icon="link">link</span></button>
+</div>
+<textarea class="w-full bg-surface-container-low p-4 text-sm focus:bg-white outline-none transition-all resize-none" placeholder="Ürün detaylarını buraya yazınız..." rows="6"></textarea>
+</div>
+</div>
+</div>
+</section>
+<!-- Media Section -->
+<section class="bg-surface-container-lowest p-8 rounded-xl border border-outline-variant shadow-sm">
+<div class="flex items-center justify-between mb-8">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="add_photo_alternate">add_photo_alternate</span>
+<h2 class="text-xl font-bold tracking-tight">Ürün Görsel ve Videoları</h2>
+</div>
+<span class="text-xs text-on-surface-variant">En fazla 5 görsel/video. Minimum 1200x1200px önerilir.</span>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+<!-- Main Image Slot -->
+<div class="col-span-2 row-span-2 aspect-square border-2 border-dashed border-outline-variant rounded-xl flex flex-col items-center justify-center gap-3 bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer group">
+<div class="w-12 h-12 rounded-full bg-primary-fixed flex items-center justify-center group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary" data-icon="upload">upload</span>
+</div>
+<div class="text-center">
+<p class="text-sm font-bold text-on-surface">Kapak Görseli</p>
+<p class="text-[10px] text-on-surface-variant px-4">Yüklemek için tıklayın veya sürükleyin</p>
+</div>
+</div>
+<!-- Empty Slots -->
+<div class="aspect-square border-2 border-dashed border-outline-variant rounded-xl flex items-center justify-center bg-surface-container-low hover:border-primary transition-all cursor-pointer group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors" data-icon="add">add</span>
+</div>
+<div class="aspect-square border-2 border-dashed border-outline-variant rounded-xl flex items-center justify-center bg-surface-container-low hover:border-primary transition-all cursor-pointer group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors" data-icon="add">add</span>
+</div>
+<div class="aspect-square border-2 border-dashed border-outline-variant rounded-xl flex items-center justify-center bg-surface-container-low hover:border-primary transition-all cursor-pointer group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors" data-icon="add">add</span>
+</div>
+<div class="aspect-square border-2 border-dashed border-outline-variant rounded-xl flex items-center justify-center bg-surface-container-low hover:border-primary transition-all cursor-pointer group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors" data-icon="add">add</span>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Summary & CTA -->
+<div class="lg:col-span-4">
+<div class="sticky top-24 space-y-6">
+<!-- Summary Card -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-lg">
+<h3 class="text-lg font-bold mb-6 border-b border-surface-container pb-4">İşlem Özeti</h3>
+<div class="space-y-4 mb-8">
+<div class="flex justify-between items-start">
+<span class="text-xs font-medium text-on-surface-variant">Ürün Adı:</span>
+<span class="text-xs font-bold text-right italic text-outline">Henüz belirtilmedi</span>
+</div>
+<div class="flex justify-between items-start">
+<span class="text-xs font-medium text-on-surface-variant">Kategori:</span>
+<span class="text-xs font-bold text-right italic text-outline">Seçilmedi</span>
+</div>
+<div class="flex justify-between items-start">
+<span class="text-xs font-medium text-on-surface-variant">Sektörler:</span>
+<span class="text-xs font-bold text-right italic text-outline">0 / -</span>
+</div>
+<div class="flex justify-between items-start">
+<span class="text-xs font-medium text-on-surface-variant">Görseller:</span>
+<span class="text-xs font-bold text-right italic text-outline">0 / 5</span>
+</div>
+</div>
+<div class="space-y-3">
+<button class="w-full bg-[#1A56DB] text-white font-bold py-4 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+<span>Sonraki Adım</span>
+<span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Help / Tip Card -->
+<div class="bg-blue-50 border border-blue-100 p-6 rounded-xl">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-blue-700" data-icon="lightbulb">lightbulb</span>
+<div>
+<h4 class="text-sm font-bold text-blue-900">Profesyonel İpucu</h4>
+<p class="text-xs text-blue-800 mt-1 leading-relaxed">Öne çıkan özellikleri kısa ve net (etiketler halinde) eklemek, alıcıların ürününüzü hızlıca değerlendirmesine yardımcı olur.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

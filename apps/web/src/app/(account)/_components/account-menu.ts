@@ -19,6 +19,7 @@ export const personalMenuItems: AccountMenuLeafItem[] = [
 export const sellerMenuItems: AccountMenuLeafItem[] = [
   { label: "Genel Bakış", href: "/satici-panelim" },
   { label: "Ürünlerim", href: "/satici-panelim/urunlerim" },
+  { label: "Ürün Yükle", href: "/satici-panelim/urun-yukle" },
   { label: "Siparişler", href: "/satici-panelim/siparisler" },
   { label: "Mesajlar", href: "/satici-panelim/mesajlar" },
   { label: "Finans", href: "/satici-panelim/finans" },

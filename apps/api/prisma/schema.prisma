@@ -22,6 +22,7 @@ model User {
   lastName            String?
   phoneNumber         String?
   supplierApplication SupplierApplication?
+  productListings     ProductListing[]
 
   @@index([email])
   @@index([role])
@@ -100,6 +101,7 @@ model Category {
   parent    Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
   children  Category[] @relation("CategoryHierarchy")
   products  Product[]
+  productListings ProductListing[]
 
   @@index([level])
   @@index([parentId])
@@ -116,6 +118,7 @@ model Sector {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   products  Product[]
+  productListingSectors ProductListingSector[]
 
   @@index([isActive])
   @@map("sectors")
@@ -135,6 +138,77 @@ model Product {
   @@index([categoryId])
   @@index([sectorId])
   @@map("products")
+}
+
+model ProductListing {
+  id                String               @id @default(cuid())
+  supplierId        String               @map("supplier_id")
+  name              String
+  slug              String
+  sku               String
+  description       String               @db.Text
+  categoryId        String               @map("category_id")
+  status            ProductListingStatus @default(DRAFT)
+  featuredFeatures  String[]             @default([]) @map("featured_features")
+  isCustomizable    Boolean              @default(false) @map("is_customizable")
+  customizationNote String?              @map("customization_note")
+  basePrice         Decimal?             @db.Decimal(12, 2) @map("base_price")
+  currency          String               @default("TRY")
+  minOrderQuantity  Int?                 @map("min_order_quantity")
+  stock             Int?
+  leadTimeDays      Int?                 @map("lead_time_days")
+  packageLengthCm   Decimal?             @db.Decimal(8, 2) @map("package_length_cm")
+  packageWidthCm    Decimal?             @db.Decimal(8, 2) @map("package_width_cm")
+  packageHeightCm   Decimal?             @db.Decimal(8, 2) @map("package_height_cm")
+  packageWeightKg   Decimal?             @db.Decimal(8, 3) @map("package_weight_kg")
+  submittedAt       DateTime?            @map("submitted_at")
+  reviewNote        String?              @map("review_note")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+  deletedAt         DateTime?            @map("deleted_at")
+  supplier          User                 @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  category          Category             @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  sectors           ProductListingSector[]
+  media             ProductListingMedia[]
+
+  @@unique([supplierId, sku])
+  @@unique([supplierId, slug])
+  @@index([supplierId])
+  @@index([status])
+  @@index([categoryId])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("product_listings")
+}
+
+model ProductListingSector {
+  id               String         @id @default(cuid())
+  productListingId String         @map("product_listing_id")
+  sectorId         String         @map("sector_id")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  productListing   ProductListing @relation(fields: [productListingId], references: [id], onDelete: Cascade)
+  sector           Sector         @relation(fields: [sectorId], references: [id], onDelete: Restrict)
+
+  @@unique([productListingId, sectorId])
+  @@index([sectorId])
+  @@map("product_listing_sectors")
+}
+
+model ProductListingMedia {
+  id               String                  @id @default(cuid())
+  productListingId String                  @map("product_listing_id")
+  mediaType        ProductListingMediaType @default(IMAGE) @map("media_type")
+  filePath         String                  @map("file_path")
+  originalName     String                  @map("original_name")
+  mimeType         String                  @map("mime_type")
+  fileSize         Int                     @map("file_size")
+  displayOrder     Int                     @default(0) @map("display_order")
+  createdAt        DateTime                @default(now()) @map("created_at")
+  updatedAt        DateTime                @updatedAt @map("updated_at")
+  productListing   ProductListing          @relation(fields: [productListingId], references: [id], onDelete: Cascade)
+
+  @@index([productListingId, displayOrder])
+  @@map("product_listing_media")
 }
 
 enum Role {
@@ -160,4 +234,16 @@ enum SupplierApplicationDocumentType {
   SIGNATURE_CIRCULAR
   TRADE_REGISTRY_GAZETTE
   ACTIVITY_CERTIFICATE
+}
+
+enum ProductListingStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum ProductListingMediaType {
+  IMAGE
+  VIDEO
 }

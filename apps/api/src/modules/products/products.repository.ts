@@ -1,5 +1,72 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+} from '@nestjs/common';
+import {
+  Prisma,
+  ProductListingMediaType,
+  ProductListingStatus,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+
+const productListingSelect = {
+  id: true,
+  supplierId: true,
+  name: true,
+  slug: true,
+  sku: true,
+  description: true,
+  categoryId: true,
+  status: true,
+  featuredFeatures: true,
+  isCustomizable: true,
+  customizationNote: true,
+  basePrice: true,
+  currency: true,
+  minOrderQuantity: true,
+  stock: true,
+  leadTimeDays: true,
+  packageLengthCm: true,
+  packageWidthCm: true,
+  packageHeightCm: true,
+  packageWeightKg: true,
+  submittedAt: true,
+  reviewNote: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+  sectors: {
+    select: {
+      sectorId: true,
+      sector: {
+        select: {
+          name: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'asc',
+    },
+  },
+  media: {
+    select: {
+      id: true,
+      mediaType: true,
+      filePath: true,
+      originalName: true,
+      mimeType: true,
+      fileSize: true,
+      displayOrder: true,
+      createdAt: true,
+    },
+    orderBy: {
+      displayOrder: 'asc',
+    },
+  },
+} as const;
+
+type ProductListingSelectRecord = Prisma.ProductListingGetPayload<{
+  select: typeof productListingSelect;
+}>;
 
 export type CategorySummary = {
   id: string;
@@ -24,11 +91,95 @@ export type ProductRecord = {
   updatedAt: Date;
 };
 
+export type ProductListingMediaRecord = {
+  id: string;
+  mediaType: ProductListingMediaType;
+  filePath: string;
+  originalName: string;
+  mimeType: string;
+  fileSize: number;
+  displayOrder: number;
+  createdAt: Date;
+};
+
+export type ProductListingSectorRecord = {
+  sectorId: string;
+  sectorName: string;
+};
+
+export type ProductListingRecord = {
+  id: string;
+  supplierId: string;
+  name: string;
+  slug: string;
+  sku: string;
+  description: string;
+  categoryId: string;
+  status: ProductListingStatus;
+  featuredFeatures: string[];
+  isCustomizable: boolean;
+  customizationNote: string | null;
+  basePrice: Prisma.Decimal | null;
+  currency: string;
+  minOrderQuantity: number | null;
+  stock: number | null;
+  leadTimeDays: number | null;
+  packageLengthCm: Prisma.Decimal | null;
+  packageWidthCm: Prisma.Decimal | null;
+  packageHeightCm: Prisma.Decimal | null;
+  packageWeightKg: Prisma.Decimal | null;
+  submittedAt: Date | null;
+  reviewNote: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
+  sectors: ProductListingSectorRecord[];
+  media: ProductListingMediaRecord[];
+};
+
 export type CreateProductInput = {
   name: string;
   slug: string;
   categoryId: string;
   sectorId: string | null;
+};
+
+export type CreateProductListingInput = {
+  supplierId: string;
+  name: string;
+  slug: string;
+  sku: string;
+  description: string;
+  categoryId: string;
+  sectorIds: string[];
+  featuredFeatures: string[];
+  isCustomizable: boolean;
+  customizationNote: string | null;
+};
+
+export type UpdateProductListingStepTwoInput = {
+  basePrice: number;
+  currency: string;
+  minOrderQuantity: number;
+  stock: number;
+};
+
+export type UpdateProductListingStepThreeInput = {
+  leadTimeDays: number;
+  packageLengthCm: number;
+  packageWidthCm: number;
+  packageHeightCm: number;
+  packageWeightKg: number;
+};
+
+export type CreateProductListingMediaInput = {
+  productListingId: string;
+  mediaType: ProductListingMediaType;
+  filePath: string;
+  originalName: string;
+  mimeType: string;
+  fileSize: number;
+  displayOrder: number;
 };
 
 @Injectable()
@@ -108,5 +259,235 @@ export class ProductsRepository {
         updatedAt: true,
       },
     });
+  }
+
+  async findManySectorsByIds(sectorIds: string[]): Promise<SectorSummary[]> {
+    if (sectorIds.length === 0) {
+      return [];
+    }
+
+    return this.prisma.sector.findMany({
+      where: {
+        id: {
+          in: sectorIds,
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+      },
+    });
+  }
+
+  async findProductListingBySupplierAndSku(
+    supplierId: string,
+    sku: string,
+  ): Promise<ProductListingRecord | null> {
+    return this.prisma.productListing.findFirst({
+      where: {
+        supplierId,
+        sku,
+        deletedAt: null,
+      },
+      select: productListingSelect,
+    }).then((record) => this.mapListingRecordOrNull(record));
+  }
+
+  async findProductListingBySupplierAndSlug(
+    supplierId: string,
+    slug: string,
+  ): Promise<ProductListingRecord | null> {
+    return this.prisma.productListing.findFirst({
+      where: {
+        supplierId,
+        slug,
+        deletedAt: null,
+      },
+      select: productListingSelect,
+    }).then((record) => this.mapListingRecordOrNull(record));
+  }
+
+  async createProductListing(input: CreateProductListingInput): Promise<ProductListingRecord> {
+    const created = await this.prisma.$transaction(async (tx) => {
+      const listing = await tx.productListing.create({
+        data: {
+          supplierId: input.supplierId,
+          name: input.name,
+          slug: input.slug,
+          sku: input.sku,
+          description: input.description,
+          categoryId: input.categoryId,
+          featuredFeatures: input.featuredFeatures,
+          isCustomizable: input.isCustomizable,
+          customizationNote: input.customizationNote,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (input.sectorIds.length > 0) {
+        await tx.productListingSector.createMany({
+          data: input.sectorIds.map((sectorId) => ({
+            productListingId: listing.id,
+            sectorId,
+          })),
+        });
+      }
+
+      return tx.productListing.findUniqueOrThrow({
+        where: {
+          id: listing.id,
+        },
+        select: productListingSelect,
+      });
+    });
+
+    return this.mapListingRecord(created);
+  }
+
+  async findProductListingBySupplierAndId(
+    supplierId: string,
+    id: string,
+  ): Promise<ProductListingRecord | null> {
+    const listing = await this.prisma.productListing.findFirst({
+      where: {
+        id,
+        supplierId,
+        deletedAt: null,
+      },
+      select: productListingSelect,
+    });
+
+    return this.mapListingRecordOrNull(listing);
+  }
+
+  async findProductListingsBySupplier(
+    supplierId: string,
+  ): Promise<ProductListingRecord[]> {
+    const listings = await this.prisma.productListing.findMany({
+      where: {
+        supplierId,
+        deletedAt: null,
+      },
+      orderBy: [{ updatedAt: 'desc' }],
+      select: productListingSelect,
+    });
+
+    return listings.map((listing) => this.mapListingRecord(listing));
+  }
+
+  async updateProductListingStepTwo(
+    id: string,
+    input: UpdateProductListingStepTwoInput,
+  ): Promise<ProductListingRecord> {
+    const updated = await this.prisma.productListing.update({
+      where: {
+        id,
+      },
+      data: {
+        basePrice: input.basePrice,
+        currency: input.currency,
+        minOrderQuantity: input.minOrderQuantity,
+        stock: input.stock,
+      },
+      select: productListingSelect,
+    });
+
+    return this.mapListingRecord(updated);
+  }
+
+  async updateProductListingStepThree(
+    id: string,
+    input: UpdateProductListingStepThreeInput,
+  ): Promise<ProductListingRecord> {
+    const updated = await this.prisma.productListing.update({
+      where: {
+        id,
+      },
+      data: {
+        leadTimeDays: input.leadTimeDays,
+        packageLengthCm: input.packageLengthCm,
+        packageWidthCm: input.packageWidthCm,
+        packageHeightCm: input.packageHeightCm,
+        packageWeightKg: input.packageWeightKg,
+      },
+      select: productListingSelect,
+    });
+
+    return this.mapListingRecord(updated);
+  }
+
+  async countProductListingMedia(productListingId: string): Promise<number> {
+    return this.prisma.productListingMedia.count({
+      where: {
+        productListingId,
+      },
+    });
+  }
+
+  async createProductListingMedia(
+    inputs: CreateProductListingMediaInput[],
+  ): Promise<void> {
+    if (inputs.length === 0) {
+      return;
+    }
+
+    await this.prisma.productListingMedia.createMany({
+      data: inputs.map((input) => ({
+        productListingId: input.productListingId,
+        mediaType: input.mediaType,
+        filePath: input.filePath,
+        originalName: input.originalName,
+        mimeType: input.mimeType,
+        fileSize: input.fileSize,
+        displayOrder: input.displayOrder,
+      })),
+    });
+  }
+
+  async updateProductListingStatus(
+    id: string,
+    status: ProductListingStatus,
+    reviewNote: string | null,
+    submittedAt: Date | null,
+  ): Promise<ProductListingRecord> {
+    const updated = await this.prisma.productListing.update({
+      where: {
+        id,
+      },
+      data: {
+        status,
+        reviewNote,
+        submittedAt,
+      },
+      select: productListingSelect,
+    });
+
+    return this.mapListingRecord(updated);
+  }
+
+  private mapListingRecordOrNull(
+    listing: ProductListingSelectRecord | null,
+  ): ProductListingRecord | null {
+    if (!listing) {
+      return null;
+    }
+
+    return this.mapListingRecord(listing);
+  }
+
+  private mapListingRecord(
+    listing: ProductListingSelectRecord,
+  ): ProductListingRecord {
+
+    return {
+      ...listing,
+      sectors: listing.sectors.map((item) => ({
+        sectorId: item.sectorId,
+        sectorName: item.sector.name,
+      })),
+    };
   }
 }

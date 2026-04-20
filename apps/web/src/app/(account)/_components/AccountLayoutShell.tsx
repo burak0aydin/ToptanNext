@@ -34,6 +34,14 @@ function getPageTitle(pathname: string): string {
 }
 
 function getPageDescription(pathname: string): string {
+  if (isExactPath(pathname, "/satici-panelim/urunlerim")) {
+    return "Platformdaki tüm envanterinizi ve onay bekleyen ürünlerinizi buradan yönetin.";
+  }
+
+  if (isExactPath(pathname, "/satici-panelim/urun-yukle")) {
+    return "Yeni ürün ekleme adımlarını buradan tamamlayın.";
+  }
+
   if (pathname.startsWith("/satici-panelim")) {
     return "Satıcı paneli sayfalarını bu alandan yönetebilirsiniz.";
   }
@@ -92,6 +100,9 @@ export function AccountLayoutShell({ children }: AccountLayoutShellProps) {
 
   const pageTitle = useMemo(() => getPageTitle(pathname), [pathname]);
   const pageDescription = useMemo(() => getPageDescription(pathname), [pathname]);
+  const hideDefaultPageHeader =
+    isExactPath(pathname, "/satici-panelim/urunlerim") ||
+    isExactPath(pathname, "/satici-panelim/urun-yukle");
 
   return (
     <div className="flex min-h-screen flex-col bg-surface text-on-surface">
@@ -175,10 +186,12 @@ export function AccountLayoutShell({ children }: AccountLayoutShellProps) {
 
         <section className="min-w-0 flex-1">
           <div className="rounded-2xl border border-outline-variant/20 bg-white p-5 shadow-sm md:p-8">
-            <header className="mb-8">
-              <h1 className="text-2xl font-bold text-on-surface">{pageTitle}</h1>
-              <p className="mt-2 text-sm text-on-surface-variant">{pageDescription}</p>
-            </header>
+            {hideDefaultPageHeader ? null : (
+              <header className="mb-8">
+                <h1 className="text-2xl font-bold text-on-surface">{pageTitle}</h1>
+                <p className="mt-2 text-sm text-on-surface-variant">{pageDescription}</p>
+              </header>
+            )}
             {children}
           </div>
         </section>

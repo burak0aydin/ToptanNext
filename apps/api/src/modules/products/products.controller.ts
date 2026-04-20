@@ -1,12 +1,133 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  BadRequestException,
+  Body,
+  Catch,
+  Controller,
+  ExceptionFilter,
+  Get,
+  Param,
+  Post,
+  Put,
+  Req,
+  UploadedFiles,
+  UseFilters,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
+import { MulterError } from 'multer';
+import { diskStorage } from 'multer';
+import { extname, join } from 'path';
+import { mkdirSync } from 'fs';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
+import { CreateProductListingStepOneDto } from './dto/create-product-listing-step-one.dto';
 import { CreateProductDto } from './dto/create-product.dto';
+import { SubmitProductListingDto } from './dto/submit-product-listing.dto';
+import { UpdateProductListingStepThreeDto } from './dto/update-product-listing-step-three.dto';
+import { UpdateProductListingStepTwoDto } from './dto/update-product-listing-step-two.dto';
 import { ProductsService } from './products.service';
+import { UploadedProductListingMedia } from './products.service';
 
 type AuthenticatedRequest = Request & {
   user: JwtPayload;
+};
+
+const PRODUCT_MEDIA_UPLOAD_ROOT = join(
+  process.cwd(),
+  'uploads',
+  'product-listings',
+);
+const PRODUCT_MEDIA_UPLOAD_FIELD = 'mediaFiles';
+const MAX_MEDIA_FILE_SIZE_BYTES = 25 * 1024 * 1024;
+const ALLOWED_MEDIA_MIME_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'video/mp4',
+  'video/quicktime',
+]);
+
+@Catch(MulterError)
+class ProductListingMediaUploadExceptionFilter implements ExceptionFilter {
+  catch(exception: MulterError, host: ArgumentsHost): void {
+    const response = host.switchToHttp().getResponse();
+
+    if (exception.code === 'LIMIT_FILE_SIZE') {
+      response.status(400).json({
+        success: false,
+        error: {
+          code: 'FILE_TOO_LARGE',
+          message: 'Yüklenen medya dosyası 25 MB sınırını aşıyor.',
+        },
+      });
+      return;
+    }
+
+    response.status(400).json({
+      success: false,
+      error: {
+        code: exception.code,
+        message: 'Medya dosyası yüklenirken bir hata oluştu.',
+      },
+    });
+  }
+}
+
+const sanitizeFilenamePart = (value: string): string =>
+  value.replace(/[^a-zA-Z0-9._-]/g, '_');
+
+const productMediaUploadOptions = {
+  storage: diskStorage({
+    destination: (
+      req: Request,
+      _file: { fieldname: string },
+      cb: (error: Error | null, destination: string) => void,
+    ) => {
+      const userId = (req as AuthenticatedRequest).user?.sub;
+      const destinationPath = userId
+        ? join(PRODUCT_MEDIA_UPLOAD_ROOT, userId)
+        : PRODUCT_MEDIA_UPLOAD_ROOT;
+
+      mkdirSync(destinationPath, { recursive: true });
+      cb(null, destinationPath);
+    },
+    filename: (
+      _req: Request,
+      file: { fieldname: string; originalname: string },
+      cb: (error: Error | null, filename: string) => void,
+    ) => {
+      const extension = extname(file.originalname).toLowerCase();
+      const originalBaseName = sanitizeFilenamePart(
+        file.originalname.replace(extension, ''),
+      );
+
+      const nextFilename = `${file.fieldname}-${Date.now()}-${Math.round(Math.random() * 1_000_000)}-${originalBaseName}${extension}`;
+      cb(null, nextFilename);
+    },
+  }),
+  limits: {
+    fileSize: MAX_MEDIA_FILE_SIZE_BYTES,
+  },
+  fileFilter: (
+    _req: Request,
+    file: { mimetype: string },
+    cb: (error: Error | null, acceptFile: boolean) => void,
+  ) => {
+    if (!ALLOWED_MEDIA_MIME_TYPES.has(file.mimetype)) {
+      cb(
+        new BadRequestException(
+          'Yalnızca PNG, JPG, WEBP, MP4 veya MOV dosyaları yükleyebilirsiniz.',
+        ),
+        false,
+      );
+      return;
+    }
+
+    cb(null, true);
+  },
 };
 
 @Controller('products')
@@ -37,5 +158,186 @@ export class ProductsController {
       data,
       message: 'Ürün başarıyla oluşturuldu.',
     };
+  }
+
+  @Get('me/listings')
+  @UseGuards(AuthGuard('jwt'))
+  async getMyListings(@Req() req: AuthenticatedRequest) {
+    const data = await this.productsService.getMyListings(
+      req.user.sub,
+      req.user.role,
+    );
+
+    return {
+      success: true,
+      data,
+      message: 'Ürün taslak listesi başarıyla getirildi.',
+    };
+  }
+
+  @Get('me/listings/:id')
+  @UseGuards(AuthGuard('jwt'))
+  async getMyListingById(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    const data = await this.productsService.getMyListingById(
+      req.user.sub,
+      req.user.role,
+      id,
+    );
+
+    return {
+      success: true,
+      data,
+      message: 'Ürün taslağı başarıyla getirildi.',
+    };
+  }
+
+  @Post('me/listings/step-one')
+  @UseGuards(AuthGuard('jwt'))
+  async createMyListingStepOne(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: CreateProductListingStepOneDto,
+  ) {
+    const data = await this.productsService.createMyListingStepOne(
+      req.user.sub,
+      req.user.role,
+      dto,
+    );
+
+    return {
+      success: true,
+      data,
+      message: 'Ürün taslağı ilk adım bilgileriyle oluşturuldu.',
+    };
+  }
+
+  @Put('me/listings/:id/step-two')
+  @UseGuards(AuthGuard('jwt'))
+  async updateMyListingStepTwo(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: UpdateProductListingStepTwoDto,
+  ) {
+    const data = await this.productsService.updateMyListingStepTwo(
+      req.user.sub,
+      req.user.role,
+      id,
+      dto,
+    );
+
+    return {
+      success: true,
+      data,
+      message: 'Fiyatlandırma ve stok bilgileri başarıyla güncellendi.',
+    };
+  }
+
+  @Put('me/listings/:id/step-three')
+  @UseGuards(AuthGuard('jwt'))
+  async updateMyListingStepThree(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: UpdateProductListingStepThreeDto,
+  ) {
+    const data = await this.productsService.updateMyListingStepThree(
+      req.user.sub,
+      req.user.role,
+      id,
+      dto,
+    );
+
+    return {
+      success: true,
+      data,
+      message: 'Lojistik bilgileri başarıyla güncellendi.',
+    };
+  }
+
+  @Post('me/listings/:id/media')
+  @UseGuards(AuthGuard('jwt'))
+  @UseFilters(ProductListingMediaUploadExceptionFilter)
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [{ name: PRODUCT_MEDIA_UPLOAD_FIELD, maxCount: 5 }],
+      productMediaUploadOptions,
+    ),
+  )
+  async uploadMyListingMedia(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @UploadedFiles()
+    files: Partial<
+      Record<
+        typeof PRODUCT_MEDIA_UPLOAD_FIELD,
+        Array<{
+          fieldname: string;
+          originalname: string;
+          mimetype: string;
+          size: number;
+          path: string;
+        }>
+      >
+    >,
+  ) {
+    const uploadedMedia = this.normalizeUploadedMedia(files);
+    const data = await this.productsService.uploadMyListingMedia(
+      req.user.sub,
+      req.user.role,
+      id,
+      uploadedMedia,
+    );
+
+    return {
+      success: true,
+      data,
+      message: 'Ürün medyaları başarıyla yüklendi.',
+    };
+  }
+
+  @Post('me/listings/:id/submit')
+  @UseGuards(AuthGuard('jwt'))
+  async submitMyListing(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: SubmitProductListingDto,
+  ) {
+    const data = await this.productsService.submitMyListing(
+      req.user.sub,
+      req.user.role,
+      id,
+      dto,
+    );
+
+    return {
+      success: true,
+      data,
+      message: 'Ürün taslağı onay süreci için gönderildi.',
+    };
+  }
+
+  private normalizeUploadedMedia(
+    files: Partial<
+      Record<
+        typeof PRODUCT_MEDIA_UPLOAD_FIELD,
+        Array<{
+          fieldname: string;
+          originalname: string;
+          mimetype: string;
+          size: number;
+          path: string;
+        }>
+      >
+    >,
+  ): UploadedProductListingMedia[] {
+    const uploaded = files[PRODUCT_MEDIA_UPLOAD_FIELD] ?? [];
+
+    return uploaded.map((file) => ({
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+      fileSize: file.size,
+      filePath: file.path,
+    }));
   }
 }
