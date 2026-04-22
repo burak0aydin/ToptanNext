@@ -9,17 +9,19 @@ import {
   type ProductListingStepThreeDto,
   type ProductListingStepTwoDto,
 } from '@toptannext/types';
-import { useEffect, useMemo, useState } from 'react';
+import { type ChangeEvent, type DragEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import {
   createProductListingStepOne,
   fetchCategoriesTree,
   fetchSectors,
   submitProductListing,
+  updateProductListingStepOne,
   updateProductListingStepThree,
   updateProductListingStepTwo,
   uploadProductListingMedia,
   type CategoryTreeNode,
+  type ProductListingMediaRecord,
   type ProductListingRecord,
   type SectorRecord,
 } from '@/features/product-listing/api/product-listing.api';
@@ -59,6 +61,16 @@ const STEP_THREE_DEFAULT_VALUES: ProductListingStepThreeDto = {
   packageWeightKg: 0,
 };
 
+const OTHER_OPTION_VALUE = 'other';
+const MAX_TOTAL_IMAGE_COUNT = 6;
+const MAX_GALLERY_IMAGE_COUNT = 5;
+const MAX_VIDEO_COUNT = 1;
+const MAX_IMAGE_SIZE_BYTES = 3 * 1024 * 1024;
+const MAX_VIDEO_SIZE_BYTES = 15 * 1024 * 1024;
+const MAX_VIDEO_DURATION_SECONDS = 20;
+const IMAGE_ACCEPT_MIME = 'image/jpeg,image/png,image/webp';
+const VIDEO_ACCEPT_MIME = 'video/mp4,video/webm';
+
 function findCategoryPath(
   categoryTree: CategoryTreeNode[],
   leafCategoryId: string,
@@ -81,6 +93,26 @@ function findCategoryPath(
   return null;
 }
 
+function FieldInfoHint({ text }: { text: string }) {
+  return (
+    <span className='group relative inline-flex items-center'>
+      <button
+        type='button'
+        className='inline-flex h-5 w-5 items-center justify-center rounded-full border border-outline-variant bg-white text-[11px] font-bold leading-none text-on-surface-variant transition-colors hover:border-primary hover:text-primary focus:border-primary focus:text-primary focus:outline-none'
+        aria-label={text}
+        onClick={(event) => {
+          event.preventDefault();
+        }}
+      >
+        ?
+      </button>
+      <span className='pointer-events-none invisible absolute left-1/2 top-full z-20 mt-2 w-56 -translate-x-1/2 rounded-md bg-slate-900 px-3 py-2 text-[11px] font-medium leading-relaxed text-white opacity-0 shadow-lg transition-all duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100'>
+        {text}
+      </span>
+    </span>
+  );
+}
+
 export default function SellerProductUploadPage() {
   const [currentStep, setCurrentStep] = useState<WizardStep>(1);
   const [draftRecord, setDraftRecord] = useState<ProductListingRecord | null>(null);
@@ -90,13 +122,22 @@ export default function SellerProductUploadPage() {
   const [subCategoryId, setSubCategoryId] = useState('');
   const [featureInput, setFeatureInput] = useState('');
   const [sectorInput, setSectorInput] = useState('');
-  const [uploadedMediaFiles, setUploadedMediaFiles] = useState<File[]>([]);
+  const [pendingCoverImage, setPendingCoverImage] = useState<File | null>(null);
+  const [pendingGalleryImages, setPendingGalleryImages] = useState<File[]>([]);
+  const [pendingVideoFile, setPendingVideoFile] = useState<File | null>(null);
+  const [isValidatingVideo, setIsValidatingVideo] = useState(false);
   const [submitConfirmed, setSubmitConfirmed] = useState(false);
   const [isLoadingMeta, setIsLoadingMeta] = useState(true);
   const [isSubmittingStep, setIsSubmittingStep] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const coverImageInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryImageInputRef = useRef<HTMLInputElement | null>(null);
+  const videoInputRef = useRef<HTMLInputElement | null>(null);
+  const pageTopRef = useRef<HTMLDivElement | null>(null);
+  const stepSectionRef = useRef<HTMLElement | null>(null);
+  const hasMountedStepRef = useRef(false);
 
   const stepOneForm = useForm<ProductListingStepOneDto>({
     resolver: zodResolver(
@@ -188,12 +229,16 @@ export default function SellerProductUploadPage() {
   }, [categoryTree, draftRecord?.categoryId, watchedStepOne.categoryId]);
 
   const summaryCategoryText = useMemo(() => {
+    if (watchedStepOne.categoryId === 'other' || draftRecord?.categoryId === 'other') {
+      return 'Diğer';
+    }
+
     if (!activeCategoryPath) {
       return 'Seçilmedi';
     }
 
     return activeCategoryPath.breadcrumb;
-  }, [activeCategoryPath]);
+  }, [activeCategoryPath, draftRecord?.categoryId, watchedStepOne.categoryId]);
 
   useEffect(() => {
     if (!activeCategoryPath) {
@@ -208,6 +253,51 @@ export default function SellerProductUploadPage() {
       setSubCategoryId(activeCategoryPath.subId);
     }
   }, [activeCategoryPath, mainCategoryId, subCategoryId]);
+
+  useEffect(() => {
+    if (!hasMountedStepRef.current) {
+      hasMountedStepRef.current = true;
+      return;
+    }
+
+    const target = pageTopRef.current ?? stepSectionRef.current;
+    if (!target) {
+      return;
+    }
+
+    const scrollToTarget = () => {
+      const nextTop = target.getBoundingClientRect().top + window.scrollY - 12;
+      window.scrollTo({
+        top: Math.max(0, nextTop),
+        behavior: 'auto',
+      });
+    };
+
+    let rafOne = 0;
+    let timeoutOne = 0;
+    let timeoutTwo = 0;
+
+    rafOne = window.requestAnimationFrame(() => {
+      scrollToTarget();
+      timeoutOne = window.setTimeout(scrollToTarget, 90);
+      timeoutTwo = window.setTimeout(scrollToTarget, 220);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafOne);
+      window.clearTimeout(timeoutOne);
+      window.clearTimeout(timeoutTwo);
+    };
+  }, [currentStep]);
+
+  const goToStep = (nextStep: WizardStep): void => {
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement) {
+      activeElement.blur();
+    }
+
+    setCurrentStep(nextStep);
+  };
 
   const addFeaturedFeature = (): void => {
     const nextValue = featureInput.trim();
@@ -264,36 +354,242 @@ export default function SellerProductUploadPage() {
     );
   };
 
-  const handleMediaSelection = (files: FileList | null): void => {
-    if (!files) {
-      return;
+  const getExistingImageCount = (): number =>
+    draftRecord?.media.filter((media) => media.mediaType === 'IMAGE').length ?? 0;
+
+  const getExistingVideoCount = (): number =>
+    draftRecord?.media.filter((media) => media.mediaType === 'VIDEO').length ?? 0;
+
+  const validateImageFile = (file: File): string | null => {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      return 'Sadece JPG, PNG ve WEBP formatları desteklenir.';
     }
 
-    const nextFiles = Array.from(files);
-    const existingCount = draftRecord?.media.length ?? 0;
-    const total = existingCount + uploadedMediaFiles.length + nextFiles.length;
-
-    if (total > 5) {
-      setGlobalError('Bir ürün için en fazla 5 görsel veya video yükleyebilirsiniz.');
-      return;
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      return 'Görsel boyutu maksimum 3MB olabilir.';
     }
 
-    setGlobalError(null);
-    setUploadedMediaFiles((prev) => [...prev, ...nextFiles]);
+    return null;
   };
 
-  const removePendingMediaAt = (index: number): void => {
-    setUploadedMediaFiles((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+  const getVideoDurationSeconds = (file: File): Promise<number> =>
+    new Promise((resolve, reject) => {
+      const objectUrl = URL.createObjectURL(file);
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+
+      video.onloadedmetadata = () => {
+        const duration = Number.isFinite(video.duration) ? video.duration : 0;
+        URL.revokeObjectURL(objectUrl);
+        resolve(duration);
+      };
+
+      video.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Video süresi okunamadı.'));
+      };
+
+      video.src = objectUrl;
+    });
+
+  const validateVideoFile = async (file: File): Promise<string | null> => {
+    if (!['video/mp4', 'video/webm'].includes(file.type)) {
+      return 'Sadece MP4 ve WEBM video formatları desteklenir.';
+    }
+
+    if (file.size > MAX_VIDEO_SIZE_BYTES) {
+      return 'Video boyutu maksimum 15MB ve 20 saniye olmalıdır.';
+    }
+
+    const duration = await getVideoDurationSeconds(file);
+    if (duration > MAX_VIDEO_DURATION_SECONDS) {
+      return 'Video boyutu maksimum 15MB ve 20 saniye olmalıdır.';
+    }
+
+    return null;
+  };
+
+  const preventDropDefaults = (event: DragEvent<HTMLElement>): void => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  const setCoverImage = (file: File | null): void => {
+    if (!file) {
+      return;
+    }
+
+    const imageError = validateImageFile(file);
+    if (imageError) {
+      setGlobalError(imageError);
+      return;
+    }
+
+    const existingImageCount = getExistingImageCount();
+    if (existingImageCount > 0) {
+      setGlobalError('Bu taslakta kapak görseli zaten mevcut. Yeni kapak için önce mevcut medyayı kaldırmalısınız.');
+      return;
+    }
+
+    setPendingCoverImage(file);
+    setGlobalError(null);
+  };
+
+  const appendGalleryImages = (files: File[]): void => {
+    if (files.length === 0) {
+      return;
+    }
+
+    const existingImageCount = getExistingImageCount();
+    const existingGalleryCount = Math.max(existingImageCount - 1, 0);
+    const acceptedFiles: File[] = [];
+
+    for (const file of files) {
+      const imageError = validateImageFile(file);
+      if (imageError) {
+        setGlobalError(imageError);
+        return;
+      }
+
+      const projectedGalleryCount =
+        existingGalleryCount + pendingGalleryImages.length + acceptedFiles.length + 1;
+      if (projectedGalleryCount > MAX_GALLERY_IMAGE_COUNT) {
+        setGlobalError('En fazla 5 adet galeri görseli yükleyebilirsiniz.');
+        return;
+      }
+
+      const projectedImageTotal =
+        existingImageCount + (pendingCoverImage ? 1 : 0) + pendingGalleryImages.length + acceptedFiles.length + 1;
+      if (projectedImageTotal > MAX_TOTAL_IMAGE_COUNT) {
+        setGlobalError('Toplam görsel sayısı 6 adedi geçemez.');
+        return;
+      }
+
+      acceptedFiles.push(file);
+    }
+
+    setPendingGalleryImages((prev) => [...prev, ...acceptedFiles]);
+    setGlobalError(null);
+  };
+
+  const setVideoFile = async (file: File | null): Promise<void> => {
+    if (!file) {
+      return;
+    }
+
+    if (getExistingVideoCount() >= MAX_VIDEO_COUNT) {
+      setGlobalError('Bu taslakta zaten 1 video mevcut. En fazla 1 video yükleyebilirsiniz.');
+      return;
+    }
+
+    setIsValidatingVideo(true);
+
+    try {
+      const videoError = await validateVideoFile(file);
+      if (videoError) {
+        setGlobalError(videoError);
+        return;
+      }
+
+      setPendingVideoFile(file);
+      setGlobalError(null);
+    } catch {
+      setGlobalError('Video süresi okunamadı. Lütfen farklı bir MP4/WEBM dosyası deneyin.');
+    } finally {
+      setIsValidatingVideo(false);
+    }
+  };
+
+  const handleCoverInputChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    const file = event.target.files?.[0] ?? null;
+    setCoverImage(file);
+    event.target.value = '';
+  };
+
+  const handleGalleryInputChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    const files = Array.from(event.target.files ?? []);
+    appendGalleryImages(files);
+    event.target.value = '';
+  };
+
+  const handleVideoInputChange = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const file = event.target.files?.[0] ?? null;
+    await setVideoFile(file);
+    event.target.value = '';
+  };
+
+  const handleCoverDrop = (event: DragEvent<HTMLElement>): void => {
+    preventDropDefaults(event);
+    const file = event.dataTransfer.files?.[0] ?? null;
+    setCoverImage(file);
+  };
+
+  const handleGalleryDrop = (event: DragEvent<HTMLElement>): void => {
+    preventDropDefaults(event);
+    const files = Array.from(event.dataTransfer.files ?? []);
+    appendGalleryImages(files);
+  };
+
+  const handleVideoDrop = async (event: DragEvent<HTMLElement>): Promise<void> => {
+    preventDropDefaults(event);
+    const file = event.dataTransfer.files?.[0] ?? null;
+    await setVideoFile(file);
+  };
+
+  const removePendingGalleryAt = (index: number): void => {
+    setPendingGalleryImages((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
   };
 
   const onSubmitStepOne = stepOneForm.handleSubmit(async (values) => {
+    const existingImageCount = getExistingImageCount();
+    const existingVideoCount = getExistingVideoCount();
+    const pendingImageCount = (pendingCoverImage ? 1 : 0) + pendingGalleryImages.length;
+
+    if (existingImageCount === 0 && !pendingCoverImage) {
+      setGlobalError('1 adet kapak görseli yüklemek zorunludur.');
+      return;
+    }
+
+    if (existingImageCount + pendingImageCount > MAX_TOTAL_IMAGE_COUNT) {
+      setGlobalError('Toplam görsel sayısı 6 adedi geçemez.');
+      return;
+    }
+
+    if (Math.max(existingImageCount - 1, 0) + pendingGalleryImages.length > MAX_GALLERY_IMAGE_COUNT) {
+      setGlobalError('En fazla 5 adet galeri görseli yükleyebilirsiniz.');
+      return;
+    }
+
+    if (existingVideoCount + (pendingVideoFile ? 1 : 0) > MAX_VIDEO_COUNT) {
+      setGlobalError('En fazla 1 video yükleyebilirsiniz.');
+      return;
+    }
+
     try {
       setIsSubmittingStep(true);
       setGlobalError(null);
       setSuccessMessage(null);
 
-      const saved = await createProductListingStepOne(values);
+      const isUpdatingExistingDraft = Boolean(draftRecord?.id);
+      const savedStepOne = draftRecord?.id
+        ? await updateProductListingStepOne(draftRecord.id, values)
+        : await createProductListingStepOne(values);
+      setDraftRecord(savedStepOne);
+
+      const pendingMediaToUpload = [
+        pendingCoverImage,
+        ...pendingGalleryImages,
+        pendingVideoFile,
+      ].filter((file): file is File => Boolean(file));
+
+      const saved = pendingMediaToUpload.length > 0
+        ? await uploadProductListingMedia(savedStepOne.id, pendingMediaToUpload)
+        : savedStepOne;
+
       setDraftRecord(saved);
+      setPendingCoverImage(null);
+      setPendingGalleryImages([]);
+      setPendingVideoFile(null);
 
       if (saved.categoryId) {
         const categoryPath = findCategoryPath(categoryTree, saved.categoryId);
@@ -303,8 +599,12 @@ export default function SellerProductUploadPage() {
         }
       }
 
-      setCurrentStep(2);
-      setSuccessMessage('Temel ürün bilgileri kaydedildi. Şimdi fiyatlandırma adımını tamamlayın.');
+      goToStep(2);
+      setSuccessMessage(
+        isUpdatingExistingDraft
+          ? 'Temel ürün bilgileri güncellendi. Şimdi fiyatlandırma adımını tamamlayın.'
+          : 'Temel ürün bilgileri kaydedildi. Şimdi fiyatlandırma adımını tamamlayın.',
+      );
     } catch (error) {
       setGlobalError(
         error instanceof Error
@@ -333,7 +633,7 @@ export default function SellerProductUploadPage() {
       });
 
       setDraftRecord(saved);
-      setCurrentStep(3);
+      goToStep(3);
       setSuccessMessage('Fiyatlandırma ve stok bilgileri kaydedildi. Lojistik adımına geçildi.');
     } catch (error) {
       setGlobalError(
@@ -362,13 +662,7 @@ export default function SellerProductUploadPage() {
       setGlobalError(null);
       setSuccessMessage(null);
 
-      const stepThreeSaved = await updateProductListingStepThree(draftRecord.id, values);
-
-      let afterMedia = stepThreeSaved;
-      if (uploadedMediaFiles.length > 0) {
-        afterMedia = await uploadProductListingMedia(draftRecord.id, uploadedMediaFiles);
-        setUploadedMediaFiles([]);
-      }
+      await updateProductListingStepThree(draftRecord.id, values);
 
       const submitted = await submitProductListing(draftRecord.id, {
         confirmSubmission: true,
@@ -377,10 +671,6 @@ export default function SellerProductUploadPage() {
       setDraftRecord(submitted);
       setIsCompleted(true);
       setSuccessMessage('Ürün başarıyla onaya gönderildi. Admin değerlendirmesi sonrasında listelenecektir.');
-
-      if (!submitted.media.length && afterMedia.media.length > 0) {
-        setDraftRecord(afterMedia);
-      }
     } catch (error) {
       setGlobalError(
         error instanceof Error ? error.message : 'Ürün onaya gönderilirken bir sorun oluştu.',
@@ -392,20 +682,42 @@ export default function SellerProductUploadPage() {
 
   const activeStepProgressWidth = `${(currentStep / 3) * 100}%`;
 
-  const selectedSectorIds = watchedStepOne.sectorIds ?? [];
-  const selectedSectors = sectors.filter((sector) =>
-    selectedSectorIds.includes(sector.id),
+  const selectedSectorIds = useMemo(
+    () => watchedStepOne.sectorIds ?? [],
+    [watchedStepOne.sectorIds],
   );
+  const sectorOptions = useMemo(
+    () => [...sectors, { id: OTHER_OPTION_VALUE, name: 'Diğer' }],
+    [sectors],
+  );
+  const selectedSectors = useMemo(
+    () => sectorOptions.filter((sector) => selectedSectorIds.includes(sector.id)),
+    [sectorOptions, selectedSectorIds],
+  );
+  const existingImageMedia = useMemo(
+    () => (draftRecord?.media ?? []).filter((media) => media.mediaType === 'IMAGE'),
+    [draftRecord?.media],
+  );
+  const existingVideoMedia = useMemo(
+    () => (draftRecord?.media ?? []).filter((media) => media.mediaType === 'VIDEO'),
+    [draftRecord?.media],
+  );
+  const existingCoverMedia = existingImageMedia[0] ?? null;
+  const existingGalleryMedia = existingImageMedia.slice(1, MAX_TOTAL_IMAGE_COUNT);
 
   const summaryName =
     watchedStepOne.name.trim().length > 0
       ? watchedStepOne.name.trim()
       : draftRecord?.name ?? 'Henüz belirtilmedi';
 
-  const totalMediaCount = (draftRecord?.media.length ?? 0) + uploadedMediaFiles.length;
+  const pendingMediaCount =
+    (pendingCoverImage ? 1 : 0) +
+    pendingGalleryImages.length +
+    (pendingVideoFile ? 1 : 0);
+  const totalMediaCount = (draftRecord?.media.length ?? 0) + pendingMediaCount;
 
   return (
-    <div className='space-y-8'>
+    <div ref={pageTopRef} className='space-y-8'>
       <header className='space-y-3'>
         <h2 className='text-2xl font-bold tracking-tight text-on-surface'>Ürün Yükle</h2>
         <p className='text-sm text-on-surface-variant'>
@@ -468,7 +780,10 @@ export default function SellerProductUploadPage() {
 
       <div className='grid grid-cols-1 gap-6 lg:grid-cols-12'>
         <div className='space-y-6 lg:col-span-8'>
-          <section className='rounded-2xl border border-outline-variant/50 bg-surface-container-lowest p-5 shadow-sm md:p-8'>
+          <section
+            ref={stepSectionRef}
+            className='rounded-2xl border border-outline-variant/50 bg-surface-container-lowest p-5 shadow-sm md:p-8'
+          >
             {currentStep === 1 ? (
               <>
                 <div className='mb-6 flex items-center gap-2'>
@@ -493,7 +808,10 @@ export default function SellerProductUploadPage() {
                   </label>
 
                   <label>
-                    <span className='mb-2 block text-sm font-bold text-on-surface-variant'>SKU</span>
+                    <div className='mb-2 flex items-center gap-2'>
+                      <span className='block text-sm font-bold text-on-surface-variant'>SKU</span>
+                      <FieldInfoHint text='SKU, ürününüzü sistemde benzersiz tanımlayan stok kodudur. Örn: TN-URUN-1001.' />
+                    </div>
                     <input
                       className='w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-3 text-sm outline-none transition-all focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20'
                       placeholder='Örn: TN-URUN-1001'
@@ -528,6 +846,7 @@ export default function SellerProductUploadPage() {
                                 {category.name}
                               </option>
                             ))}
+                            <option value='other'>DİĞER</option>
                           </select>
                           <span className='material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400'>
                             expand_more
@@ -545,7 +864,7 @@ export default function SellerProductUploadPage() {
                               setSubCategoryId(event.target.value);
                               stepOneForm.setValue('categoryId', '', { shouldValidate: true });
                             }}
-                            disabled={!selectedMainCategory || isSubmittingStep}
+                            disabled={(!selectedMainCategory && mainCategoryId !== 'other') || isSubmittingStep}
                           >
                             <option value=''>Alt kategori seçiniz</option>
                             {(selectedMainCategory?.children ?? []).map((category) => (
@@ -553,6 +872,7 @@ export default function SellerProductUploadPage() {
                                 {category.name}
                               </option>
                             ))}
+                            <option value='other'>Diğer</option>
                           </select>
                           <span className='material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400'>
                             expand_more
@@ -572,7 +892,7 @@ export default function SellerProductUploadPage() {
                                 shouldDirty: true,
                               });
                             }}
-                            disabled={!selectedSubCategory || isSubmittingStep}
+                            disabled={(!selectedSubCategory && subCategoryId !== 'other') || isSubmittingStep}
                           >
                             <option value=''>En Alt Kategori seçiniz</option>
                             {leafCategories.map((category) => (
@@ -580,6 +900,7 @@ export default function SellerProductUploadPage() {
                                 {category.name}
                               </option>
                             ))}
+                            <option value='other'>Diğer</option>
                           </select>
                           <span className='material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400'>
                             expand_more
@@ -628,7 +949,7 @@ export default function SellerProductUploadPage() {
                           disabled={isSubmittingStep}
                         >
                           <option value=''>Sektör ekle...</option>
-                          {sectors.map((sector) => (
+                          {sectorOptions.map((sector) => (
                             <option key={sector.id} value={sector.id}>
                               {sector.name}
                             </option>
@@ -695,33 +1016,33 @@ export default function SellerProductUploadPage() {
                   </div>
 
                   <div className='md:col-span-2 space-y-3'>
-                    <label className='flex items-center gap-3'>
-                      <input
-                        className='h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary'
-                        type='checkbox'
-                        checked={Boolean(watchedStepOne.isCustomizable)}
-                        onChange={(event) => {
-                          stepOneForm.setValue('isCustomizable', event.target.checked, {
-                            shouldValidate: true,
-                            shouldDirty: true,
-                          });
-
-                          if (!event.target.checked) {
-                            stepOneForm.setValue('customizationNote', '', {
+                    <div className='mt-1 flex items-center gap-2'>
+                      <label className='flex items-center gap-3'>
+                        <input
+                          className='h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary'
+                          type='checkbox'
+                          checked={Boolean(watchedStepOne.isCustomizable)}
+                          onChange={(event) => {
+                            stepOneForm.setValue('isCustomizable', event.target.checked, {
                               shouldValidate: true,
                               shouldDirty: true,
                             });
-                          }
-                        }}
-                        disabled={isSubmittingStep}
-                      />
-                      <span className='text-sm font-bold text-on-surface'>Özelleştirilebilir mi?</span>
-                    </label>
 
-                    <label>
-                      <span className='mb-2 block text-sm font-bold text-on-surface-variant'>
-                        Özelleştirme Açıklaması
-                      </span>
+                            if (!event.target.checked) {
+                              stepOneForm.setValue('customizationNote', '', {
+                                shouldValidate: true,
+                                shouldDirty: true,
+                              });
+                            }
+                          }}
+                          disabled={isSubmittingStep}
+                        />
+                        <span className='text-sm font-bold text-on-surface'>Özelleştirilebilir mi?</span>
+                      </label>
+                      <FieldInfoHint text='Bu seçenek açıksa alıcılar logo baskısı, renk, ölçü gibi özel talepler ile sipariş verebilir.' />
+                    </div>
+
+                    <label className='block'>
                       <textarea
                         className='w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-3 text-sm outline-none transition-all focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20'
                         rows={3}
@@ -737,7 +1058,7 @@ export default function SellerProductUploadPage() {
                     </label>
                   </div>
 
-                  <label className='md:col-span-2'>
+                  <div className='md:col-span-2'>
                     <span className='mb-2 block text-sm font-bold text-on-surface-variant'>Ürün Açıklaması</span>
                     <RichTextEditor
                       value={watchedStepOne.description ?? ''}
@@ -755,13 +1076,190 @@ export default function SellerProductUploadPage() {
                         {stepOneForm.formState.errors.description.message}
                       </p>
                     ) : null}
-                  </label>
+                  </div>
+
+                  <div className='md:col-span-2'>
+                    <div className='mb-2 flex items-center gap-2'>
+                      <span className='text-sm font-bold text-on-surface-variant'>Ürün Görsel ve Videoları</span>
+                      <FieldInfoHint text='1 kapak resmi zorunlu, en fazla 5 galeri görseli (toplam 6 görsel). Video (opsiyonel): En fazla 1 adet, 15MB, 20 saniye. Galeri: JPG, PNG veya WEBP, her biri maksimum 3MB.' />
+                    </div>
+
+                    <div className='rounded-xl border border-outline-variant bg-surface-container-low p-4 md:p-5'>
+
+                    <div className='grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.5fr]'>
+                      <div
+                        className='group flex min-h-[220px] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-outline-variant bg-white px-4 py-5 text-center transition-colors hover:border-primary'
+                        onClick={() => coverImageInputRef.current?.click()}
+                        onDragOver={preventDropDefaults}
+                        onDrop={handleCoverDrop}
+                        role='button'
+                        tabIndex={0}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            coverImageInputRef.current?.click();
+                          }
+                        }}
+                      >
+                        <input
+                          ref={coverImageInputRef}
+                          className='hidden'
+                          type='file'
+                          accept={IMAGE_ACCEPT_MIME}
+                          onChange={handleCoverInputChange}
+                          disabled={isSubmittingStep}
+                        />
+
+                        <div className='mb-3 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary'>
+                          <span className='material-symbols-outlined'>upload</span>
+                        </div>
+
+                        <p className='text-2xl font-bold text-on-surface'>Kapak Görseli</p>
+                        <p className='mt-2 text-sm text-on-surface-variant'>Yüklemek için tıklayın veya sürükleyin</p>
+
+                        {pendingCoverImage ? (
+                          <div className='mt-4 w-full rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-left text-xs text-blue-900'>
+                            <div className='flex items-center justify-between gap-2'>
+                              <span className='truncate'>{pendingCoverImage.name}</span>
+                              <button
+                                type='button'
+                                className='inline-flex items-center text-blue-700 hover:text-red-600'
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setPendingCoverImage(null);
+                                }}
+                              >
+                                <span className='material-symbols-outlined text-sm'>close</span>
+                              </button>
+                            </div>
+                          </div>
+                        ) : existingCoverMedia ? (
+                          <p className='mt-4 w-full truncate rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700'>
+                            Mevcut kapak: {existingCoverMedia.originalName}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      <div
+                        className='rounded-xl border border-outline-variant bg-surface p-3'
+                        onDragOver={preventDropDefaults}
+                        onDrop={handleGalleryDrop}
+                      >
+                        <input
+                          ref={galleryImageInputRef}
+                          className='hidden'
+                          type='file'
+                          accept={IMAGE_ACCEPT_MIME}
+                          multiple
+                          onChange={handleGalleryInputChange}
+                          disabled={isSubmittingStep}
+                        />
+
+                        <div className='grid grid-cols-2 gap-3 md:grid-cols-3'>
+                          {Array.from({ length: MAX_GALLERY_IMAGE_COUNT }).map((_, index) => {
+                            const pendingImage = pendingGalleryImages[index];
+                            const existingImage = existingGalleryMedia[index] as ProductListingMediaRecord | undefined;
+
+                            if (pendingImage) {
+                              return (
+                                <div key={`pending-gallery-${index}`} className='relative rounded-lg border border-blue-200 bg-blue-50 p-2 text-xs text-blue-900'>
+                                  <p className='line-clamp-2 break-all pr-6'>{pendingImage.name}</p>
+                                  <button
+                                    type='button'
+                                    className='absolute right-1 top-1 inline-flex items-center text-blue-700 hover:text-red-600'
+                                    onClick={() => removePendingGalleryAt(index)}
+                                  >
+                                    <span className='material-symbols-outlined text-sm'>close</span>
+                                  </button>
+                                </div>
+                              );
+                            }
+
+                            if (existingImage) {
+                              return (
+                                <div key={`existing-gallery-${existingImage.id}`} className='rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700'>
+                                  <p className='line-clamp-2 break-all'>{existingImage.originalName}</p>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <button
+                                key={`gallery-slot-${index}`}
+                                type='button'
+                                className='inline-flex min-h-[86px] items-center justify-center rounded-lg border-2 border-dashed border-outline-variant text-on-surface-variant transition-colors hover:border-primary hover:text-primary'
+                                onClick={() => galleryImageInputRef.current?.click()}
+                                disabled={isSubmittingStep}
+                              >
+                                <span className='material-symbols-outlined text-[28px]'>add</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                      </div>
+                    </div>
+
+                    <div
+                      className='mt-4 flex cursor-pointer items-center justify-between rounded-xl border border-outline-variant bg-white px-4 py-3 transition-colors hover:border-primary'
+                      onClick={() => videoInputRef.current?.click()}
+                      onDragOver={preventDropDefaults}
+                      onDrop={(event) => {
+                        void handleVideoDrop(event);
+                      }}
+                      role='button'
+                      tabIndex={0}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          videoInputRef.current?.click();
+                        }
+                      }}
+                    >
+                      <input
+                        ref={videoInputRef}
+                        className='hidden'
+                        type='file'
+                        accept={VIDEO_ACCEPT_MIME}
+                        onChange={(event) => {
+                          void handleVideoInputChange(event);
+                        }}
+                        disabled={isSubmittingStep || isValidatingVideo}
+                      />
+
+                      <div>
+                        <p className='text-sm font-semibold text-on-surface'>Video (Opsiyonel)</p>
+                        {pendingVideoFile ? (
+                          <p className='mt-1 text-xs text-blue-700'>Seçilen video: {pendingVideoFile.name}</p>
+                        ) : existingVideoMedia[0] ? (
+                          <p className='mt-1 text-xs text-slate-700'>Mevcut video: {existingVideoMedia[0].originalName}</p>
+                        ) : null}
+                      </div>
+
+                      <div className='flex items-center gap-2'>
+                        {pendingVideoFile ? (
+                          <button
+                            type='button'
+                            className='inline-flex items-center text-blue-700 hover:text-red-600'
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setPendingVideoFile(null);
+                            }}
+                          >
+                            <span className='material-symbols-outlined text-[18px]'>close</span>
+                          </button>
+                        ) : null}
+                        <span className='material-symbols-outlined text-primary'>video_library</span>
+                      </div>
+                    </div>
+                  </div>
+                  </div>
 
                   <div className='md:col-span-2 flex justify-end'>
                     <button
                       className='inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60'
                       type='submit'
-                      disabled={isSubmittingStep || isLoadingMeta}
+                      disabled={isSubmittingStep || isLoadingMeta || isValidatingVideo}
                     >
                       <span>Sonraki Adım</span>
                       <span className='material-symbols-outlined text-[18px]'>arrow_forward</span>
@@ -843,7 +1341,7 @@ export default function SellerProductUploadPage() {
                     <button
                       className='inline-flex items-center gap-2 rounded-xl border border-outline-variant bg-white px-5 py-3 text-sm font-bold text-on-surface transition-colors hover:bg-slate-50'
                       type='button'
-                      onClick={() => setCurrentStep(1)}
+                      onClick={() => goToStep(1)}
                       disabled={isSubmittingStep}
                     >
                       <span className='material-symbols-outlined text-[18px]'>arrow_back</span>
@@ -952,53 +1450,6 @@ export default function SellerProductUploadPage() {
                     ) : null}
                   </label>
 
-                  <div className='md:col-span-2'>
-                    <span className='mb-2 block text-sm font-bold text-on-surface-variant'>
-                      Ürün Görsel ve Videoları (Maks. 5)
-                    </span>
-
-                    <label className='flex min-h-[120px] cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-outline-variant bg-surface-container-low px-4 py-6 text-center transition-colors hover:border-primary'>
-                      <span className='material-symbols-outlined text-primary'>upload</span>
-                      <span className='text-sm font-semibold text-on-surface'>Dosya seçmek için tıklayın</span>
-                      <span className='text-xs text-on-surface-variant'>PNG, JPG, WEBP, MP4, MOV</span>
-                      <input
-                        className='hidden'
-                        type='file'
-                        accept='image/png,image/jpeg,image/webp,video/mp4,video/quicktime'
-                        multiple
-                        onChange={(event) => handleMediaSelection(event.target.files)}
-                        disabled={isSubmittingStep}
-                      />
-                    </label>
-
-                    <div className='mt-3 space-y-2'>
-                      {draftRecord?.media.map((media) => (
-                        <p
-                          key={media.id}
-                          className='rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600'
-                        >
-                          Yüklü: {media.originalName}
-                        </p>
-                      ))}
-
-                      {uploadedMediaFiles.map((file, index) => (
-                        <div
-                          key={`${file.name}-${index}`}
-                          className='flex items-center justify-between rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800'
-                        >
-                          <span className='truncate pr-3'>Yeni: {file.name}</span>
-                          <button
-                            className='inline-flex items-center text-blue-700 hover:text-red-600'
-                            onClick={() => removePendingMediaAt(index)}
-                            type='button'
-                          >
-                            <span className='material-symbols-outlined text-[16px]'>close</span>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
                   <label className='md:col-span-2 flex items-center gap-3 rounded-lg border border-outline-variant/50 bg-surface-container-low px-3 py-3'>
                     <input
                       className='h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary'
@@ -1016,7 +1467,7 @@ export default function SellerProductUploadPage() {
                     <button
                       className='inline-flex items-center gap-2 rounded-xl border border-outline-variant bg-white px-5 py-3 text-sm font-bold text-on-surface transition-colors hover:bg-slate-50'
                       type='button'
-                      onClick={() => setCurrentStep(2)}
+                      onClick={() => goToStep(2)}
                       disabled={isSubmittingStep || isCompleted}
                     >
                       <span className='material-symbols-outlined text-[18px]'>arrow_back</span>

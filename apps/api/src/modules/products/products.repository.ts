@@ -8,6 +8,11 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
+const HIDDEN_OTHER_CATEGORY_SLUG = 'diger-gizli-kategori';
+const HIDDEN_OTHER_CATEGORY_ROOT_SLUG = 'diger-gizli-ana-kategori';
+const HIDDEN_OTHER_CATEGORY_SUB_SLUG = 'diger-gizli-alt-kategori';
+const HIDDEN_OTHER_SECTOR_SLUG = 'diger-gizli-sektor';
+
 const productListingSelect = {
   id: true,
   supplierId: true,
@@ -157,6 +162,18 @@ export type CreateProductListingInput = {
   customizationNote: string | null;
 };
 
+export type UpdateProductListingStepOneInput = {
+  name: string;
+  slug: string;
+  sku: string;
+  description: string;
+  categoryId: string;
+  sectorIds: string[];
+  featuredFeatures: string[];
+  isCustomizable: boolean;
+  customizationNote: string | null;
+};
+
 export type UpdateProductListingStepTwoInput = {
   basePrice: number;
   currency: string;
@@ -213,9 +230,160 @@ export class ProductsRepository {
     });
   }
 
+  async ensureHiddenOtherCategory(): Promise<CategorySummary> {
+    return this.prisma.$transaction(async (tx) => {
+      const existingLeaf = await tx.category.findUnique({
+        where: {
+          slug: HIDDEN_OTHER_CATEGORY_SLUG,
+        },
+        select: {
+          id: true,
+          name: true,
+          level: true,
+          isActive: true,
+        },
+      });
+
+      if (existingLeaf) {
+        return existingLeaf;
+      }
+
+      let root = await tx.category.findUnique({
+        where: {
+          slug: HIDDEN_OTHER_CATEGORY_ROOT_SLUG,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!root) {
+        const maxRootSortOrder = await tx.category.aggregate({
+          where: {
+            parentId: null,
+          },
+          _max: {
+            sortOrder: true,
+          },
+        });
+
+        root = await tx.category.create({
+          data: {
+            name: 'DİĞER (GİZLİ ANA)',
+            slug: HIDDEN_OTHER_CATEGORY_ROOT_SLUG,
+            level: 1,
+            parentId: null,
+            sortOrder: (maxRootSortOrder._max.sortOrder ?? -1) + 1,
+            isActive: false,
+          },
+          select: {
+            id: true,
+          },
+        });
+      }
+
+      let sub = await tx.category.findUnique({
+        where: {
+          slug: HIDDEN_OTHER_CATEGORY_SUB_SLUG,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!sub) {
+        const maxSubSortOrder = await tx.category.aggregate({
+          where: {
+            parentId: root.id,
+          },
+          _max: {
+            sortOrder: true,
+          },
+        });
+
+        sub = await tx.category.create({
+          data: {
+            name: 'DİĞER (GİZLİ ALT)',
+            slug: HIDDEN_OTHER_CATEGORY_SUB_SLUG,
+            level: 2,
+            parentId: root.id,
+            sortOrder: (maxSubSortOrder._max.sortOrder ?? -1) + 1,
+            isActive: false,
+          },
+          select: {
+            id: true,
+          },
+        });
+      }
+
+      const maxLeafSortOrder = await tx.category.aggregate({
+        where: {
+          parentId: sub.id,
+        },
+        _max: {
+          sortOrder: true,
+        },
+      });
+
+      return tx.category.create({
+        data: {
+          name: 'DİĞER',
+          slug: HIDDEN_OTHER_CATEGORY_SLUG,
+          level: 3,
+          parentId: sub.id,
+          sortOrder: (maxLeafSortOrder._max.sortOrder ?? -1) + 1,
+          isActive: false,
+        },
+        select: {
+          id: true,
+          name: true,
+          level: true,
+          isActive: true,
+        },
+      });
+    });
+  }
+
   async findSectorById(sectorId: string): Promise<SectorSummary | null> {
     return this.prisma.sector.findUnique({
       where: { id: sectorId },
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+      },
+    });
+  }
+
+  async ensureHiddenOtherSector(): Promise<SectorSummary> {
+    const existing = await this.prisma.sector.findUnique({
+      where: {
+        slug: HIDDEN_OTHER_SECTOR_SLUG,
+      },
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+      },
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    const maxSortOrder = await this.prisma.sector.aggregate({
+      _max: {
+        sortOrder: true,
+      },
+    });
+
+    return this.prisma.sector.create({
+      data: {
+        name: 'Diğer',
+        slug: HIDDEN_OTHER_SECTOR_SLUG,
+        sortOrder: (maxSortOrder._max.sortOrder ?? 0) + 1,
+        isActive: false,
+      },
       select: {
         id: true,
         name: true,
@@ -393,6 +561,56 @@ export class ProductsRepository {
         stock: input.stock,
       },
       select: productListingSelect,
+    });
+
+    return this.mapListingRecord(updated);
+  }
+
+  async updateProductListingStepOne(
+    id: string,
+    input: UpdateProductListingStepOneInput,
+  ): Promise<ProductListingRecord> {
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.productListing.update({
+        where: {
+          id,
+        },
+        data: {
+          name: input.name,
+          slug: input.slug,
+          sku: input.sku,
+          description: input.description,
+          categoryId: input.categoryId,
+          featuredFeatures: input.featuredFeatures,
+          isCustomizable: input.isCustomizable,
+          customizationNote: input.customizationNote,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      await tx.productListingSector.deleteMany({
+        where: {
+          productListingId: id,
+        },
+      });
+
+      if (input.sectorIds.length > 0) {
+        await tx.productListingSector.createMany({
+          data: input.sectorIds.map((sectorId) => ({
+            productListingId: id,
+            sectorId,
+          })),
+        });
+      }
+
+      return tx.productListing.findUniqueOrThrow({
+        where: {
+          id,
+        },
+        select: productListingSelect,
+      });
     });
 
     return this.mapListingRecord(updated);

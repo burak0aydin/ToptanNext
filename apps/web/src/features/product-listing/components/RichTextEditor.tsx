@@ -4,11 +4,11 @@ import Color from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
 import Placeholder from '@tiptap/extension-placeholder';
 import TextAlign from '@tiptap/extension-text-align';
-import TextStyle from '@tiptap/extension-text-style';
+import { TextStyle } from '@tiptap/extension-text-style';
 import Underline from '@tiptap/extension-underline';
 import StarterKit from '@tiptap/starter-kit';
-import { EditorContent, useEditor } from '@tiptap/react';
-import { useEffect } from 'react';
+import { EditorContent, useEditor, type Editor } from '@tiptap/react';
+import { useEffect, useState } from 'react';
 
 type RichTextEditorProps = {
   value: string;
@@ -25,6 +25,45 @@ type ToolbarButtonProps = {
   disabled?: boolean;
 };
 
+const DEFAULT_FONT_SIZE_PX = '14';
+const MIN_FONT_SIZE_PX = 10;
+const MAX_FONT_SIZE_PX = 72;
+
+const TextStyleWithFontSize = TextStyle.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      fontSize: {
+        default: null,
+        parseHTML: (element) => element.style.fontSize || null,
+        renderHTML: (attributes) => {
+          if (!attributes.fontSize) {
+            return {};
+          }
+
+          return {
+            style: `font-size: ${attributes.fontSize}`,
+          };
+        },
+      },
+    };
+  },
+});
+
+function readFontSizePx(editor: Editor): string {
+  const rawValue = editor.getAttributes('textStyle').fontSize;
+  if (typeof rawValue !== 'string') {
+    return DEFAULT_FONT_SIZE_PX;
+  }
+
+  const parsed = Number.parseInt(rawValue.replace('px', ''), 10);
+  if (Number.isNaN(parsed)) {
+    return DEFAULT_FONT_SIZE_PX;
+  }
+
+  return String(Math.min(MAX_FONT_SIZE_PX, Math.max(MIN_FONT_SIZE_PX, parsed)));
+}
+
 function ToolbarButton({
   icon,
   label,
@@ -40,6 +79,9 @@ function ToolbarButton({
           ? 'border-primary bg-primary/10 text-primary'
           : 'border-outline-variant bg-white text-on-surface-variant hover:bg-slate-50'
       } disabled:cursor-not-allowed disabled:opacity-40`}
+      onMouseDown={(event) => {
+        event.preventDefault();
+      }}
       onClick={onClick}
       disabled={disabled}
       title={label}
@@ -56,13 +98,23 @@ export function RichTextEditor({
   placeholder = 'Ürün detaylarını buraya yazınız...',
   disabled = false,
 }: RichTextEditorProps) {
+  const [isFocused, setIsFocused] = useState(false);
+  const [fontSizeInput, setFontSizeInput] = useState(DEFAULT_FONT_SIZE_PX);
+  const [, setToolbarVersion] = useState(0);
+
+  const syncToolbarState = (currentEditor: Editor): void => {
+    const nextFontSize = readFontSizePx(currentEditor);
+    setFontSizeInput((current) => (current === nextFontSize ? current : nextFontSize));
+    setToolbarVersion((current) => current + 1);
+  };
+
   const editor = useEditor({
     immediatelyRender: false,
     editable: !disabled,
     extensions: [
       StarterKit,
       Underline,
-      TextStyle,
+      TextStyleWithFontSize,
       Color,
       Highlight,
       TextAlign.configure({
@@ -82,7 +134,45 @@ export function RichTextEditor({
     onUpdate: ({ editor: currentEditor }) => {
       onChange(currentEditor.getHTML());
     },
+    onCreate: ({ editor: currentEditor }) => {
+      syncToolbarState(currentEditor);
+    },
+    onSelectionUpdate: ({ editor: currentEditor }) => {
+      syncToolbarState(currentEditor);
+    },
+    onTransaction: ({ editor: currentEditor }) => {
+      syncToolbarState(currentEditor);
+    },
+    onFocus: ({ editor: currentEditor }) => {
+      setIsFocused(true);
+      syncToolbarState(currentEditor);
+    },
+    onBlur: () => {
+      setIsFocused(false);
+      setToolbarVersion((current) => current + 1);
+    },
   });
+
+  const applyFontSize = (): void => {
+    if (!editor || disabled) {
+      return;
+    }
+
+    const parsed = Number.parseInt(fontSizeInput, 10);
+    if (Number.isNaN(parsed)) {
+      setFontSizeInput(readFontSizePx(editor));
+      return;
+    }
+
+    const bounded = Math.min(MAX_FONT_SIZE_PX, Math.max(MIN_FONT_SIZE_PX, parsed));
+    editor
+      .chain()
+      .focus()
+      .setMark('textStyle', { fontSize: `${bounded}px` })
+      .run();
+    setFontSizeInput(String(bounded));
+    setToolbarVersion((current) => current + 1);
+  };
 
   useEffect(() => {
     if (!editor) {
@@ -99,7 +189,7 @@ export function RichTextEditor({
 
     const currentHtml = editor.getHTML();
     if (value !== currentHtml) {
-      editor.commands.setContent(value || '', false);
+      editor.commands.setContent(value || '', { emitUpdate: false });
     }
   }, [editor, value]);
 
@@ -112,7 +202,11 @@ export function RichTextEditor({
   }
 
   return (
-    <div className='overflow-hidden rounded-lg border border-outline-variant bg-surface-container-low'>
+    <div
+      className={`overflow-hidden rounded-lg border bg-surface-container-low transition-all ${
+        isFocused ? 'border-primary ring-2 ring-primary/20' : 'border-outline-variant'
+      }`}
+    >
       <div className='flex flex-wrap items-center gap-2 border-b border-outline-variant/70 bg-surface px-3 py-2'>
         <ToolbarButton
           icon='format_bold'
@@ -201,18 +295,42 @@ export function RichTextEditor({
           disabled={disabled}
         />
 
+        <div className='inline-flex items-center gap-1 rounded-md border border-outline-variant bg-white px-2 py-1'>
+          <span className='text-[11px] font-semibold text-on-surface-variant'>Punto</span>
+          <input
+            type='number'
+            min={MIN_FONT_SIZE_PX}
+            max={MAX_FONT_SIZE_PX}
+            value={fontSizeInput}
+            disabled={disabled}
+            className='h-7 w-14 rounded border border-outline-variant bg-white px-1 text-center text-xs text-on-surface outline-none transition-colors focus:border-primary'
+            onChange={(event) => {
+              setFontSizeInput(event.target.value);
+            }}
+            onBlur={applyFontSize}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                applyFontSize();
+              }
+            }}
+          />
+        </div>
+
         <label
-          className='inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-outline-variant bg-white text-on-surface-variant hover:bg-slate-50'
+          className='relative inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-outline-variant bg-white text-on-surface-variant transition-colors hover:bg-slate-50'
           title='Metin Rengi'
           aria-label='Metin Rengi'
         >
-          <span className='material-symbols-outlined text-[18px]'>format_color_text</span>
+          <span className='text-sm font-semibold leading-none'>A</span>
+          <span className='absolute bottom-[8px] h-[2px] w-4 rounded-full bg-on-surface-variant' />
           <input
             type='color'
-            className='h-0 w-0 opacity-0'
+            className='absolute inset-0 cursor-pointer opacity-0'
             disabled={disabled}
             onChange={(event) => {
               editor.chain().focus().setColor(event.target.value).run();
+              setToolbarVersion((current) => current + 1);
             }}
           />
         </label>
@@ -233,7 +351,7 @@ export function RichTextEditor({
         />
       </div>
 
-      <EditorContent editor={editor} />
+      <EditorContent editor={editor} className='bg-white' />
 
       <style jsx global>{`
         .tiptap p {
@@ -267,8 +385,28 @@ export function RichTextEditor({
           margin: 0.5rem 0;
         }
 
+        .tiptap ul {
+          list-style-type: disc;
+        }
+
+        .tiptap ol {
+          list-style-type: decimal;
+        }
+
+        .tiptap ul ul {
+          list-style-type: circle;
+        }
+
+        .tiptap ul ul ul {
+          list-style-type: square;
+        }
+
         .tiptap li {
           margin: 0.2rem 0;
+        }
+
+        .tiptap li p {
+          margin: 0;
         }
 
         .tiptap blockquote {

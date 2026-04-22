@@ -104,6 +104,20 @@ export async function createProductListingStepOne(
   );
 }
 
+export async function updateProductListingStepOne(
+  listingId: string,
+  payload: ProductListingStepOneDto,
+): Promise<ProductListingRecord> {
+  return requestJson<ProductListingRecord, ProductListingStepOneDto>(
+    `/products/me/listings/${listingId}/step-one`,
+    {
+      method: 'PUT',
+      auth: true,
+      body: payload,
+    },
+  );
+}
+
 export async function updateProductListingStepTwo(
   listingId: string,
   payload: ProductListingStepTwoDto,

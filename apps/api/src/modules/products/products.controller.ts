@@ -41,13 +41,13 @@ const PRODUCT_MEDIA_UPLOAD_ROOT = join(
   'product-listings',
 );
 const PRODUCT_MEDIA_UPLOAD_FIELD = 'mediaFiles';
-const MAX_MEDIA_FILE_SIZE_BYTES = 25 * 1024 * 1024;
+const MAX_MEDIA_FILE_SIZE_BYTES = 15 * 1024 * 1024;
 const ALLOWED_MEDIA_MIME_TYPES = new Set([
   'image/png',
   'image/jpeg',
   'image/webp',
   'video/mp4',
-  'video/quicktime',
+  'video/webm',
 ]);
 
 @Catch(MulterError)
@@ -60,7 +60,7 @@ class ProductListingMediaUploadExceptionFilter implements ExceptionFilter {
         success: false,
         error: {
           code: 'FILE_TOO_LARGE',
-          message: 'Yüklenen medya dosyası 25 MB sınırını aşıyor.',
+          message: 'Yüklenen medya dosyası 15 MB sınırını aşıyor.',
         },
       });
       return;
@@ -119,7 +119,7 @@ const productMediaUploadOptions = {
     if (!ALLOWED_MEDIA_MIME_TYPES.has(file.mimetype)) {
       cb(
         new BadRequestException(
-          'Yalnızca PNG, JPG, WEBP, MP4 veya MOV dosyaları yükleyebilirsiniz.',
+          'Yalnızca JPG, PNG, WEBP, MP4 veya WEBM dosyaları yükleyebilirsiniz.',
         ),
         false,
       );
@@ -210,6 +210,27 @@ export class ProductsController {
       success: true,
       data,
       message: 'Ürün taslağı ilk adım bilgileriyle oluşturuldu.',
+    };
+  }
+
+  @Put('me/listings/:id/step-one')
+  @UseGuards(AuthGuard('jwt'))
+  async updateMyListingStepOne(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: CreateProductListingStepOneDto,
+  ) {
+    const data = await this.productsService.updateMyListingStepOne(
+      req.user.sub,
+      req.user.role,
+      id,
+      dto,
+    );
+
+    return {
+      success: true,
+      data,
+      message: 'Temel ürün bilgileri başarıyla güncellendi.',
     };
   }
 
