@@ -33,6 +33,7 @@ import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { CreateProductListingStepOneDto } from './dto/create-product-listing-step-one.dto';
 import { CreateProductDto } from './dto/create-product.dto';
+import { ReviewProductListingDto } from './dto/review-product-listing.dto';
 import { SubmitProductListingDto } from './dto/submit-product-listing.dto';
 import { UpdateProductListingActiveStatusDto } from './dto/update-product-listing-active-status.dto';
 import { UpdateProductListingStepThreeDto } from './dto/update-product-listing-step-three.dto';
@@ -156,15 +157,141 @@ export class ProductsController {
 
   @Get('admin/listings')
   @UseGuards(AuthGuard('jwt'))
-  async getAdminListings(@Req() req: AuthenticatedRequest) {
+  async getAdminListings(
+    @Req() req: AuthenticatedRequest,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('period') period?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('status') status?: string,
+  ) {
     this.ensureAdmin(req.user.role);
 
-    const data = await this.productsService.getAdminListings(req.user.role);
+    const numericPage = Number(page);
+    const numericLimit = Number(limit);
+    const data = await this.productsService.getAdminListingManagement(
+      req.user.role,
+      {
+        page: Number.isFinite(numericPage) ? numericPage : 1,
+        limit: Number.isFinite(numericLimit) ? numericLimit : 10,
+        period: this.normalizeAdminGrowthPeriod(period),
+        categoryId: categoryId?.trim() || undefined,
+        status: this.normalizeAdminManagementStatus(status),
+      },
+    );
 
     return {
       success: true,
       data,
       message: 'Ürün başvuruları başarıyla getirildi.',
+    };
+  }
+
+  @Patch('admin/listings/:id/review')
+  @UseGuards(AuthGuard('jwt'))
+  async reviewAdminListing(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: ReviewProductListingDto,
+  ) {
+    this.ensureAdmin(req.user.role);
+
+    const data = await this.productsService.reviewListingByAdmin(
+      req.user.role,
+      id,
+      dto,
+    );
+
+    return {
+      success: true,
+      data,
+      message:
+        dto.status === 'APPROVED'
+          ? 'Ürün başvurusu onaylandı.'
+          : 'Ürün başvurusu reddedildi.',
+    };
+  }
+
+  @Get('admin/listings/:id')
+  @UseGuards(AuthGuard('jwt'))
+  async getAdminListingById(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    this.ensureAdmin(req.user.role);
+
+    const data = await this.productsService.getListingByAdmin(req.user.role, id);
+
+    return {
+      success: true,
+      data,
+      message: 'Ürün başvuru detayı başarıyla getirildi.',
+    };
+  }
+
+  @Put('admin/listings/:id/step-one')
+  @UseGuards(AuthGuard('jwt'))
+  async updateAdminListingStepOne(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: CreateProductListingStepOneDto,
+  ) {
+    this.ensureAdmin(req.user.role);
+
+    const data = await this.productsService.updateListingStepOneByAdmin(
+      req.user.role,
+      id,
+      dto,
+    );
+
+    return {
+      success: true,
+      data,
+      message: 'Temel ürün bilgileri başarıyla güncellendi.',
+    };
+  }
+
+  @Put('admin/listings/:id/step-two')
+  @UseGuards(AuthGuard('jwt'))
+  async updateAdminListingStepTwo(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: UpdateProductListingStepTwoDto,
+  ) {
+    this.ensureAdmin(req.user.role);
+
+    const data = await this.productsService.updateListingStepTwoByAdmin(
+      req.user.role,
+      id,
+      dto,
+    );
+
+    return {
+      success: true,
+      data,
+      message: 'Fiyatlandırma ve stok bilgileri başarıyla güncellendi.',
+    };
+  }
+
+  @Put('admin/listings/:id/step-three')
+  @UseGuards(AuthGuard('jwt'))
+  async updateAdminListingStepThree(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: UpdateProductListingStepThreeDto,
+  ) {
+    this.ensureAdmin(req.user.role);
+
+    const data = await this.productsService.updateListingStepThreeByAdmin(
+      req.user.role,
+      id,
+      dto,
+    );
+
+    return {
+      success: true,
+      data,
+      message: 'Lojistik bilgileri başarıyla güncellendi.',
     };
   }
 
@@ -502,5 +629,30 @@ export class ProductsController {
     }
 
     return 'ALL';
+  }
+
+  private normalizeAdminManagementStatus(
+    value: string | undefined,
+  ): 'ALL' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'DRAFT' {
+    if (
+      value === 'PENDING_REVIEW' ||
+      value === 'APPROVED' ||
+      value === 'REJECTED' ||
+      value === 'DRAFT'
+    ) {
+      return value;
+    }
+
+    return 'ALL';
+  }
+
+  private normalizeAdminGrowthPeriod(
+    value: string | undefined,
+  ): 'DAILY' | 'WEEKLY' | 'MONTHLY' {
+    if (value === 'DAILY' || value === 'MONTHLY') {
+      return value;
+    }
+
+    return 'WEEKLY';
   }
 }

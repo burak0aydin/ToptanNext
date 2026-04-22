@@ -201,6 +201,31 @@ export type ProductListingManagementResult = {
   };
 };
 
+export type AdminProductListingStatusFilter =
+  | 'ALL'
+  | 'PENDING_REVIEW'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'DRAFT';
+
+export type AdminProductListingListFilters = {
+  status: AdminProductListingStatusFilter;
+  categoryId?: string;
+  skip: number;
+  take: number;
+};
+
+export type AdminProductListingListResult = {
+  total: number;
+  items: ProductListingRecord[];
+};
+
+export type CategoryDistributionRecord = {
+  categoryId: string;
+  categoryName: string;
+  count: number;
+};
+
 export type CreateProductInput = {
   name: string;
   slug: string;
@@ -694,6 +719,155 @@ export class ProductsRepository {
     });
 
     return listings.map((listing) => this.mapListingRecord(listing));
+  }
+
+  async findProductListingsForAdminManagement(
+    input: AdminProductListingListFilters,
+  ): Promise<AdminProductListingListResult> {
+    const where: Prisma.ProductListingWhereInput = {
+      deletedAt: null,
+    };
+
+    if (input.status !== 'ALL') {
+      where.status = input.status;
+    }
+
+    if (input.categoryId) {
+      where.categoryId = input.categoryId;
+    }
+
+    const [total, items] = await this.prisma.$transaction([
+      this.prisma.productListing.count({ where }),
+      this.prisma.productListing.findMany({
+        where,
+        orderBy: [{ updatedAt: 'desc' }],
+        skip: input.skip,
+        take: input.take,
+        select: productListingSelect,
+      }),
+    ]);
+
+    return {
+      total,
+      items: items.map((listing) => this.mapListingRecord(listing)),
+    };
+  }
+
+  async countProductListingsForAdmin(): Promise<{
+    totalProducts: number;
+    pendingReview: number;
+  }> {
+    const whereBase: Prisma.ProductListingWhereInput = {
+      deletedAt: null,
+    };
+
+    const [totalProducts, pendingReview] = await this.prisma.$transaction([
+      this.prisma.productListing.count({ where: whereBase }),
+      this.prisma.productListing.count({
+        where: {
+          ...whereBase,
+          status: ProductListingStatus.PENDING_REVIEW,
+        },
+      }),
+    ]);
+
+    return {
+      totalProducts,
+      pendingReview,
+    };
+  }
+
+  async countProductListingsCreatedBetween(
+    start: Date,
+    end: Date,
+  ): Promise<number> {
+    return this.prisma.productListing.count({
+      where: {
+        deletedAt: null,
+        createdAt: {
+          gte: start,
+          lt: end,
+        },
+      },
+    });
+  }
+
+  async getAdminCategoryDistribution(
+    topN: number,
+  ): Promise<CategoryDistributionRecord[]> {
+    const grouped = await this.prisma.productListing.groupBy({
+      by: ['categoryId'],
+      where: {
+        deletedAt: null,
+      },
+      _count: {
+        categoryId: true,
+      },
+      orderBy: {
+        _count: {
+          categoryId: 'desc',
+        },
+      },
+      take: topN,
+    });
+
+    if (grouped.length === 0) {
+      return [];
+    }
+
+    const categoryIds = grouped.map((item) => item.categoryId);
+    const categories = await this.prisma.category.findMany({
+      where: {
+        id: {
+          in: categoryIds,
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    const categoryMap = new Map(categories.map((category) => [category.id, category.name]));
+
+    return grouped.map((item) => ({
+      categoryId: item.categoryId,
+      categoryName: categoryMap.get(item.categoryId) ?? 'Bilinmeyen Kategori',
+      count: item._count.categoryId,
+    }));
+  }
+
+  async findProductListingById(
+    id: string,
+  ): Promise<ProductListingRecord | null> {
+    const listing = await this.prisma.productListing.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+      },
+      select: productListingSelect,
+    });
+
+    return this.mapListingRecordOrNull(listing);
+  }
+
+  async updateProductListingReviewByAdmin(
+    id: string,
+    status: 'APPROVED' | 'REJECTED',
+    reviewNote: string | null,
+  ): Promise<ProductListingRecord> {
+    const updated = await this.prisma.productListing.update({
+      where: {
+        id,
+      },
+      data: {
+        status,
+        reviewNote,
+      },
+      select: productListingSelect,
+    });
+
+    return this.mapListingRecord(updated);
   }
 
   async updateProductListingActiveStatus(

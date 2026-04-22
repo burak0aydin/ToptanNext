@@ -113,6 +113,48 @@ export type ProductListingManagementQuery = {
   status?: ProductListingManagementStatus;
 };
 
+export type AdminProductListingStatus =
+  | "ALL"
+  | "PENDING_REVIEW"
+  | "APPROVED"
+  | "REJECTED"
+  | "DRAFT";
+
+export type AdminProductListingGrowthPeriod = "DAILY" | "WEEKLY" | "MONTHLY";
+
+export type AdminProductListingManagementQuery = {
+  page?: number;
+  limit?: number;
+  categoryId?: string;
+  status?: AdminProductListingStatus;
+  period?: AdminProductListingGrowthPeriod;
+};
+
+export type AdminProductListingManagementResult = {
+  summary: {
+    totalProducts: number;
+    pendingReview: number;
+  };
+  growth: {
+    period: AdminProductListingGrowthPeriod;
+    labels: string[];
+    values: number[];
+  };
+  categoryDistribution: Array<{
+    categoryId: string;
+    categoryName: string;
+    count: number;
+    percentage: number;
+  }>;
+  listings: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    items: ProductListingRecord[];
+  };
+};
+
 export async function fetchCategoriesTree(): Promise<CategoryTreeNode[]> {
   return requestJson<CategoryTreeNode[]>('/categories', {
     auth: true,
@@ -162,10 +204,106 @@ export async function fetchMyProductListingDrafts(): Promise<ProductListingRecor
   });
 }
 
-export async function fetchAdminProductListings(): Promise<ProductListingRecord[]> {
-  return requestJson<ProductListingRecord[]>('/products/admin/listings', {
+export async function fetchAdminProductListings(
+  query: AdminProductListingManagementQuery = {},
+): Promise<AdminProductListingManagementResult> {
+  const searchParams = new URLSearchParams();
+
+  if (query.page) {
+    searchParams.set('page', String(query.page));
+  }
+
+  if (query.limit) {
+    searchParams.set('limit', String(query.limit));
+  }
+
+  if (query.categoryId) {
+    searchParams.set('categoryId', query.categoryId);
+  }
+
+  if (query.status && query.status !== 'ALL') {
+    searchParams.set('status', query.status);
+  }
+
+  if (query.period) {
+    searchParams.set('period', query.period);
+  }
+
+  const queryString = searchParams.toString();
+
+  return requestJson<AdminProductListingManagementResult>(
+    `/products/admin/listings${queryString ? `?${queryString}` : ''}`,
+    {
+      auth: true,
+    },
+  );
+}
+
+export async function reviewProductListingByAdmin(
+  id: string,
+  payload: { status: 'APPROVED' | 'REJECTED'; reviewNote?: string },
+): Promise<ProductListingRecord> {
+  return requestJson<
+    ProductListingRecord,
+    { status: 'APPROVED' | 'REJECTED'; reviewNote?: string }
+  >(
+    `/products/admin/listings/${id}/review`,
+    {
+      method: 'PATCH',
+      auth: true,
+      body: payload,
+    },
+  );
+}
+
+export async function fetchAdminProductListingById(
+  id: string,
+): Promise<ProductListingRecord> {
+  return requestJson<ProductListingRecord>(`/products/admin/listings/${id}`, {
     auth: true,
   });
+}
+
+export async function updateAdminProductListingStepOne(
+  listingId: string,
+  payload: ProductListingStepOneDto,
+): Promise<ProductListingRecord> {
+  return requestJson<ProductListingRecord, ProductListingStepOneDto>(
+    `/products/admin/listings/${listingId}/step-one`,
+    {
+      method: 'PUT',
+      auth: true,
+      body: payload,
+    },
+  );
+}
+
+export async function updateAdminProductListingStepTwo(
+  listingId: string,
+  payload: ProductListingStepTwoDto,
+): Promise<ProductListingRecord> {
+  return requestJson<ProductListingRecord, ProductListingStepTwoDto>(
+    `/products/admin/listings/${listingId}/step-two`,
+    {
+      method: 'PUT',
+      auth: true,
+      body: payload,
+    },
+  );
+}
+
+export async function updateAdminProductListingStepThree(
+  listingId: string,
+  payload: ProductListingStepThreeDto,
+): Promise<ProductListingRecord> {
+  return requestJson<ProductListingRecord, ProductListingStepThreeDto>(
+    `/products/admin/listings/${listingId}/step-three`,
+    {
+      method: 'PUT',
+      auth: true,
+      body: payload,
+    },
+  );
 }
 
 export function resolveProductListingMediaUrl(mediaId: string): string {

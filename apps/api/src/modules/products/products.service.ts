@@ -14,9 +14,11 @@ import {
 import { CreateProductListingStepOneDto } from './dto/create-product-listing-step-one.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { SubmitProductListingDto } from './dto/submit-product-listing.dto';
+import { ReviewProductListingDto } from './dto/review-product-listing.dto';
 import { UpdateProductListingStepThreeDto } from './dto/update-product-listing-step-three.dto';
 import { UpdateProductListingStepTwoDto } from './dto/update-product-listing-step-two.dto';
 import {
+  AdminProductListingStatusFilter,
   CreateProductListingInput,
   CreateProductInput,
   CreateProductListingMediaInput,
@@ -43,6 +45,16 @@ export type ProductListingManagementQuery = {
   status?: ProductListingManagementStatusFilter;
 };
 
+type AdminProductListingGrowthPeriod = 'DAILY' | 'WEEKLY' | 'MONTHLY';
+
+export type AdminProductListingManagementQuery = {
+  page: number;
+  limit: number;
+  period?: AdminProductListingGrowthPeriod;
+  categoryId?: string;
+  status?: AdminProductListingStatusFilter;
+};
+
 const LISTING_EDITABLE_STATUSES: ProductListingStatus[] = [
   ProductListingStatus.DRAFT,
   ProductListingStatus.REJECTED,
@@ -66,6 +78,232 @@ export class ProductsService {
   async getAdminListings(role: Role): Promise<ProductListingRecord[]> {
     this.ensureAdminRole(role);
     return this.productsRepository.findProductListingsForAdmin();
+  }
+
+  async getAdminListingManagement(
+    role: Role,
+    query: AdminProductListingManagementQuery,
+  ): Promise<{
+    summary: {
+      totalProducts: number;
+      pendingReview: number;
+    };
+    growth: {
+      period: AdminProductListingGrowthPeriod;
+      labels: string[];
+      values: number[];
+    };
+    categoryDistribution: Array<{
+      categoryId: string;
+      categoryName: string;
+      count: number;
+      percentage: number;
+    }>;
+    listings: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+      items: ProductListingRecord[];
+    };
+  }> {
+    this.ensureAdminRole(role);
+
+    const page = Math.max(1, query.page);
+    const limit = Math.min(Math.max(query.limit, 5), 100);
+    const period = query.period ?? 'WEEKLY';
+    const status = query.status ?? 'ALL';
+
+    const [summary, listResult, growth, categoryDistribution] = await Promise.all([
+      this.productsRepository.countProductListingsForAdmin(),
+      this.productsRepository.findProductListingsForAdminManagement({
+        status,
+        categoryId: query.categoryId,
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.buildAdminGrowth(period),
+      this.productsRepository.getAdminCategoryDistribution(5),
+    ]);
+
+    return {
+      summary,
+      growth: {
+        period,
+        labels: growth.labels,
+        values: growth.values,
+      },
+      categoryDistribution: categoryDistribution.map((item) => ({
+        ...item,
+        percentage:
+          summary.totalProducts === 0
+            ? 0
+            : Number(((item.count / summary.totalProducts) * 100).toFixed(1)),
+      })),
+      listings: {
+        total: listResult.total,
+        page,
+        limit,
+        totalPages: Math.max(1, Math.ceil(listResult.total / limit)),
+        items: listResult.items,
+      },
+    };
+  }
+
+  async reviewListingByAdmin(
+    role: Role,
+    listingId: string,
+    dto: ReviewProductListingDto,
+  ): Promise<ProductListingRecord> {
+    this.ensureAdminRole(role);
+
+    const listing = await this.productsRepository.findProductListingById(listingId);
+    if (!listing) {
+      throw new NotFoundException('Ürün başvurusu bulunamadı.');
+    }
+
+    const reviewNote = this.normalizeOptionalText(dto.reviewNote);
+    if (dto.status === 'REJECTED' && !reviewNote) {
+      throw new BadRequestException(
+        'Ürünü reddetmek için değerlendirme notu zorunludur.',
+      );
+    }
+
+    return this.productsRepository.updateProductListingReviewByAdmin(
+      listing.id,
+      dto.status,
+      reviewNote,
+    );
+  }
+
+  async getListingByAdmin(
+    role: Role,
+    listingId: string,
+  ): Promise<ProductListingRecord> {
+    this.ensureAdminRole(role);
+    return this.getListingForAdminOrThrow(listingId);
+  }
+
+  async updateListingStepOneByAdmin(
+    role: Role,
+    listingId: string,
+    dto: CreateProductListingStepOneDto,
+  ): Promise<ProductListingRecord> {
+    this.ensureAdminRole(role);
+    const listing = await this.getListingForAdminOrThrow(listingId);
+
+    const name = this.normalizeRequiredText(dto.name, 'Ürün adı boş olamaz.');
+    const sku = this.normalizeRequiredText(dto.sku, 'SKU boş olamaz.');
+    const description = this.normalizeRequiredText(
+      dto.description,
+      'Ürün açıklaması boş olamaz.',
+    );
+    const stepOneRefs = await this.resolveStepOneReferences(dto);
+
+    const duplicateSku = await this.productsRepository.findProductListingBySupplierAndSku(
+      listing.supplierId,
+      sku,
+    );
+
+    if (duplicateSku && duplicateSku.id !== listing.id) {
+      throw new BadRequestException('Bu SKU zaten kullanılıyor.');
+    }
+
+    const slug = listing.name === name
+      ? listing.slug
+      : await this.generateUniqueListingSlug(
+        listing.supplierId,
+        name,
+        listing.id,
+      );
+
+    const input: UpdateProductListingStepOneInput = {
+      name,
+      slug,
+      sku,
+      description,
+      categoryId: stepOneRefs.categoryId,
+      sectorIds: stepOneRefs.sectorIds,
+      featuredFeatures: this.normalizeStringArray(dto.featuredFeatures ?? []),
+      isCustomizable: dto.isCustomizable ?? false,
+      customizationNote: this.normalizeOptionalText(dto.customizationNote),
+    };
+
+    return this.productsRepository.updateProductListingStepOne(listing.id, input);
+  }
+
+  async updateListingStepTwoByAdmin(
+    role: Role,
+    listingId: string,
+    dto: UpdateProductListingStepTwoDto,
+  ): Promise<ProductListingRecord> {
+    this.ensureAdminRole(role);
+    const listing = await this.getListingForAdminOrThrow(listingId);
+
+    const pricingTiers = this.normalizePricingTiers(dto.pricingTiers);
+
+    if (pricingTiers.length === 0) {
+      throw new BadRequestException('En az 1 fiyat kademesi tanımlamalısınız.');
+    }
+
+    if (pricingTiers.length > MAX_PRICING_TIER_COUNT) {
+      throw new BadRequestException('En fazla 6 fiyat kademesi tanımlayabilirsiniz.');
+    }
+
+    const minOrderTier = pricingTiers.find((tier) => (
+      dto.minOrderQuantity >= tier.minQuantity && dto.minOrderQuantity <= tier.maxQuantity
+    ));
+
+    if (!minOrderTier) {
+      throw new BadRequestException('Minimum sipariş adedi, tanımlanan bir kademe aralığında olmalıdır.');
+    }
+
+    const normalizedNegotiationThreshold = dto.isNegotiationEnabled
+      ? dto.negotiationThreshold ?? null
+      : null;
+
+    if (dto.isNegotiationEnabled && normalizedNegotiationThreshold === null) {
+      throw new BadRequestException('Pazarlık eşiği aktifse pazarlık sınırı zorunludur.');
+    }
+
+    if (
+      normalizedNegotiationThreshold !== null &&
+      normalizedNegotiationThreshold < dto.minOrderQuantity
+    ) {
+      throw new BadRequestException('Pazarlık sınırı, minimum sipariş adedinden küçük olamaz.');
+    }
+
+    return this.productsRepository.updateProductListingStepTwo(listing.id, {
+      basePrice: minOrderTier.unitPrice,
+      currency: 'TRY',
+      minOrderQuantity: dto.minOrderQuantity,
+      stock: dto.stock,
+      isNegotiationEnabled: dto.isNegotiationEnabled,
+      negotiationThreshold: normalizedNegotiationThreshold,
+      pricingTiers,
+    });
+  }
+
+  async updateListingStepThreeByAdmin(
+    role: Role,
+    listingId: string,
+    dto: UpdateProductListingStepThreeDto,
+  ): Promise<ProductListingRecord> {
+    this.ensureAdminRole(role);
+    const listing = await this.getListingForAdminOrThrow(listingId);
+    const deliveryMethods = this.normalizeDeliveryMethods(dto.deliveryMethods);
+
+    return this.productsRepository.updateProductListingStepThree(listing.id, {
+      packageType: dto.packageType,
+      leadTimeDays: dto.leadTimeDays,
+      shippingTime: dto.shippingTime,
+      deliveryMethods,
+      dynamicFreightAgreement: dto.dynamicFreightAgreement,
+      packageLengthCm: dto.packageLengthCm,
+      packageWidthCm: dto.packageWidthCm,
+      packageHeightCm: dto.packageHeightCm,
+      packageWeightKg: dto.packageWeightKg,
+    });
   }
 
   async create(dto: CreateProductDto): Promise<ProductRecord> {
@@ -479,6 +717,56 @@ export class ProductsService {
     return [...new Set(normalized)];
   }
 
+  private async buildAdminGrowth(
+    period: AdminProductListingGrowthPeriod,
+  ): Promise<{ labels: string[]; values: number[] }> {
+    const now = new Date();
+    const labels: string[] = [];
+    const values: number[] = [];
+
+    const count = 7;
+    for (let index = count - 1; index >= 0; index -= 1) {
+      let start: Date;
+      let end: Date;
+      let label: string;
+
+      if (period === 'DAILY') {
+        start = new Date(now);
+        start.setHours(0, 0, 0, 0);
+        start.setDate(start.getDate() - index);
+        end = new Date(start);
+        end.setDate(end.getDate() + 1);
+        label = start.toLocaleDateString('tr-TR', { weekday: 'short' });
+      } else if (period === 'MONTHLY') {
+        start = new Date(now.getFullYear(), now.getMonth() - index, 1);
+        end = new Date(now.getFullYear(), now.getMonth() - index + 1, 1);
+        label = start.toLocaleDateString('tr-TR', { month: 'short' });
+      } else {
+        const today = new Date(now);
+        today.setHours(0, 0, 0, 0);
+        const day = today.getDay();
+        const mondayOffset = day === 0 ? -6 : 1 - day;
+        const currentWeekStart = new Date(today);
+        currentWeekStart.setDate(today.getDate() + mondayOffset);
+        start = new Date(currentWeekStart);
+        start.setDate(currentWeekStart.getDate() - (index * 7));
+        end = new Date(start);
+        end.setDate(start.getDate() + 7);
+        label = `${start.getDate()}.${start.getMonth() + 1}`;
+      }
+
+      const value = await this.productsRepository.countProductListingsCreatedBetween(
+        start,
+        end,
+      );
+
+      labels.push(label);
+      values.push(value);
+    }
+
+    return { labels, values };
+  }
+
   private normalizePricingTiers(
     tiers: Array<{ minQuantity: number; maxQuantity: number; unitPrice: number }>,
   ): ProductListingPricingTierRecord[] {
@@ -559,6 +847,18 @@ export class ProductsService {
 
     if (!listing) {
       throw new NotFoundException('Ürün taslağı bulunamadı.');
+    }
+
+    return listing;
+  }
+
+  private async getListingForAdminOrThrow(
+    listingId: string,
+  ): Promise<ProductListingRecord> {
+    const listing = await this.productsRepository.findProductListingById(listingId);
+
+    if (!listing) {
+      throw new NotFoundException('Ürün başvurusu bulunamadı.');
     }
 
     return listing;
