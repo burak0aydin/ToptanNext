@@ -24,6 +24,12 @@ export type ProductListingSectorRecord = {
   sectorName: string;
 };
 
+export type ProductListingPricingTierRecord = {
+  minQuantity: number;
+  maxQuantity: number;
+  unitPrice: number;
+};
+
 export type ProductListingMediaRecord = {
   id: string;
   mediaType: 'IMAGE' | 'VIDEO';
@@ -51,6 +57,9 @@ export type ProductListingRecord = {
   currency: string;
   minOrderQuantity: number | null;
   stock: number | null;
+  isNegotiationEnabled: boolean;
+  negotiationThreshold: number | null;
+  pricingTiers: ProductListingPricingTierRecord[];
   leadTimeDays: number | null;
   packageLengthCm: string | null;
   packageWidthCm: string | null;

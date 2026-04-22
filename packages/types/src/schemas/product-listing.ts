@@ -87,16 +87,47 @@ export const productListingStepOneSchema = z
     }
   });
 
+export const productListingPricingTierSchema = z
+  .object({
+    minQuantity: z.coerce
+      .number()
+      .int('Kademe minimum adedi tam sayı olmalıdır.')
+      .min(1, 'Kademe minimum adedi en az 1 olmalıdır.'),
+    maxQuantity: z.coerce
+      .number()
+      .int('Kademe maksimum adedi tam sayı olmalıdır.')
+      .min(1, 'Kademe maksimum adedi en az 1 olmalıdır.'),
+    unitPrice: z.coerce
+      .number()
+      .min(0.01, 'Kademe birim fiyatı 0 değerinden büyük olmalıdır.'),
+  })
+  .superRefine((value, context) => {
+    if (value.maxQuantity < value.minQuantity) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['maxQuantity'],
+        message: 'Kademe maksimum adedi minimum adetten küçük olamaz.',
+      });
+    }
+  });
+
+const optionalPositiveIntegerSchema = z.preprocess((value) => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (typeof value === 'string' && value.trim().length === 0) {
+    return null;
+  }
+
+  return Number(value);
+}, z
+  .number()
+  .int('Pazarlık eşiği tam sayı olmalıdır.')
+  .min(1, 'Pazarlık eşiği en az 1 olmalıdır.')
+  .nullable());
+
 export const productListingStepTwoSchema = z.object({
-  basePrice: z.coerce
-    .number()
-    .min(0.01, 'Birim fiyat 0 değerinden büyük olmalıdır.'),
-  currency: z
-    .string()
-    .trim()
-    .min(3, 'Para birimi 3 karakter olmalıdır.')
-    .max(3, 'Para birimi 3 karakter olmalıdır.')
-    .default('TRY'),
   minOrderQuantity: z.coerce
     .number()
     .int('Minimum sipariş adedi tam sayı olmalıdır.')
@@ -105,6 +136,47 @@ export const productListingStepTwoSchema = z.object({
     .number()
     .int('Stok tam sayı olmalıdır.')
     .min(0, 'Stok negatif olamaz.'),
+  isNegotiationEnabled: z.boolean().default(false),
+  negotiationThreshold: optionalPositiveIntegerSchema.default(null),
+  pricingTiers: z
+    .array(productListingPricingTierSchema)
+    .min(1, 'En az 1 kademe tanımlamalısınız.')
+    .max(6, 'En fazla 6 kademe tanımlayabilirsiniz.'),
+}).superRefine((value, context) => {
+  value.pricingTiers.forEach((currentTier, index) => {
+    if (index === 0) {
+      return;
+    }
+
+    const previousTier = value.pricingTiers[index - 1];
+    if (currentTier.minQuantity <= previousTier.maxQuantity) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['pricingTiers', index, 'minQuantity'],
+        message: 'Kademe aralıkları çakışamaz; bir sonraki kademe bir öncekinin üstünden başlamalıdır.',
+      });
+    }
+  });
+
+  const minOrderCovered = value.pricingTiers.some((tier) => (
+    value.minOrderQuantity >= tier.minQuantity && value.minOrderQuantity <= tier.maxQuantity
+  ));
+
+  if (!minOrderCovered) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['minOrderQuantity'],
+      message: 'Minimum sipariş adedi, tanımlanan bir kademe aralığı içinde olmalıdır.',
+    });
+  }
+
+  if (value.isNegotiationEnabled && value.negotiationThreshold === null) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['negotiationThreshold'],
+      message: 'Pazarlık eşiği açıkken adet sınırı zorunludur.',
+    });
+  }
 });
 
 export const productListingStepThreeSchema = z.object({

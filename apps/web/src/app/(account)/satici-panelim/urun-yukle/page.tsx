@@ -14,6 +14,7 @@ import { useForm, type Resolver } from 'react-hook-form';
 import {
   createProductListingStepOne,
   fetchCategoriesTree,
+  fetchMyProductListings,
   fetchSectors,
   submitProductListing,
   updateProductListingStepOne,
@@ -47,10 +48,17 @@ const STEP_ONE_DEFAULT_VALUES: ProductListingStepOneDto = {
 };
 
 const STEP_TWO_DEFAULT_VALUES: ProductListingStepTwoDto = {
-  basePrice: 0,
-  currency: 'TRY',
   minOrderQuantity: 1,
   stock: 0,
+  isNegotiationEnabled: false,
+  negotiationThreshold: null,
+  pricingTiers: [
+    {
+      minQuantity: 1,
+      maxQuantity: 1,
+      unitPrice: 0.01,
+    },
+  ],
 };
 
 const STEP_THREE_DEFAULT_VALUES: ProductListingStepThreeDto = {
@@ -65,6 +73,7 @@ const OTHER_OPTION_VALUE = 'other';
 const MAX_TOTAL_IMAGE_COUNT = 6;
 const MAX_GALLERY_IMAGE_COUNT = 5;
 const MAX_VIDEO_COUNT = 1;
+const MAX_PRICE_TIER_COUNT = 6;
 const MAX_IMAGE_SIZE_BYTES = 3 * 1024 * 1024;
 const MAX_VIDEO_SIZE_BYTES = 15 * 1024 * 1024;
 const MAX_VIDEO_DURATION_SECONDS = 20;
@@ -184,9 +193,10 @@ export default function SellerProductUploadPage() {
         setIsLoadingMeta(true);
         setGlobalError(null);
 
-        const [categoryResponse, sectorsResponse] = await Promise.all([
+        const [categoryResponse, sectorsResponse, listingsResponse] = await Promise.all([
           fetchCategoriesTree(),
           fetchSectors(),
+          fetchMyProductListings(),
         ]);
 
         if (!isMounted) {
@@ -195,6 +205,67 @@ export default function SellerProductUploadPage() {
 
         setCategoryTree(categoryResponse);
         setSectors(sectorsResponse);
+
+        const latestEditableDraft = listingsResponse.find(
+          (listing) => listing.status === 'DRAFT' || listing.status === 'REJECTED',
+        ) ?? null;
+
+        setDraftRecord(latestEditableDraft);
+
+        if (!latestEditableDraft) {
+          return;
+        }
+
+        const draftSectorIds = latestEditableDraft.sectors.map((sector) => sector.sectorId);
+        const normalizedMinOrderQuantity = Math.max(latestEditableDraft.minOrderQuantity ?? 1, 1);
+        const normalizedBasePrice = Math.max(Number(latestEditableDraft.basePrice ?? '0.01'), 0.01);
+
+        const normalizedPricingTiers = latestEditableDraft.pricingTiers.length > 0
+          ? latestEditableDraft.pricingTiers.map((tier) => ({
+            minQuantity: Math.max(Math.trunc(tier.minQuantity), 1),
+            maxQuantity: Math.max(Math.trunc(tier.maxQuantity), Math.max(Math.trunc(tier.minQuantity), 1)),
+            unitPrice: Math.max(Number(tier.unitPrice), 0.01),
+          }))
+          : [
+            {
+              minQuantity: normalizedMinOrderQuantity,
+              maxQuantity: normalizedMinOrderQuantity,
+              unitPrice: normalizedBasePrice,
+            },
+          ];
+
+        stepOneForm.reset({
+          name: latestEditableDraft.name,
+          sku: latestEditableDraft.sku,
+          categoryId: latestEditableDraft.categoryId,
+          sectorIds: draftSectorIds,
+          featuredFeatures: latestEditableDraft.featuredFeatures,
+          isCustomizable: latestEditableDraft.isCustomizable,
+          customizationNote: latestEditableDraft.customizationNote ?? '',
+          description: latestEditableDraft.description,
+        });
+
+        stepTwoForm.reset({
+          minOrderQuantity: normalizedMinOrderQuantity,
+          stock: Math.max(latestEditableDraft.stock ?? 0, 0),
+          isNegotiationEnabled: latestEditableDraft.isNegotiationEnabled,
+          negotiationThreshold: latestEditableDraft.negotiationThreshold,
+          pricingTiers: normalizedPricingTiers,
+        });
+
+        stepThreeForm.reset({
+          leadTimeDays: Math.max(latestEditableDraft.leadTimeDays ?? 0, 0),
+          packageLengthCm: Math.max(Number(latestEditableDraft.packageLengthCm ?? '0'), 0),
+          packageWidthCm: Math.max(Number(latestEditableDraft.packageWidthCm ?? '0'), 0),
+          packageHeightCm: Math.max(Number(latestEditableDraft.packageHeightCm ?? '0'), 0),
+          packageWeightKg: Math.max(Number(latestEditableDraft.packageWeightKg ?? '0'), 0),
+        });
+
+        const categoryPath = findCategoryPath(categoryResponse, latestEditableDraft.categoryId);
+        if (categoryPath) {
+          setMainCategoryId(categoryPath.mainId);
+          setSubCategoryId(categoryPath.subId);
+        }
       } catch (error) {
         if (!isMounted) {
           return;
@@ -217,7 +288,7 @@ export default function SellerProductUploadPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [stepOneForm, stepTwoForm, stepThreeForm]);
 
   const activeCategoryPath = useMemo(() => {
     const categoryId = watchedStepOne.categoryId || draftRecord?.categoryId;
@@ -540,6 +611,60 @@ export default function SellerProductUploadPage() {
     setPendingGalleryImages((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
   };
 
+  const addPricingTier = (): void => {
+    const currentTiers = stepTwoForm.getValues('pricingTiers') ?? [];
+    if (currentTiers.length >= MAX_PRICE_TIER_COUNT) {
+      setGlobalError('En fazla 6 fiyat kademesi tanımlayabilirsiniz.');
+      return;
+    }
+
+    const lastTier = currentTiers[currentTiers.length - 1];
+    const nextMinQuantity = lastTier ? Math.max(lastTier.maxQuantity + 1, 1) : 1;
+
+    stepTwoForm.setValue('pricingTiers', [
+      ...currentTiers,
+      {
+        minQuantity: nextMinQuantity,
+        maxQuantity: nextMinQuantity,
+        unitPrice: lastTier?.unitPrice ?? 0.01,
+      },
+    ], {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+    setGlobalError(null);
+  };
+
+  const removePricingTier = (index: number): void => {
+    const currentTiers = stepTwoForm.getValues('pricingTiers') ?? [];
+    if (currentTiers.length <= 1) {
+      return;
+    }
+
+    stepTwoForm.setValue(
+      'pricingTiers',
+      currentTiers.filter((_, tierIndex) => tierIndex !== index),
+      {
+        shouldValidate: true,
+        shouldDirty: true,
+      },
+    );
+  };
+
+  const toggleNegotiationThreshold = (isEnabled: boolean): void => {
+    stepTwoForm.setValue('isNegotiationEnabled', isEnabled, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+
+    if (!isEnabled) {
+      stepTwoForm.setValue('negotiationThreshold', null, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+    }
+  };
+
   const onSubmitStepOne = stepOneForm.handleSubmit(async (values) => {
     const existingImageCount = getExistingImageCount();
     const existingVideoCount = getExistingVideoCount();
@@ -627,10 +752,7 @@ export default function SellerProductUploadPage() {
       setGlobalError(null);
       setSuccessMessage(null);
 
-      const saved = await updateProductListingStepTwo(draftRecord.id, {
-        ...values,
-        currency: values.currency.toUpperCase(),
-      });
+      const saved = await updateProductListingStepTwo(draftRecord.id, values);
 
       setDraftRecord(saved);
       goToStep(3);
@@ -664,13 +786,27 @@ export default function SellerProductUploadPage() {
 
       await updateProductListingStepThree(draftRecord.id, values);
 
-      const submitted = await submitProductListing(draftRecord.id, {
+      await submitProductListing(draftRecord.id, {
         confirmSubmission: true,
       });
 
-      setDraftRecord(submitted);
-      setIsCompleted(true);
-      setSuccessMessage('Ürün başarıyla onaya gönderildi. Admin değerlendirmesi sonrasında listelenecektir.');
+      setDraftRecord(null);
+      setMainCategoryId('');
+      setSubCategoryId('');
+      setFeatureInput('');
+      setSectorInput('');
+      setPendingCoverImage(null);
+      setPendingGalleryImages([]);
+      setPendingVideoFile(null);
+      setSubmitConfirmed(false);
+      setIsCompleted(false);
+
+      stepOneForm.reset(STEP_ONE_DEFAULT_VALUES);
+      stepTwoForm.reset(STEP_TWO_DEFAULT_VALUES);
+      stepThreeForm.reset(STEP_THREE_DEFAULT_VALUES);
+
+      goToStep(1);
+      setSuccessMessage('Ürün başarıyla onaya gönderildi. Form temizlendi, yeni ürün girişi yapabilirsiniz.');
     } catch (error) {
       setGlobalError(
         error instanceof Error ? error.message : 'Ürün onaya gönderilirken bir sorun oluştu.',
@@ -715,6 +851,25 @@ export default function SellerProductUploadPage() {
     pendingGalleryImages.length +
     (pendingVideoFile ? 1 : 0);
   const totalMediaCount = (draftRecord?.media.length ?? 0) + pendingMediaCount;
+  const watchedPricingTiers = watchedStepTwo.pricingTiers ?? [];
+  const effectivePricingTiers = watchedPricingTiers.length > 0
+    ? watchedPricingTiers
+    : draftRecord?.pricingTiers ?? [];
+  const effectiveMinOrderQuantity = watchedStepTwo.minOrderQuantity > 0
+    ? watchedStepTwo.minOrderQuantity
+    : draftRecord?.minOrderQuantity ?? null;
+  const activePricingTierForMinOrder = effectiveMinOrderQuantity
+    ? effectivePricingTiers.find((tier) => (
+      effectiveMinOrderQuantity >= tier.minQuantity && effectiveMinOrderQuantity <= tier.maxQuantity
+    ))
+    : null;
+  const summaryStartingPrice = activePricingTierForMinOrder?.unitPrice
+    ?? (draftRecord?.basePrice ? Number(draftRecord.basePrice) : null);
+  const summaryNegotiationThreshold = watchedStepTwo.isNegotiationEnabled
+    ? watchedStepTwo.negotiationThreshold
+    : draftRecord?.isNegotiationEnabled
+      ? draftRecord.negotiationThreshold
+      : null;
 
   return (
     <div ref={pageTopRef} className='space-y-8'>
@@ -1276,68 +1431,206 @@ export default function SellerProductUploadPage() {
                   <h3 className='text-xl font-bold tracking-tight text-on-surface'>Fiyatlandırma ve Stok</h3>
                 </div>
 
-                <form className='grid grid-cols-1 gap-6 md:grid-cols-2' onSubmit={onSubmitStepTwo}>
-                  <label>
-                    <span className='mb-2 block text-sm font-bold text-on-surface-variant'>Birim Fiyat</span>
-                    <input
-                      className='w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-3 text-sm outline-none transition-all focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20'
-                      type='number'
-                      step='0.01'
-                      min='0'
-                      {...stepTwoForm.register('basePrice')}
-                    />
-                    {stepTwoForm.formState.errors.basePrice ? (
-                      <p className='mt-1 text-xs text-red-600'>
-                        {stepTwoForm.formState.errors.basePrice.message}
-                      </p>
-                    ) : null}
-                  </label>
+                <form className='space-y-8' onSubmit={onSubmitStepTwo}>
+                  <div className='rounded-xl border border-outline-variant bg-surface-container-low p-5 md:p-6'>
+                    <h4 className='mb-6 text-[1.625rem] font-semibold text-on-surface'>Fiyatlandırma ve Stok Bilgileri</h4>
 
-                  <label>
-                    <span className='mb-2 block text-sm font-bold text-on-surface-variant'>Para Birimi</span>
-                    <input
-                      className='w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-3 text-sm uppercase outline-none transition-all focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20'
-                      maxLength={3}
-                      {...stepTwoForm.register('currency')}
-                    />
-                    {stepTwoForm.formState.errors.currency ? (
-                      <p className='mt-1 text-xs text-red-600'>
-                        {stepTwoForm.formState.errors.currency.message}
-                      </p>
-                    ) : null}
-                  </label>
+                    <div className='grid grid-cols-1 gap-5 md:grid-cols-2'>
+                      <label>
+                        <span className='mb-2 block text-sm font-bold text-on-surface-variant'>Toplam Stok Adedi</span>
+                        <input
+                          className='w-full rounded-lg border border-outline-variant bg-white px-3 py-3 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20'
+                          type='number'
+                          min='0'
+                          {...stepTwoForm.register('stock', {
+                            valueAsNumber: true,
+                          })}
+                        />
+                        {stepTwoForm.formState.errors.stock ? (
+                          <p className='mt-1 text-xs text-red-600'>
+                            {stepTwoForm.formState.errors.stock.message}
+                          </p>
+                        ) : null}
+                      </label>
 
-                  <label>
-                    <span className='mb-2 block text-sm font-bold text-on-surface-variant'>Minimum Sipariş Adedi</span>
-                    <input
-                      className='w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-3 text-sm outline-none transition-all focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20'
-                      type='number'
-                      min='1'
-                      {...stepTwoForm.register('minOrderQuantity')}
-                    />
-                    {stepTwoForm.formState.errors.minOrderQuantity ? (
-                      <p className='mt-1 text-xs text-red-600'>
-                        {stepTwoForm.formState.errors.minOrderQuantity.message}
-                      </p>
-                    ) : null}
-                  </label>
+                      <label>
+                        <span className='mb-2 block text-sm font-bold text-on-surface-variant'>Minimum Sipariş Miktarı (MSM)</span>
+                        <input
+                          className='w-full rounded-lg border border-outline-variant bg-white px-3 py-3 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20'
+                          type='number'
+                          min='1'
+                          {...stepTwoForm.register('minOrderQuantity', {
+                            valueAsNumber: true,
+                          })}
+                        />
+                        <p className='mt-1 text-[11px] text-on-surface-variant'>Alıcıların tek seferde alabileceği en az miktar.</p>
+                        {stepTwoForm.formState.errors.minOrderQuantity ? (
+                          <p className='mt-1 text-xs text-red-600'>
+                            {stepTwoForm.formState.errors.minOrderQuantity.message}
+                          </p>
+                        ) : null}
+                      </label>
 
-                  <label>
-                    <span className='mb-2 block text-sm font-bold text-on-surface-variant'>Stok</span>
-                    <input
-                      className='w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-3 text-sm outline-none transition-all focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20'
-                      type='number'
-                      min='0'
-                      {...stepTwoForm.register('stock')}
-                    />
-                    {stepTwoForm.formState.errors.stock ? (
-                      <p className='mt-1 text-xs text-red-600'>
-                        {stepTwoForm.formState.errors.stock.message}
-                      </p>
-                    ) : null}
-                  </label>
+                      <div className='md:col-span-2 rounded-lg border border-outline-variant bg-white p-4'>
+                        <div className='mb-3 flex items-center justify-between'>
+                          <h5 className='text-base font-semibold text-on-surface'>Pazarlık Eşiği</h5>
+                          <label className='inline-flex cursor-pointer items-center'>
+                            <input
+                              className='peer sr-only'
+                              type='checkbox'
+                              checked={Boolean(watchedStepTwo.isNegotiationEnabled)}
+                              onChange={(event) => toggleNegotiationThreshold(event.target.checked)}
+                              disabled={isSubmittingStep}
+                            />
+                            <span className='relative h-6 w-11 rounded-full bg-surface-container-highest transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-transform after:content-[""] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white' />
+                          </label>
+                        </div>
 
-                  <div className='md:col-span-2 flex items-center justify-between'>
+                        <label>
+                          <span className='mb-2 block text-sm font-bold text-on-surface-variant'>Pazarlık Sınırı (Adet)</span>
+                          <input
+                            className='w-full rounded-lg border border-outline-variant bg-white px-3 py-3 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-surface-container-low'
+                            type='number'
+                            min='1'
+                            placeholder='Örn: 200'
+                            {...stepTwoForm.register('negotiationThreshold', {
+                              setValueAs: (value) => {
+                                if (value === '' || value === null || value === undefined) {
+                                  return null;
+                                }
+
+                                return Number(value);
+                              },
+                            })}
+                            disabled={!watchedStepTwo.isNegotiationEnabled || isSubmittingStep}
+                          />
+                          <p className='mt-1 text-[11px] text-on-surface-variant'>Bu miktarın üzerindeki siparişlerde teklif isteme akışı devreye girebilir.</p>
+                          {stepTwoForm.formState.errors.negotiationThreshold ? (
+                            <p className='mt-1 text-xs text-red-600'>
+                              {stepTwoForm.formState.errors.negotiationThreshold.message}
+                            </p>
+                          ) : null}
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className='mt-8 border-t border-outline-variant pt-6'>
+                      <div className='mb-4 flex items-center justify-between gap-3'>
+                        <h5 className='text-lg font-semibold text-on-surface'>Kademeli Fiyatlandırma</h5>
+                        <button
+                          type='button'
+                          className='inline-flex items-center gap-1 rounded-lg border border-outline-variant bg-white px-3 py-2 text-xs font-semibold text-on-surface transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50'
+                          onClick={addPricingTier}
+                          disabled={isSubmittingStep || watchedPricingTiers.length >= MAX_PRICE_TIER_COUNT}
+                        >
+                          <span className='material-symbols-outlined text-[18px]'>add</span>
+                          Kademe Ekle
+                        </button>
+                      </div>
+
+                      <div className='overflow-hidden rounded-lg border border-outline-variant'>
+                        <table className='w-full text-left text-sm'>
+                          <thead className='bg-surface-container-low text-on-surface-variant'>
+                            <tr>
+                              <th className='px-4 py-3 text-xs font-semibold uppercase tracking-wide'>Miktar Aralığı</th>
+                              <th className='px-4 py-3 text-xs font-semibold uppercase tracking-wide'>Birim Fiyat (₺)</th>
+                              <th className='px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide'>İşlem</th>
+                            </tr>
+                          </thead>
+                          <tbody className='divide-y divide-outline-variant/60 bg-white'>
+                            {watchedPricingTiers.map((tier, index) => {
+                              const threshold = watchedStepTwo.isNegotiationEnabled
+                                ? watchedStepTwo.negotiationThreshold
+                                : null;
+                              const isThresholdCovered = typeof threshold === 'number'
+                                && threshold >= tier.minQuantity
+                                && threshold <= tier.maxQuantity;
+
+                              return (
+                                <tr
+                                  key={`price-tier-${index}`}
+                                  className={isThresholdCovered ? 'bg-blue-50/70' : 'bg-white'}
+                                >
+                                  <td className='px-4 py-3'>
+                                    <div className='flex items-center gap-2'>
+                                      <input
+                                        className='w-24 rounded-md border border-outline-variant px-2 py-1.5 text-center text-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary'
+                                        type='number'
+                                        min='1'
+                                        {...stepTwoForm.register(`pricingTiers.${index}.minQuantity` as const, {
+                                          valueAsNumber: true,
+                                        })}
+                                      />
+                                      <span className='text-on-surface-variant'>-</span>
+                                      <input
+                                        className='w-24 rounded-md border border-outline-variant px-2 py-1.5 text-center text-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary'
+                                        type='number'
+                                        min='1'
+                                        {...stepTwoForm.register(`pricingTiers.${index}.maxQuantity` as const, {
+                                          valueAsNumber: true,
+                                        })}
+                                      />
+                                    </div>
+                                    {isThresholdCovered ? (
+                                      <p className='mt-1 text-[11px] font-medium text-primary'>Teklif eşiği bu aralıkta.</p>
+                                    ) : null}
+                                    {stepTwoForm.formState.errors.pricingTiers?.[index]?.minQuantity ? (
+                                      <p className='mt-1 text-xs text-red-600'>
+                                        {stepTwoForm.formState.errors.pricingTiers[index]?.minQuantity?.message}
+                                      </p>
+                                    ) : null}
+                                    {stepTwoForm.formState.errors.pricingTiers?.[index]?.maxQuantity ? (
+                                      <p className='mt-1 text-xs text-red-600'>
+                                        {stepTwoForm.formState.errors.pricingTiers[index]?.maxQuantity?.message}
+                                      </p>
+                                    ) : null}
+                                  </td>
+                                  <td className='px-4 py-3'>
+                                    <div className='relative w-36'>
+                                      <span className='absolute left-3 top-1/2 -translate-y-1/2 text-sm text-on-surface-variant'>₺</span>
+                                      <input
+                                        className='w-full rounded-md border border-outline-variant py-1.5 pl-7 pr-3 text-right text-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary'
+                                        type='number'
+                                        step='0.01'
+                                        min='0.01'
+                                        {...stepTwoForm.register(`pricingTiers.${index}.unitPrice` as const, {
+                                          valueAsNumber: true,
+                                        })}
+                                      />
+                                    </div>
+                                    {stepTwoForm.formState.errors.pricingTiers?.[index]?.unitPrice ? (
+                                      <p className='mt-1 text-xs text-red-600'>
+                                        {stepTwoForm.formState.errors.pricingTiers[index]?.unitPrice?.message}
+                                      </p>
+                                    ) : null}
+                                  </td>
+                                  <td className='px-4 py-3 text-right'>
+                                    <button
+                                      type='button'
+                                      className='inline-flex rounded p-1 text-on-surface-variant transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40'
+                                      onClick={() => removePricingTier(index)}
+                                      disabled={watchedPricingTiers.length <= 1 || isSubmittingStep}
+                                    >
+                                      <span className='material-symbols-outlined text-[18px]'>delete</span>
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className='mt-2 flex items-center justify-between text-[11px] text-on-surface-variant'>
+                        <span>{watchedPricingTiers.length} / {MAX_PRICE_TIER_COUNT} kademe kullanılıyor.</span>
+                        {stepTwoForm.formState.errors.pricingTiers?.message ? (
+                          <span className='text-red-600'>{stepTwoForm.formState.errors.pricingTiers.message}</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className='flex items-center justify-between'>
                     <button
                       className='inline-flex items-center gap-2 rounded-xl border border-outline-variant bg-white px-5 py-3 text-sm font-bold text-on-surface transition-colors hover:bg-slate-50'
                       type='button'
@@ -1518,11 +1811,17 @@ export default function SellerProductUploadPage() {
                 <div className='flex items-start justify-between gap-3'>
                   <span className='font-medium text-on-surface-variant'>Birim Fiyat:</span>
                   <span className='text-right font-semibold text-on-surface'>
-                    {watchedStepTwo.basePrice > 0
-                      ? `${watchedStepTwo.currency || 'TRY'} ${watchedStepTwo.basePrice}`
-                      : draftRecord?.basePrice
-                        ? `${draftRecord.currency} ${draftRecord.basePrice}`
-                        : 'Henüz girilmedi'}
+                    {summaryStartingPrice !== null
+                      ? `₺ ${summaryStartingPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : 'Henüz girilmedi'}
+                  </span>
+                </div>
+                <div className='flex items-start justify-between gap-3'>
+                  <span className='font-medium text-on-surface-variant'>Kademeler:</span>
+                  <span className='text-right font-semibold text-on-surface'>
+                    {effectivePricingTiers.length > 0
+                      ? `${effectivePricingTiers.length} adet`
+                      : 'Henüz girilmedi'}
                   </span>
                 </div>
                 <div className='flex items-start justify-between gap-3'>
@@ -1531,6 +1830,20 @@ export default function SellerProductUploadPage() {
                     {watchedStepTwo.stock >= 0
                       ? watchedStepTwo.stock
                       : draftRecord?.stock ?? 'Henüz girilmedi'}
+                  </span>
+                </div>
+                <div className='flex items-start justify-between gap-3'>
+                  <span className='font-medium text-on-surface-variant'>Minimum Sipariş:</span>
+                  <span className='text-right font-semibold text-on-surface'>
+                    {effectiveMinOrderQuantity ?? 'Henüz girilmedi'}
+                  </span>
+                </div>
+                <div className='flex items-start justify-between gap-3'>
+                  <span className='font-medium text-on-surface-variant'>Pazarlık Eşiği:</span>
+                  <span className='text-right font-semibold text-on-surface'>
+                    {summaryNegotiationThreshold
+                      ? `${summaryNegotiationThreshold} adet`
+                      : 'Kapalı'}
                   </span>
                 </div>
               </div>

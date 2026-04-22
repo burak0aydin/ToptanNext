@@ -156,6 +156,9 @@ model ProductListing {
   currency          String               @default("TRY")
   minOrderQuantity  Int?                 @map("min_order_quantity")
   stock             Int?
+  isNegotiationEnabled Boolean           @default(false) @map("is_negotiation_enabled")
+  negotiationThreshold Int?              @map("negotiation_threshold")
+  pricingTiers      Json                 @default("[]") @map("pricing_tiers")
   leadTimeDays      Int?                 @map("lead_time_days")
   packageLengthCm   Decimal?             @db.Decimal(8, 2) @map("package_length_cm")
   packageWidthCm    Decimal?             @db.Decimal(8, 2) @map("package_width_cm")

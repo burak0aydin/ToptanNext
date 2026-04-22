@@ -19,6 +19,7 @@ import {
   CreateProductListingInput,
   CreateProductInput,
   CreateProductListingMediaInput,
+  ProductListingPricingTierRecord,
   ProductListingRecord,
   ProductRecord,
   ProductsRepository,
@@ -41,6 +42,7 @@ const MAX_LISTING_IMAGE_COUNT = 6;
 const MAX_LISTING_VIDEO_COUNT = 1;
 const MAX_IMAGE_FILE_SIZE_BYTES = 3 * 1024 * 1024;
 const MAX_VIDEO_FILE_SIZE_BYTES = 15 * 1024 * 1024;
+const MAX_PRICING_TIER_COUNT = 6;
 const OTHER_OPTION_VALUE = 'other';
 
 @Injectable()
@@ -206,19 +208,47 @@ export class ProductsService {
     const listing = await this.getOwnedListingOrThrow(supplierId, listingId);
     this.ensureListingEditable(listing.status);
 
-    const normalizedCurrency = (dto.currency ?? listing.currency)
-      .trim()
-      .toUpperCase();
+    const pricingTiers = this.normalizePricingTiers(dto.pricingTiers);
 
-    if (normalizedCurrency.length !== 3) {
-      throw new BadRequestException('Para birimi 3 karakter olmalıdır.');
+    if (pricingTiers.length === 0) {
+      throw new BadRequestException('En az 1 fiyat kademesi tanımlamalısınız.');
+    }
+
+    if (pricingTiers.length > MAX_PRICING_TIER_COUNT) {
+      throw new BadRequestException('En fazla 6 fiyat kademesi tanımlayabilirsiniz.');
+    }
+
+    const minOrderTier = pricingTiers.find((tier) => (
+      dto.minOrderQuantity >= tier.minQuantity && dto.minOrderQuantity <= tier.maxQuantity
+    ));
+
+    if (!minOrderTier) {
+      throw new BadRequestException('Minimum sipariş adedi, tanımlanan bir kademe aralığında olmalıdır.');
+    }
+
+    const normalizedNegotiationThreshold = dto.isNegotiationEnabled
+      ? dto.negotiationThreshold ?? null
+      : null;
+
+    if (dto.isNegotiationEnabled && normalizedNegotiationThreshold === null) {
+      throw new BadRequestException('Pazarlık eşiği aktifse pazarlık sınırı zorunludur.');
+    }
+
+    if (
+      normalizedNegotiationThreshold !== null &&
+      normalizedNegotiationThreshold < dto.minOrderQuantity
+    ) {
+      throw new BadRequestException('Pazarlık sınırı, minimum sipariş adedinden küçük olamaz.');
     }
 
     return this.productsRepository.updateProductListingStepTwo(listing.id, {
-      basePrice: dto.basePrice,
-      currency: normalizedCurrency,
+      basePrice: minOrderTier.unitPrice,
+      currency: 'TRY',
       minOrderQuantity: dto.minOrderQuantity,
       stock: dto.stock,
+      isNegotiationEnabled: dto.isNegotiationEnabled,
+      negotiationThreshold: normalizedNegotiationThreshold,
+      pricingTiers,
     });
   }
 
@@ -352,6 +382,51 @@ export class ProductsService {
     return [...new Set(normalized)];
   }
 
+  private normalizePricingTiers(
+    tiers: Array<{ minQuantity: number; maxQuantity: number; unitPrice: number }>,
+  ): ProductListingPricingTierRecord[] {
+    const normalized = tiers.map((tier, index) => ({
+      minQuantity: Number(tier.minQuantity),
+      maxQuantity: Number(tier.maxQuantity),
+      unitPrice: Number(tier.unitPrice),
+      index,
+    }));
+
+    for (const tier of normalized) {
+      if (!Number.isFinite(tier.minQuantity) || !Number.isInteger(tier.minQuantity) || tier.minQuantity < 1) {
+        throw new BadRequestException(`Kademe ${tier.index + 1} minimum adedi geçersiz.`);
+      }
+
+      if (!Number.isFinite(tier.maxQuantity) || !Number.isInteger(tier.maxQuantity) || tier.maxQuantity < 1) {
+        throw new BadRequestException(`Kademe ${tier.index + 1} maksimum adedi geçersiz.`);
+      }
+
+      if (tier.maxQuantity < tier.minQuantity) {
+        throw new BadRequestException(`Kademe ${tier.index + 1} için maksimum adet minimum adetten küçük olamaz.`);
+      }
+
+      if (!Number.isFinite(tier.unitPrice) || tier.unitPrice <= 0) {
+        throw new BadRequestException(`Kademe ${tier.index + 1} birim fiyatı 0'dan büyük olmalıdır.`);
+      }
+    }
+
+    const sorted = [...normalized].sort((a, b) => a.minQuantity - b.minQuantity);
+    for (let index = 1; index < sorted.length; index += 1) {
+      const previous = sorted[index - 1];
+      const current = sorted[index];
+
+      if (current.minQuantity <= previous.maxQuantity) {
+        throw new BadRequestException('Kademe aralıkları çakışamaz.');
+      }
+    }
+
+    return sorted.map(({ minQuantity, maxQuantity, unitPrice }) => ({
+      minQuantity,
+      maxQuantity,
+      unitPrice,
+    }));
+  }
+
   private ensureSupplierRole(role: Role): void {
     if (role !== Role.SUPPLIER) {
       throw new ForbiddenException('Bu işlem için satıcı hesabı gereklidir.');
@@ -405,6 +480,14 @@ export class ProductsService {
 
     if (listing.stock === null) {
       throw new BadRequestException('Stok bilgisi zorunludur.');
+    }
+
+    if (listing.pricingTiers.length === 0) {
+      throw new BadRequestException('Kademeli fiyatlandırma bilgisi zorunludur.');
+    }
+
+    if (listing.isNegotiationEnabled && listing.negotiationThreshold === null) {
+      throw new BadRequestException('Pazarlık eşiği aktifse pazarlık sınırı zorunludur.');
     }
 
     if (listing.leadTimeDays === null) {

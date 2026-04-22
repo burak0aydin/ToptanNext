@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+
+<html lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Adım 2: Fiyatlandırma &amp; Stok - ToptanNext B2B</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "inverse-on-surface": "#eff1f3",
+                        "secondary": "#ae3200",
+                        "on-secondary-container": "#521300",
+                        "tertiary": "#852b00",
+                        "tertiary-container": "#ad3b00",
+                        "on-primary-fixed-variant": "#003dab",
+                        "on-error-container": "#93000a",
+                        "surface-variant": "#e0e3e5",
+                        "surface-tint": "#1353d8",
+                        "on-primary-container": "#d4dcff",
+                        "surface-container": "#eceef0",
+                        "on-secondary-fixed": "#3a0b00",
+                        "primary-fixed-dim": "#b5c4ff",
+                        "primary-container": "#1a56db",
+                        "error": "#ba1a1a",
+                        "background": "#f7f9fb",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed": "#ffdbd0",
+                        "primary-fixed": "#dbe1ff",
+                        "on-background": "#191c1e",
+                        "surface": "#f7f9fb",
+                        "on-secondary-fixed-variant": "#852400",
+                        "on-primary": "#ffffff",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-tertiary-container": "#ffd4c5",
+                        "on-error": "#ffffff",
+                        "surface-dim": "#d8dadc",
+                        "on-secondary": "#ffffff",
+                        "surface-container-low": "#f2f4f6",
+                        "primary": "#003fb1",
+                        "outline": "#737686",
+                        "surface-bright": "#f7f9fb",
+                        "surface-container-lowest": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#434654",
+                        "surface-container-high": "#e6e8ea",
+                        "outline-variant": "#c3c5d7",
+                        "tertiary-fixed-dim": "#ffb59a",
+                        "secondary-container": "#fd591e",
+                        "inverse-surface": "#2d3133",
+                        "tertiary-fixed": "#ffdbcf",
+                        "on-tertiary-fixed": "#380d00",
+                        "inverse-primary": "#b5c4ff",
+                        "on-primary-fixed": "#00174d",
+                        "secondary-fixed-dim": "#ffb59e",
+                        "on-tertiary-fixed-variant": "#802a00",
+                        "on-surface": "#191c1e"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    fontFamily: {
+                        headline: ["Inter", "sans-serif"],
+                        body: ["Inter", "sans-serif"],
+                        label: ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body antialiased flex h-screen overflow-hidden">
+<!-- SideNavBar -->
+<aside class="bg-surface-container-lowest border-r border-surface-container-low shadow-[4px_0_24px_rgba(0,0,0,0.02)] fixed left-0 top-0 h-full w-64 z-40 flex flex-col h-full py-6 transition-all ease-in-out">
+<div class="px-6 mb-8 hidden">
+<h1 class="text-xl font-bold tracking-tight text-primary">ToptanNext B2B</h1>
+</div>
+<div class="px-6 mb-8">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center overflow-hidden">
+<img alt="Supplier Logo" class="w-full h-full object-cover" data-alt="professional corporate logo of a textile company with clean geometric shapes in blue tones on a white background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5JGwDKfo5PGQbWNXDFGfYf62ehaga8HbPnhdmosFc4UeLxc7xuPgGEc_9Z_ym97EJbkWKFJBvCrlAX1RXzIget6ERcN3KYii09YZcF3Uek2GN82XU5BaJYiDFYJupNyvn1A2v7hgZaxulD34uWRob-njw-cW7s-h3lY_IqWQmIMTbtZhtlbgiyTnSnxz1lQLXdNokwbEWRPC9HQx2c7F2pfHMZm-3H8nGJLIIZBXyLeoOPsJfo8wS6iWJVjMyc3gKAEE16cEQYFQ"/>
+</div>
+<div>
+<h2 class="font-headline font-semibold text-on-surface text-sm">Global Tekstil A.Ş.</h2>
+<p class="font-label text-xs text-on-surface-variant flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[14px] text-primary" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+                        Verified Gold Supplier
+                    </p>
+</div>
+</div>
+</div>
+<nav class="flex-1 overflow-y-auto font-['Inter'] text-[13px] tracking-wide">
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:bg-slate-50 rounded-lg mx-2 hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="dashboard">dashboard</span>
+                        Dashboard
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-2.5 bg-blue-50 text-primary font-semibold rounded-lg mx-2 transition-all ease-in-out" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="inventory_2" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+                        Product Catalog
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:bg-slate-50 rounded-lg mx-2 hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="assignment_turned_in">assignment_turned_in</span>
+                        Order Fulfillment
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:bg-slate-50 rounded-lg mx-2 hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="forum">forum</span>
+                        Messages
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:bg-slate-50 rounded-lg mx-2 hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="account_balance_wallet">account_balance_wallet</span>
+                        Financials
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:bg-slate-50 rounded-lg mx-2 hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
+                        Store Settings
+                    </a>
+</li>
+</ul>
+<div class="px-4 mt-8">
+<button class="w-full py-2.5 px-4 bg-primary text-on-primary rounded-lg font-medium text-sm flex items-center justify-center gap-2 hover:bg-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[18px]" data-icon="add">add</span>
+                    Add New Product
+                </button>
+</div>
+</nav>
+<div class="mt-auto px-2 pt-4 border-t border-surface-container-low">
+<ul class="space-y-1 font-['Inter'] text-[13px] tracking-wide">
+<li>
+<a class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:bg-slate-50 rounded-lg mx-2 hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="contact_support">contact_support</span>
+                        Support Center
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-2.5 text-slate-500 hover:bg-slate-50 rounded-lg mx-2 hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="logout">logout</span>
+                        Logout
+                    </a>
+</li>
+</ul>
+</div>
+</aside>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col ml-64 bg-background">
+<!-- TopNavBar -->
+<header class="bg-surface-container-low shadow-sm docked full-width top-0 z-50 border-b border-surface-dim">
+<div class="flex justify-between items-center w-full px-6 py-3">
+<div class="flex items-center gap-6">
+<h1 class="text-xl font-bold tracking-tight text-primary">ToptanNext B2B</h1>
+<!-- Search Bar on Left -->
+<div class="relative w-64 hidden md:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]" data-icon="search">search</span>
+<input class="w-full bg-surface-container-lowest border border-outline-variant text-sm rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-on-surface placeholder:text-on-surface-variant transition-colors" placeholder="Search..." type="text"/>
+</div>
+</div>
+<nav class="hidden lg:flex items-center gap-1 font-['Inter'] text-sm font-medium">
+<a class="px-4 py-2 text-slate-600 hover:text-primary hover:bg-slate-100 transition-colors rounded-lg" href="#">Marketplace</a>
+<a class="px-4 py-2 text-primary font-semibold border-b-2 border-primary bg-slate-50 rounded-t-lg transition-colors" href="#">Suppliers</a>
+<a class="px-4 py-2 text-slate-600 hover:text-primary hover:bg-slate-100 transition-colors rounded-lg" href="#">Bulk Deals</a>
+</nav>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<button class="p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+</div>
+<div class="flex items-center gap-3 border-l border-surface-dim pl-4">
+<button class="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors">Save Draft</button>
+<button class="bg-primary text-on-primary px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-container transition-colors shadow-sm active:scale-95 duration-200">Publish Product</button>
+<div class="w-8 h-8 rounded-full bg-surface-container overflow-hidden border border-surface-dim ml-2 cursor-pointer">
+<img alt="Supplier Profile" class="w-full h-full object-cover" data-alt="professional headshot of a smiling middle-aged man in a blue business shirt against a light grey background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDiaSLMtMNw0tkslzMCg1X7bOCBqj_daiQB0N6aKU3QqlCUi-cqC80c1fS10bsA_5N1cBlszxpun8PN23j0wUAMFP-Y6NEz8XP5bzY_YROjTX5zrMkK4hIRK_U-bghT615Eh4r3AYJvb2Rzl8dYEq9B1jYSEUhfUfb0QT9PoNa7dShy4mHhSZmIiB85v-_Mu6Sx6eW2LVyd8X1nMg4l-S_K5crNIT5SEfJ1LphRK0JqhBEc7lZh9A4D6S0ICkfzsAFOHv1idoEon04"/>
+</div>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 overflow-y-auto p-8">
+<div class="max-w-6xl mx-auto flex gap-8">
+<!-- Left Column: Form -->
+<div class="flex-1 flex flex-col gap-8">
+<!-- Stepper -->
+<div class="bg-surface-container-lowest rounded-xl p-6 border border-surface-container-low shadow-sm">
+<div class="flex items-center justify-between relative">
+<!-- Line connecting steps -->
+<div class="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-surface-container-high z-0"></div>
+<!-- Step 1: Completed -->
+<div class="relative z-10 flex flex-col items-center gap-2 bg-surface-container-lowest px-2">
+<div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-sm shadow-sm ring-4 ring-surface-container-lowest">
+<span class="material-symbols-outlined text-[16px]" data-icon="check" style="font-variation-settings: 'wght' 600;">check</span>
+</div>
+<span class="font-label text-sm font-semibold text-primary">Adım 1: Temel Bilgiler</span>
+</div>
+<!-- Step 2: Active -->
+<div class="relative z-10 flex flex-col items-center gap-2 bg-surface-container-lowest px-2">
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-bold text-sm shadow-sm ring-4 ring-surface-container-lowest">
+                                    2
+                                </div>
+<span class="font-label text-sm font-bold text-on-surface">Adım 2: Fiyatlandırma &amp; Stok</span>
+</div>
+<!-- Step 3: Pending -->
+<div class="relative z-10 flex flex-col items-center gap-2 bg-surface-container-lowest px-2">
+<div class="w-8 h-8 rounded-full bg-surface-container text-on-surface-variant flex items-center justify-center font-bold text-sm ring-4 ring-surface-container-lowest border border-outline-variant">
+                                    3
+                                </div>
+<span class="font-label text-sm font-medium text-on-surface-variant">Adım 3: Lojistik</span>
+</div>
+</div>
+</div>
+<!-- Fiyatlandırma ve Stok Bilgileri Card -->
+<div class="bg-surface-container-lowest rounded-xl p-8 border border-surface-container-low shadow-sm">
+<h2 class="font-headline text-[1.75rem] font-semibold text-on-surface mb-8">Fiyatlandırma ve Stok Bilgileri</h2>
+<!-- Grid Fields -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+<div class="flex flex-col gap-1.5">
+<label class="font-label text-sm font-semibold text-on-surface">Toplam Stok Adedi</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-on-surface placeholder:text-on-surface-variant" placeholder="0" type="number"/>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label text-sm font-semibold text-on-surface">SKU</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-on-surface placeholder:text-on-surface-variant" placeholder="Örn: TN-8842-XC" type="text"/>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label text-sm font-semibold text-on-surface">Minimum Sipariş Miktarı (MSM)</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-on-surface placeholder:text-on-surface-variant" placeholder="0" type="number"/>
+<p class="font-label text-[0.6875rem] text-on-surface-variant mt-1">Alıcıların tek seferde alabileceği en az miktar</p>
+</div>
+<!-- Negotiation Section (Moved to Grid) -->
+<div class="flex flex-col gap-1.5 bg-surface-container-low p-4 rounded-lg border border-surface-dim row-span-2">
+<div class="flex items-center justify-between mb-2">
+<div>
+<h3 class="font-title text-[1.125rem] font-semibold text-on-surface">Pazarlık Eşiği</h3>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<label class="font-label text-sm font-semibold text-on-surface">Pazarlık Sınırı (Adet)</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-on-surface placeholder:text-on-surface-variant" placeholder="Örn: 200" type="number" value="200"/>
+<p class="font-label text-[0.6875rem] text-on-surface-variant mt-1 flex items-start gap-1">
+<span class="material-symbols-outlined text-[14px] mt-0.5" data-icon="info">info</span>
+                                    Bu miktarın üzerindeki siparişlerde Sepete Ekle yerine Teklif İste butonu gösterilir.
+                                </p>
+</div>
+</div>
+<hr class="border-surface-dim mb-8"/>
+<!-- Tiered Pricing Table -->
+<div>
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-title text-[1.125rem] font-semibold text-on-surface">Kademeli Fiyatlandırma</h3>
+</div>
+<div class="bg-surface-container-low rounded-lg border border-surface-dim overflow-hidden">
+<table class="w-full text-left font-body text-sm">
+<thead class="bg-surface-container text-on-surface font-semibold border-b border-surface-dim">
+<tr>
+<th class="px-6 py-3 font-label text-xs uppercase tracking-wider text-on-surface-variant w-1/2">Miktar Aralığı</th>
+<th class="px-6 py-3 font-label text-xs uppercase tracking-wider text-on-surface-variant">Birim Fiyat (₺)</th>
+<th class="px-6 py-3 font-label text-xs uppercase tracking-wider text-on-surface-variant text-right">İşlem</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-dim bg-surface-container-lowest">
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<input class="w-20 bg-surface-container-lowest border border-outline-variant rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center" placeholder="Min" type="number" value="10"/>
+<span class="text-on-surface-variant">-</span>
+<input class="w-20 bg-surface-container-lowest border border-outline-variant rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center" placeholder="Max" type="number" value="49"/>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="relative w-32">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">₺</span>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-md pl-7 pr-3 py-1.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-right" placeholder="0.00" type="text" value="1,200.00"/>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-outline hover:text-error transition-colors p-1 rounded hover:bg-error-container">
+<span class="material-symbols-outlined text-[18px]" data-icon="delete">delete</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<input class="w-20 bg-surface-container-lowest border border-outline-variant rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center" placeholder="Min" type="number" value="50"/>
+<span class="text-on-surface-variant">-</span>
+<input class="w-20 bg-surface-container-lowest border border-outline-variant rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center" placeholder="Max" type="number" value="199"/>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="relative w-32">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">₺</span>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-md pl-7 pr-3 py-1.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-right" placeholder="0.00" type="text" value="1,100.00"/>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-outline hover:text-error transition-colors p-1 rounded hover:bg-error-container">
+<span class="material-symbols-outlined text-[18px]" data-icon="delete">delete</span>
+</button>
+</td>
+</tr>
+<!-- Separator -->
+<tr>
+<td class="px-6 py-2" colspan="3">
+<div class="flex items-center gap-4">
+<div class="h-px border-t border-dashed border-primary-fixed-dim flex-1"></div>
+<span class="text-xs font-semibold text-primary uppercase tracking-wider">Teklif Eşiği (200 Adet)</span>
+<div class="h-px border-t border-dashed border-primary-fixed-dim flex-1"></div>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-primary-fixed/40 transition-colors group bg-primary-fixed/30 border-l-4 border-l-primary">
+<td class="px-6 py-4">
+<div class="flex items-center gap-2 flex-wrap">
+<div class="flex items-center gap-2">
+<input class="w-20 bg-surface-container-lowest border border-outline-variant rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center" placeholder="Min" type="number" value="200"/>
+<span class="text-on-surface-variant">-</span>
+<input class="w-20 bg-surface-container-lowest border border-outline-variant rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center placeholder:text-xl" disabled="" placeholder="∞" type="text"/>
+</div>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-[0.6875rem] font-semibold whitespace-nowrap">
+<span class="material-symbols-outlined text-[12px]" data-icon="handshake">handshake</span>
+            PAZARLIK AKTİF
+        </span>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="relative w-32">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">₺</span>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-md pl-7 pr-3 py-1.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-right" placeholder="0.00" type="text" value="950.00"/>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-outline hover:text-error transition-colors p-1 rounded hover:bg-error-container">
+<span class="material-symbols-outlined text-[18px]" data-icon="delete">delete</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="p-4 bg-surface-container-lowest border-t border-surface-dim">
+<button class="text-primary text-sm font-medium hover:text-primary-container transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[18px]" data-icon="add">add</span> Kademesi Ekle
+    </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Sidebar: Summary -->
+<div class="w-80 flex flex-col gap-6">
+<div class="bg-surface-container-lowest rounded-xl p-6 border border-surface-container-low shadow-sm sticky top-8">
+<h3 class="font-title text-[1.125rem] font-semibold text-on-surface mb-4 border-b border-surface-dim pb-3">İşlem Özeti</h3>
+<div class="flex flex-col gap-4 font-body text-sm mb-8">
+<div class="flex justify-between items-start">
+<span class="text-on-surface-variant">Ürün Adı:</span>
+<span class="font-medium text-right text-on-surface w-3/5 line-clamp-2">Premium Pamuklu Erkek Gömlek</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-on-surface-variant">Kategori:</span>
+<span class="font-medium text-on-surface bg-surface-container-low px-2 py-1 rounded">Tekstil &gt; Giyim</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-on-surface-variant">Stok:</span>
+<span class="font-medium text-on-surface">Belirtilmedi</span>
+</div>
+<div class="flex justify-between items-center p-3 bg-surface-container-low rounded-lg mt-2 border border-surface-dim">
+<span class="text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-primary" data-icon="handshake">handshake</span>
+                                    Teklif Modu:
+                                </span>
+<span class="font-semibold text-primary">200 Adet ve üzeri</span>
+</div>
+</div>
+<div class="flex flex-col gap-3 pt-4 border-t border-surface-dim">
+<button class="w-full py-3 px-4 bg-primary text-on-primary rounded-lg font-semibold text-sm hover:bg-primary-container transition-colors shadow-sm flex items-center justify-center gap-2">
+                                Sonraki Adım
+                                <span class="material-symbols-outlined text-[18px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+<button class="w-full py-3 px-4 text-on-surface-variant bg-transparent rounded-lg font-medium text-sm hover:bg-surface-container transition-colors">
+                                Geri Dön
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

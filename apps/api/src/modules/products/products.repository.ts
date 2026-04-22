@@ -29,6 +29,9 @@ const productListingSelect = {
   currency: true,
   minOrderQuantity: true,
   stock: true,
+  isNegotiationEnabled: true,
+  negotiationThreshold: true,
+  pricingTiers: true,
   leadTimeDays: true,
   packageLengthCm: true,
   packageWidthCm: true,
@@ -112,6 +115,12 @@ export type ProductListingSectorRecord = {
   sectorName: string;
 };
 
+export type ProductListingPricingTierRecord = {
+  minQuantity: number;
+  maxQuantity: number;
+  unitPrice: number;
+};
+
 export type ProductListingRecord = {
   id: string;
   supplierId: string;
@@ -128,6 +137,9 @@ export type ProductListingRecord = {
   currency: string;
   minOrderQuantity: number | null;
   stock: number | null;
+  isNegotiationEnabled: boolean;
+  negotiationThreshold: number | null;
+  pricingTiers: ProductListingPricingTierRecord[];
   leadTimeDays: number | null;
   packageLengthCm: Prisma.Decimal | null;
   packageWidthCm: Prisma.Decimal | null;
@@ -179,6 +191,9 @@ export type UpdateProductListingStepTwoInput = {
   currency: string;
   minOrderQuantity: number;
   stock: number;
+  isNegotiationEnabled: boolean;
+  negotiationThreshold: number | null;
+  pricingTiers: ProductListingPricingTierRecord[];
 };
 
 export type UpdateProductListingStepThreeInput = {
@@ -559,6 +574,9 @@ export class ProductsRepository {
         currency: input.currency,
         minOrderQuantity: input.minOrderQuantity,
         stock: input.stock,
+        isNegotiationEnabled: input.isNegotiationEnabled,
+        negotiationThreshold: input.negotiationThreshold,
+        pricingTiers: input.pricingTiers as Prisma.InputJsonValue,
       },
       select: productListingSelect,
     });
@@ -699,13 +717,48 @@ export class ProductsRepository {
   private mapListingRecord(
     listing: ProductListingSelectRecord,
   ): ProductListingRecord {
+    const pricingTiers = this.parsePricingTiers(listing.pricingTiers);
 
     return {
       ...listing,
+      pricingTiers,
       sectors: listing.sectors.map((item) => ({
         sectorId: item.sectorId,
         sectorName: item.sector.name,
       })),
     };
+  }
+
+  private parsePricingTiers(value: Prisma.JsonValue): ProductListingPricingTierRecord[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value
+      .map((item) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+          return null;
+        }
+
+        const typedItem = item as Record<string, unknown>;
+        const minQuantity = Number(typedItem.minQuantity);
+        const maxQuantity = Number(typedItem.maxQuantity);
+        const unitPrice = Number(typedItem.unitPrice);
+
+        if (!Number.isFinite(minQuantity) || !Number.isFinite(maxQuantity) || !Number.isFinite(unitPrice)) {
+          return null;
+        }
+
+        if (!Number.isInteger(minQuantity) || !Number.isInteger(maxQuantity)) {
+          return null;
+        }
+
+        return {
+          minQuantity,
+          maxQuantity,
+          unitPrice,
+        };
+      })
+      .filter((tier): tier is ProductListingPricingTierRecord => tier !== null);
   }
 }
