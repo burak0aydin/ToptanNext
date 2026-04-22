@@ -62,7 +62,7 @@ const LISTING_EDITABLE_STATUSES: ProductListingStatus[] = [
 
 const MAX_LISTING_IMAGE_COUNT = 6;
 const MAX_LISTING_VIDEO_COUNT = 1;
-const MAX_IMAGE_FILE_SIZE_BYTES = 3 * 1024 * 1024;
+const MAX_IMAGE_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 const MAX_VIDEO_FILE_SIZE_BYTES = 15 * 1024 * 1024;
 const MAX_PRICING_TIER_COUNT = 6;
 const OTHER_OPTION_VALUE = 'other';
@@ -632,7 +632,7 @@ export class ProductsService {
 
       if (mediaType === ProductListingMediaType.IMAGE) {
         if (file.fileSize > MAX_IMAGE_FILE_SIZE_BYTES) {
-          throw new BadRequestException('Görsel boyutu maksimum 3 MB olabilir.');
+          throw new BadRequestException('Görsel boyutu maksimum 5 MB olabilir.');
         }
 
         existingImageCount += 1;

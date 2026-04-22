@@ -14,6 +14,12 @@ import {
 } from '@toptannext/types';
 import { type ChangeEvent, type DragEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
+import ReactCrop, {
+  centerCrop,
+  makeAspectCrop,
+  type Crop,
+  type PixelCrop,
+} from 'react-image-crop';
 import {
   createProductListingStepOne,
   fetchCategoriesTree,
@@ -126,11 +132,24 @@ const MAX_TOTAL_IMAGE_COUNT = 6;
 const MAX_GALLERY_IMAGE_COUNT = 5;
 const MAX_VIDEO_COUNT = 1;
 const MAX_PRICE_TIER_COUNT = 6;
-const MAX_IMAGE_SIZE_BYTES = 3 * 1024 * 1024;
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const MAX_VIDEO_SIZE_BYTES = 15 * 1024 * 1024;
 const MAX_VIDEO_DURATION_SECONDS = 20;
 const IMAGE_ACCEPT_MIME = 'image/jpeg,image/png,image/webp';
 const VIDEO_ACCEPT_MIME = 'video/mp4,video/webm';
+const CROPPED_IMAGE_OUTPUT_SIZE = 1200;
+
+type PendingImageFile = {
+  file: File;
+  previewUrl: string;
+};
+
+type ImageCropTarget = 'cover' | 'gallery';
+
+type CropQueueItem = {
+  file: File;
+  target: ImageCropTarget;
+};
 
 function findCategoryPath(
   categoryTree: CategoryTreeNode[],
@@ -174,6 +193,94 @@ function FieldInfoHint({ text }: { text: string }) {
   );
 }
 
+function getCenteredSquareCrop(mediaWidth: number, mediaHeight: number): Crop {
+  return centerCrop(
+    makeAspectCrop(
+      {
+        unit: '%',
+        width: 80,
+      },
+      1,
+      mediaWidth,
+      mediaHeight,
+    ),
+    mediaWidth,
+    mediaHeight,
+  );
+}
+
+function toCroppedImageFile(
+  imageElement: HTMLImageElement,
+  sourceFile: File,
+  crop: PixelCrop,
+): Promise<File> {
+  const canvas = document.createElement('canvas');
+  canvas.width = CROPPED_IMAGE_OUTPUT_SIZE;
+  canvas.height = CROPPED_IMAGE_OUTPUT_SIZE;
+
+  const context = canvas.getContext('2d');
+  if (!context) {
+    throw new Error('Görsel kırpma sırasında çizim bağlamı oluşturulamadı.');
+  }
+
+  const scaleX = imageElement.naturalWidth / imageElement.width;
+  const scaleY = imageElement.naturalHeight / imageElement.height;
+
+  const sourceX = crop.x * scaleX;
+  const sourceY = crop.y * scaleY;
+  const sourceWidth = crop.width * scaleX;
+  const sourceHeight = crop.height * scaleY;
+
+  context.drawImage(
+    imageElement,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    0,
+    0,
+    CROPPED_IMAGE_OUTPUT_SIZE,
+    CROPPED_IMAGE_OUTPUT_SIZE,
+  );
+
+  const outputMimeType = ['image/jpeg', 'image/png', 'image/webp'].includes(sourceFile.type)
+    ? sourceFile.type
+    : 'image/jpeg';
+  const extension = outputMimeType === 'image/png'
+    ? 'png'
+    : outputMimeType === 'image/webp'
+      ? 'webp'
+      : 'jpg';
+  const normalizedName = sourceFile.name.replace(/\.[^/.]+$/, '');
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error('Görsel kırpma sırasında dosya oluşturulamadı.'));
+          return;
+        }
+
+        resolve(
+          new File([blob], `${normalizedName}-cropped.${extension}`, {
+            type: outputMimeType,
+          }),
+        );
+      },
+      outputMimeType,
+      0.95,
+    );
+  });
+}
+
+function revokePendingImage(item: PendingImageFile | null): void {
+  if (!item) {
+    return;
+  }
+
+  URL.revokeObjectURL(item.previewUrl);
+}
+
 export default function SellerProductUploadPage() {
   const [currentStep, setCurrentStep] = useState<WizardStep>(1);
   const [draftRecord, setDraftRecord] = useState<ProductListingRecord | null>(null);
@@ -183,10 +290,17 @@ export default function SellerProductUploadPage() {
   const [subCategoryId, setSubCategoryId] = useState('');
   const [featureInput, setFeatureInput] = useState('');
   const [sectorInput, setSectorInput] = useState('');
-  const [pendingCoverImage, setPendingCoverImage] = useState<File | null>(null);
-  const [pendingGalleryImages, setPendingGalleryImages] = useState<File[]>([]);
+  const [pendingCoverImage, setPendingCoverImage] = useState<PendingImageFile | null>(null);
+  const [pendingGalleryImages, setPendingGalleryImages] = useState<PendingImageFile[]>([]);
   const [pendingVideoFile, setPendingVideoFile] = useState<File | null>(null);
   const [isValidatingVideo, setIsValidatingVideo] = useState(false);
+  const [cropQueue, setCropQueue] = useState<CropQueueItem[]>([]);
+  const [activeCropItem, setActiveCropItem] = useState<CropQueueItem | null>(null);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [cropValue, setCropValue] = useState<Crop>();
+  const [completedCropValue, setCompletedCropValue] = useState<PixelCrop | null>(null);
+  const [cropError, setCropError] = useState<string | null>(null);
+  const [isApplyingCrop, setIsApplyingCrop] = useState(false);
   const [submitConfirmed, setSubmitConfirmed] = useState(false);
   const [isLoadingMeta, setIsLoadingMeta] = useState(true);
   const [isSubmittingStep, setIsSubmittingStep] = useState(false);
@@ -198,6 +312,7 @@ export default function SellerProductUploadPage() {
   const videoInputRef = useRef<HTMLInputElement | null>(null);
   const pageTopRef = useRef<HTMLDivElement | null>(null);
   const stepSectionRef = useRef<HTMLElement | null>(null);
+  const cropImageRef = useRef<HTMLImageElement | null>(null);
   const hasMountedStepRef = useRef(false);
 
   const stepOneForm = useForm<ProductListingStepOneDto>({
@@ -417,6 +532,38 @@ export default function SellerProductUploadPage() {
     };
   }, [currentStep]);
 
+  useEffect(() => {
+    if (activeCropItem || cropQueue.length === 0) {
+      return;
+    }
+
+    const [nextItem, ...rest] = cropQueue;
+    setActiveCropItem(nextItem);
+    setCropQueue(rest);
+    setCropError(null);
+  }, [activeCropItem, cropQueue]);
+
+  useEffect(() => {
+    if (!activeCropItem) {
+      setCropImageSrc(null);
+      setCropValue(undefined);
+      setCompletedCropValue(null);
+      cropImageRef.current = null;
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(activeCropItem.file);
+    setCropImageSrc(objectUrl);
+    setCropValue(undefined);
+    setCompletedCropValue(null);
+    setCropError(null);
+    cropImageRef.current = null;
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [activeCropItem]);
+
   const goToStep = (nextStep: WizardStep): void => {
     const activeElement = document.activeElement;
     if (activeElement instanceof HTMLElement) {
@@ -493,7 +640,7 @@ export default function SellerProductUploadPage() {
     }
 
     if (file.size > MAX_IMAGE_SIZE_BYTES) {
-      return 'Görsel boyutu maksimum 3MB olabilir.';
+      return 'Görsel boyutu maksimum 5MB olabilir.';
     }
 
     return null;
@@ -558,7 +705,7 @@ export default function SellerProductUploadPage() {
       return;
     }
 
-    setPendingCoverImage(file);
+    setCropQueue((prev) => [...prev, { file, target: 'cover' }]);
     setGlobalError(null);
   };
 
@@ -570,6 +717,12 @@ export default function SellerProductUploadPage() {
     const existingImageCount = getExistingImageCount();
     const existingGalleryCount = Math.max(existingImageCount - 1, 0);
     const acceptedFiles: File[] = [];
+    const queuedGalleryCount =
+      cropQueue.filter((item) => item.target === 'gallery').length +
+      (activeCropItem?.target === 'gallery' ? 1 : 0);
+    const queuedCoverCount =
+      cropQueue.filter((item) => item.target === 'cover').length +
+      (activeCropItem?.target === 'cover' ? 1 : 0);
 
     for (const file of files) {
       const imageError = validateImageFile(file);
@@ -579,14 +732,20 @@ export default function SellerProductUploadPage() {
       }
 
       const projectedGalleryCount =
-        existingGalleryCount + pendingGalleryImages.length + acceptedFiles.length + 1;
+        existingGalleryCount + pendingGalleryImages.length + queuedGalleryCount + acceptedFiles.length + 1;
       if (projectedGalleryCount > MAX_GALLERY_IMAGE_COUNT) {
         setGlobalError('En fazla 5 adet galeri görseli yükleyebilirsiniz.');
         return;
       }
 
       const projectedImageTotal =
-        existingImageCount + (pendingCoverImage ? 1 : 0) + pendingGalleryImages.length + acceptedFiles.length + 1;
+        existingImageCount +
+        (pendingCoverImage ? 1 : 0) +
+        pendingGalleryImages.length +
+        queuedGalleryCount +
+        queuedCoverCount +
+        acceptedFiles.length +
+        1;
       if (projectedImageTotal > MAX_TOTAL_IMAGE_COUNT) {
         setGlobalError('Toplam görsel sayısı 6 adedi geçemez.');
         return;
@@ -595,7 +754,10 @@ export default function SellerProductUploadPage() {
       acceptedFiles.push(file);
     }
 
-    setPendingGalleryImages((prev) => [...prev, ...acceptedFiles]);
+    setCropQueue((prev) => [
+      ...prev,
+      ...acceptedFiles.map((file) => ({ file, target: 'gallery' as const })),
+    ]);
     setGlobalError(null);
   };
 
@@ -624,6 +786,63 @@ export default function SellerProductUploadPage() {
       setGlobalError('Video süresi okunamadı. Lütfen farklı bir MP4/WEBM dosyası deneyin.');
     } finally {
       setIsValidatingVideo(false);
+    }
+  };
+
+  const cancelActiveCrop = (): void => {
+    setActiveCropItem(null);
+    setCropError(null);
+    setCropValue(undefined);
+    setCompletedCropValue(null);
+  };
+
+  const applyActiveCrop = async (): Promise<void> => {
+    if (!activeCropItem) {
+      return;
+    }
+
+    if (!cropImageRef.current || !completedCropValue) {
+      setCropError('Lütfen görsel üzerinde kırpma alanını belirleyin.');
+      return;
+    }
+
+    try {
+      setIsApplyingCrop(true);
+      const croppedFile = await toCroppedImageFile(
+        cropImageRef.current,
+        activeCropItem.file,
+        completedCropValue,
+      );
+
+      const imageError = validateImageFile(croppedFile);
+      if (imageError) {
+        setCropError(imageError);
+        return;
+      }
+
+      const previewItem: PendingImageFile = {
+        file: croppedFile,
+        previewUrl: URL.createObjectURL(croppedFile),
+      };
+
+      if (activeCropItem.target === 'cover') {
+        setPendingCoverImage((previous) => {
+          revokePendingImage(previous);
+          return previewItem;
+        });
+      } else {
+        setPendingGalleryImages((previous) => [...previous, previewItem]);
+      }
+
+      setActiveCropItem(null);
+      setCropError(null);
+      setGlobalError(null);
+    } catch (error) {
+      setCropError(
+        error instanceof Error ? error.message : 'Görsel kırpılırken bir sorun oluştu.',
+      );
+    } finally {
+      setIsApplyingCrop(false);
     }
   };
 
@@ -664,7 +883,14 @@ export default function SellerProductUploadPage() {
   };
 
   const removePendingGalleryAt = (index: number): void => {
-    setPendingGalleryImages((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+    setPendingGalleryImages((prev) => {
+      const target = prev[index];
+      if (target) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+
+      return prev.filter((_, itemIndex) => itemIndex !== index);
+    });
   };
 
   const addPricingTier = (): void => {
@@ -751,7 +977,10 @@ export default function SellerProductUploadPage() {
   const onSubmitStepOne = stepOneForm.handleSubmit(async (values) => {
     const existingImageCount = getExistingImageCount();
     const existingVideoCount = getExistingVideoCount();
-    const pendingImageCount = (pendingCoverImage ? 1 : 0) + pendingGalleryImages.length;
+    const queuedImageCount =
+      cropQueue.filter((item) => item.target === 'cover' || item.target === 'gallery').length +
+      (activeCropItem ? 1 : 0);
+    const pendingImageCount = (pendingCoverImage ? 1 : 0) + pendingGalleryImages.length + queuedImageCount;
 
     if (existingImageCount === 0 && !pendingCoverImage) {
       setGlobalError('1 adet kapak görseli yüklemek zorunludur.');
@@ -785,8 +1014,8 @@ export default function SellerProductUploadPage() {
       setDraftRecord(savedStepOne);
 
       const pendingMediaToUpload = [
-        pendingCoverImage,
-        ...pendingGalleryImages,
+        pendingCoverImage?.file ?? null,
+        ...pendingGalleryImages.map((item) => item.file),
         pendingVideoFile,
       ].filter((file): file is File => Boolean(file));
 
@@ -795,8 +1024,12 @@ export default function SellerProductUploadPage() {
         : savedStepOne;
 
       setDraftRecord(saved);
+      revokePendingImage(pendingCoverImage);
+      pendingGalleryImages.forEach((item) => URL.revokeObjectURL(item.previewUrl));
       setPendingCoverImage(null);
       setPendingGalleryImages([]);
+      setCropQueue([]);
+      setActiveCropItem(null);
       setPendingVideoFile(null);
 
       if (saved.categoryId) {
@@ -878,8 +1111,12 @@ export default function SellerProductUploadPage() {
       setSubCategoryId('');
       setFeatureInput('');
       setSectorInput('');
+      revokePendingImage(pendingCoverImage);
+      pendingGalleryImages.forEach((item) => URL.revokeObjectURL(item.previewUrl));
       setPendingCoverImage(null);
       setPendingGalleryImages([]);
+      setCropQueue([]);
+      setActiveCropItem(null);
       setPendingVideoFile(null);
       setSubmitConfirmed(false);
       setIsCompleted(false);
@@ -932,6 +1169,8 @@ export default function SellerProductUploadPage() {
   const pendingMediaCount =
     (pendingCoverImage ? 1 : 0) +
     pendingGalleryImages.length +
+    cropQueue.length +
+    (activeCropItem ? 1 : 0) +
     (pendingVideoFile ? 1 : 0);
   const totalMediaCount = (draftRecord?.media.length ?? 0) + pendingMediaCount;
   const watchedPricingTiers = watchedStepTwo.pricingTiers ?? [];
@@ -1341,7 +1580,7 @@ export default function SellerProductUploadPage() {
                   <div className='md:col-span-2'>
                     <div className='mb-2 flex items-center gap-2'>
                       <span className='text-sm font-bold text-on-surface-variant'>Ürün Görsel ve Videoları</span>
-                      <FieldInfoHint text='1 kapak resmi zorunlu, en fazla 5 galeri görseli (toplam 6 görsel). Video (opsiyonel): En fazla 1 adet, 15MB, 20 saniye. Galeri: JPG, PNG veya WEBP, her biri maksimum 3MB.' />
+                      <FieldInfoHint text='1 kapak resmi zorunlu, en fazla 5 galeri görseli (toplam 6 görsel). Video (opsiyonel): En fazla 1 adet, 15MB, 20 saniye. Galeri: JPG, PNG veya WEBP, her biri maksimum 5MB.' />
                     </div>
 
                     <div className='rounded-xl border border-outline-variant bg-surface-container-low p-4 md:p-5'>
@@ -1378,15 +1617,23 @@ export default function SellerProductUploadPage() {
                         <p className='mt-2 text-sm text-on-surface-variant'>Yüklemek için tıklayın veya sürükleyin</p>
 
                         {pendingCoverImage ? (
-                          <div className='mt-4 w-full rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-left text-xs text-blue-900'>
-                            <div className='flex items-center justify-between gap-2'>
-                              <span className='truncate'>{pendingCoverImage.name}</span>
+                          <div className='mt-4 w-full rounded-lg border border-blue-100 bg-blue-50 p-2 text-left text-xs text-blue-900'>
+                            <img
+                              src={pendingCoverImage.previewUrl}
+                              alt='Kapak önizleme'
+                              className='mb-2 h-28 w-full rounded object-cover'
+                            />
+                            <div className='flex items-center justify-between gap-2 px-1'>
+                              <span className='truncate'>{pendingCoverImage.file.name}</span>
                               <button
                                 type='button'
                                 className='inline-flex items-center text-blue-700 hover:text-red-600'
                                 onClick={(event) => {
                                   event.stopPropagation();
-                                  setPendingCoverImage(null);
+                                  setPendingCoverImage((previous) => {
+                                    revokePendingImage(previous);
+                                    return null;
+                                  });
                                 }}
                               >
                                 <span className='material-symbols-outlined text-sm'>close</span>
@@ -1423,7 +1670,12 @@ export default function SellerProductUploadPage() {
                             if (pendingImage) {
                               return (
                                 <div key={`pending-gallery-${index}`} className='relative rounded-lg border border-blue-200 bg-blue-50 p-2 text-xs text-blue-900'>
-                                  <p className='line-clamp-2 break-all pr-6'>{pendingImage.name}</p>
+                                  <img
+                                    src={pendingImage.previewUrl}
+                                    alt='Galeri önizleme'
+                                    className='mb-2 h-20 w-full rounded object-cover'
+                                  />
+                                  <p className='line-clamp-2 break-all pr-6'>{pendingImage.file.name}</p>
                                   <button
                                     type='button'
                                     className='absolute right-1 top-1 inline-flex items-center text-blue-700 hover:text-red-600'
@@ -2112,6 +2364,83 @@ export default function SellerProductUploadPage() {
           </div>
         </aside>
       </div>
+
+      {activeCropItem && cropImageSrc ? (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4'>
+          <div className='w-full max-w-3xl rounded-xl border border-slate-200 bg-white p-4 shadow-xl md:p-6'>
+            <div className='mb-4 flex items-center justify-between'>
+              <h4 className='text-base font-bold text-slate-900'>
+                Görseli Kırp ({activeCropItem.target === 'cover' ? 'Kapak' : 'Galeri'})
+              </h4>
+              <button
+                type='button'
+                className='rounded p-1 text-slate-500 transition-colors hover:bg-slate-100'
+                onClick={cancelActiveCrop}
+                disabled={isApplyingCrop}
+              >
+                <span className='material-symbols-outlined'>close</span>
+              </button>
+            </div>
+
+            <p className='mb-3 text-sm text-slate-600'>
+              Kırpma alanı 1:1 (kare) oranına kilitlidir. Onay sonrası görsel 1200x1200 px olarak kaydedilir.
+            </p>
+
+            <div className='overflow-auto'>
+              <div className='mx-auto inline-block max-w-full rounded-lg border border-slate-200 bg-slate-50 p-2'>
+                <ReactCrop
+                  crop={cropValue}
+                  onChange={(nextCrop) => setCropValue(nextCrop)}
+                  onComplete={(nextCrop) => setCompletedCropValue(nextCrop)}
+                  aspect={1}
+                  keepSelection
+                  minWidth={80}
+                  minHeight={80}
+                >
+                  <img
+                    ref={cropImageRef}
+                    src={cropImageSrc}
+                    alt='Kırpma önizlemesi'
+                    className='block max-h-[60vh] h-auto w-auto max-w-full'
+                    onLoad={(event) => {
+                      const image = event.currentTarget;
+                      const initialCrop = getCenteredSquareCrop(image.width, image.height);
+                      setCropValue(initialCrop);
+                    }}
+                  />
+                </ReactCrop>
+              </div>
+            </div>
+
+            {cropError ? (
+              <p className='mt-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700'>
+                {cropError}
+              </p>
+            ) : null}
+
+            <div className='mt-4 flex items-center justify-end gap-2'>
+              <button
+                type='button'
+                className='rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700'
+                onClick={cancelActiveCrop}
+                disabled={isApplyingCrop}
+              >
+                Vazgeç
+              </button>
+              <button
+                type='button'
+                className='rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60'
+                onClick={() => {
+                  void applyActiveCrop();
+                }}
+                disabled={isApplyingCrop}
+              >
+                {isApplyingCrop ? 'Kaydediliyor...' : 'Onayla'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
