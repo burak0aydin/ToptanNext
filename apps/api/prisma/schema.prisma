@@ -149,6 +149,7 @@ model ProductListing {
   description       String               @db.Text
   categoryId        String               @map("category_id")
   status            ProductListingStatus @default(DRAFT)
+  isActive          Boolean              @default(true) @map("is_active")
   featuredFeatures  String[]             @default([]) @map("featured_features")
   isCustomizable    Boolean              @default(false) @map("is_customizable")
   customizationNote String?              @map("customization_note")
@@ -159,7 +160,11 @@ model ProductListing {
   isNegotiationEnabled Boolean           @default(false) @map("is_negotiation_enabled")
   negotiationThreshold Int?              @map("negotiation_threshold")
   pricingTiers      Json                 @default("[]") @map("pricing_tiers")
+  packageType       ProductListingPackageType? @map("package_type")
   leadTimeDays      Int?                 @map("lead_time_days")
+  shippingTime      ProductListingShippingTime? @map("shipping_time")
+  deliveryMethods   ProductListingDeliveryMethod[] @default([]) @map("delivery_methods")
+  dynamicFreightAgreement Boolean        @default(false) @map("dynamic_freight_agreement")
   packageLengthCm   Decimal?             @db.Decimal(8, 2) @map("package_length_cm")
   packageWidthCm    Decimal?             @db.Decimal(8, 2) @map("package_width_cm")
   packageHeightCm   Decimal?             @db.Decimal(8, 2) @map("package_height_cm")
@@ -249,4 +254,25 @@ enum ProductListingStatus {
 enum ProductListingMediaType {
   IMAGE
   VIDEO
+}
+
+enum ProductListingPackageType {
+  BOX
+  PALLET
+  SACK
+  OTHER
+}
+
+enum ProductListingShippingTime {
+  ONE_TO_THREE_DAYS
+  THREE_TO_FIVE_DAYS
+  ONE_WEEK
+  CUSTOM_PRODUCTION
+}
+
+enum ProductListingDeliveryMethod {
+  CONTRACTED_CARGO
+  FREIGHT_FORWARDER
+  BUYER_PICKUP
+  OWN_VEHICLE
 }

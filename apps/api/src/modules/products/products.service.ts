@@ -6,6 +6,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import {
+  ProductListingDeliveryMethod,
   ProductListingMediaType,
   ProductListingStatus,
   Role,
@@ -20,6 +21,8 @@ import {
   CreateProductInput,
   CreateProductListingMediaInput,
   ProductListingPricingTierRecord,
+  ProductListingManagementResult,
+  ProductListingManagementStatusFilter,
   ProductListingRecord,
   ProductRecord,
   ProductsRepository,
@@ -31,6 +34,13 @@ export type UploadedProductListingMedia = {
   mimeType: string;
   fileSize: number;
   filePath: string;
+};
+
+export type ProductListingManagementQuery = {
+  page: number;
+  limit: number;
+  categoryId?: string;
+  status?: ProductListingManagementStatusFilter;
 };
 
 const LISTING_EDITABLE_STATUSES: ProductListingStatus[] = [
@@ -51,6 +61,11 @@ export class ProductsService {
 
   async getAll(): Promise<ProductRecord[]> {
     return this.productsRepository.findAll();
+  }
+
+  async getAdminListings(role: Role): Promise<ProductListingRecord[]> {
+    this.ensureAdminRole(role);
+    return this.productsRepository.findProductListingsForAdmin();
   }
 
   async create(dto: CreateProductDto): Promise<ProductRecord> {
@@ -102,6 +117,36 @@ export class ProductsService {
     return this.productsRepository.findProductListingsBySupplier(supplierId);
   }
 
+  async getMyListingManagement(
+    supplierId: string,
+    role: Role,
+    query: ProductListingManagementQuery,
+  ): Promise<ProductListingManagementResult & {
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    this.ensureSupplierRole(role);
+
+    const page = Math.max(1, query.page);
+    const limit = Math.min(Math.max(query.limit, 5), 50);
+    const result =
+      await this.productsRepository.findProductListingsForSupplierManagement({
+        supplierId,
+        categoryId: query.categoryId,
+        status: query.status ?? 'ALL',
+        skip: (page - 1) * limit,
+        take: limit,
+      });
+
+    return {
+      ...result,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(result.total / limit)),
+    };
+  }
+
   async getMyListingById(
     supplierId: string,
     role: Role,
@@ -109,6 +154,53 @@ export class ProductsService {
   ): Promise<ProductListingRecord> {
     this.ensureSupplierRole(role);
     return this.getOwnedListingOrThrow(supplierId, listingId);
+  }
+
+  async updateMyListingActiveStatus(
+    supplierId: string,
+    role: Role,
+    listingId: string,
+    isActive: boolean,
+  ): Promise<ProductListingRecord> {
+    this.ensureSupplierRole(role);
+    const listing = await this.getOwnedListingOrThrow(supplierId, listingId);
+
+    if (listing.status === ProductListingStatus.PENDING_REVIEW) {
+      throw new BadRequestException(
+        'Onay bekleyen ürünlerin aktiflik durumu değiştirilemez.',
+      );
+    }
+
+    return this.productsRepository.updateProductListingActiveStatus(
+      listing.id,
+      isActive,
+    );
+  }
+
+  async deleteMyListing(
+    supplierId: string,
+    role: Role,
+    listingId: string,
+  ): Promise<ProductListingRecord> {
+    this.ensureSupplierRole(role);
+    const listing = await this.getOwnedListingOrThrow(supplierId, listingId);
+
+    if (listing.status === ProductListingStatus.PENDING_REVIEW) {
+      throw new BadRequestException('Onay bekleyen ürün silinemez.');
+    }
+
+    return this.productsRepository.softDeleteProductListing(listing.id);
+  }
+
+  async getListingMediaById(
+    mediaId: string,
+  ): Promise<{ filePath: string; mimeType: string; originalName: string }> {
+    const media = await this.productsRepository.findProductListingMediaById(mediaId);
+    if (!media) {
+      throw new NotFoundException('Medya bulunamadı.');
+    }
+
+    return media;
   }
 
   async createMyListingStepOne(
@@ -261,9 +353,14 @@ export class ProductsService {
     this.ensureSupplierRole(role);
     const listing = await this.getOwnedListingOrThrow(supplierId, listingId);
     this.ensureListingEditable(listing.status);
+    const deliveryMethods = this.normalizeDeliveryMethods(dto.deliveryMethods);
 
     return this.productsRepository.updateProductListingStepThree(listing.id, {
+      packageType: dto.packageType,
       leadTimeDays: dto.leadTimeDays,
+      shippingTime: dto.shippingTime,
+      deliveryMethods,
+      dynamicFreightAgreement: dto.dynamicFreightAgreement,
       packageLengthCm: dto.packageLengthCm,
       packageWidthCm: dto.packageWidthCm,
       packageHeightCm: dto.packageHeightCm,
@@ -427,9 +524,27 @@ export class ProductsService {
     }));
   }
 
+  private normalizeDeliveryMethods(
+    methods: ProductListingDeliveryMethod[],
+  ): ProductListingDeliveryMethod[] {
+    const normalized = [...new Set(methods)];
+
+    if (normalized.length === 0) {
+      throw new BadRequestException('En az bir teslimat yöntemi seçmelisiniz.');
+    }
+
+    return normalized;
+  }
+
   private ensureSupplierRole(role: Role): void {
     if (role !== Role.SUPPLIER) {
       throw new ForbiddenException('Bu işlem için satıcı hesabı gereklidir.');
+    }
+  }
+
+  private ensureAdminRole(role: Role): void {
+    if (role !== Role.ADMIN) {
+      throw new ForbiddenException('Bu işlem için admin yetkisi gereklidir.');
     }
   }
 
@@ -492,6 +607,18 @@ export class ProductsService {
 
     if (listing.leadTimeDays === null) {
       throw new BadRequestException('Tedarik süresi bilgisi zorunludur.');
+    }
+
+    if (listing.packageType === null) {
+      throw new BadRequestException('Paket tipi bilgisi zorunludur.');
+    }
+
+    if (listing.shippingTime === null) {
+      throw new BadRequestException('Kargoya verilme süresi zorunludur.');
+    }
+
+    if (listing.deliveryMethods.length === 0) {
+      throw new BadRequestException('En az bir teslimat yöntemi seçmelisiniz.');
     }
 
     if (

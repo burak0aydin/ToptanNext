@@ -3,7 +3,10 @@ import {
 } from '@nestjs/common';
 import {
   Prisma,
+  ProductListingDeliveryMethod,
   ProductListingMediaType,
+  ProductListingPackageType,
+  ProductListingShippingTime,
   ProductListingStatus,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -21,7 +24,13 @@ const productListingSelect = {
   sku: true,
   description: true,
   categoryId: true,
+  category: {
+    select: {
+      name: true,
+    },
+  },
   status: true,
+  isActive: true,
   featuredFeatures: true,
   isCustomizable: true,
   customizationNote: true,
@@ -32,7 +41,11 @@ const productListingSelect = {
   isNegotiationEnabled: true,
   negotiationThreshold: true,
   pricingTiers: true,
+  packageType: true,
   leadTimeDays: true,
+  shippingTime: true,
+  deliveryMethods: true,
+  dynamicFreightAgreement: true,
   packageLengthCm: true,
   packageWidthCm: true,
   packageHeightCm: true,
@@ -129,7 +142,9 @@ export type ProductListingRecord = {
   sku: string;
   description: string;
   categoryId: string;
+  categoryName: string;
   status: ProductListingStatus;
+  isActive: boolean;
   featuredFeatures: string[];
   isCustomizable: boolean;
   customizationNote: string | null;
@@ -140,7 +155,11 @@ export type ProductListingRecord = {
   isNegotiationEnabled: boolean;
   negotiationThreshold: number | null;
   pricingTiers: ProductListingPricingTierRecord[];
+  packageType: ProductListingPackageType | null;
   leadTimeDays: number | null;
+  shippingTime: ProductListingShippingTime | null;
+  deliveryMethods: ProductListingDeliveryMethod[];
+  dynamicFreightAgreement: boolean;
   packageLengthCm: Prisma.Decimal | null;
   packageWidthCm: Prisma.Decimal | null;
   packageHeightCm: Prisma.Decimal | null;
@@ -152,6 +171,34 @@ export type ProductListingRecord = {
   deletedAt: Date | null;
   sectors: ProductListingSectorRecord[];
   media: ProductListingMediaRecord[];
+};
+
+export type ProductListingManagementStatusFilter =
+  | 'ALL'
+  | 'ACTIVE'
+  | 'PENDING_REVIEW'
+  | 'REJECTED'
+  | 'PASSIVE'
+  | 'OUT_OF_STOCK';
+
+export type ProductListingManagementFilters = {
+  supplierId: string;
+  categoryId?: string;
+  status: ProductListingManagementStatusFilter;
+  skip: number;
+  take: number;
+};
+
+export type ProductListingManagementResult = {
+  total: number;
+  items: ProductListingRecord[];
+  summary: {
+    totalProducts: number;
+    pendingReview: number;
+    rejected: number;
+    passive: number;
+    outOfStock: number;
+  };
 };
 
 export type CreateProductInput = {
@@ -197,7 +244,11 @@ export type UpdateProductListingStepTwoInput = {
 };
 
 export type UpdateProductListingStepThreeInput = {
+  packageType: ProductListingPackageType;
   leadTimeDays: number;
+  shippingTime: ProductListingShippingTime;
+  deliveryMethods: ProductListingDeliveryMethod[];
+  dynamicFreightAgreement: boolean;
   packageLengthCm: number;
   packageWidthCm: number;
   packageHeightCm: number;
@@ -561,6 +612,126 @@ export class ProductsRepository {
     return listings.map((listing) => this.mapListingRecord(listing));
   }
 
+  async findProductListingsForSupplierManagement(
+    input: ProductListingManagementFilters,
+  ): Promise<ProductListingManagementResult> {
+    const baseWhere: Prisma.ProductListingWhereInput = {
+      supplierId: input.supplierId,
+      deletedAt: null,
+    };
+
+    const where: Prisma.ProductListingWhereInput = { ...baseWhere };
+
+    if (input.categoryId) {
+      where.categoryId = input.categoryId;
+    }
+
+    if (input.status === 'ACTIVE') {
+      where.status = ProductListingStatus.APPROVED;
+      where.isActive = true;
+    } else if (input.status === 'PENDING_REVIEW') {
+      where.status = ProductListingStatus.PENDING_REVIEW;
+    } else if (input.status === 'REJECTED') {
+      where.status = ProductListingStatus.REJECTED;
+    } else if (input.status === 'PASSIVE') {
+      where.isActive = false;
+    } else if (input.status === 'OUT_OF_STOCK') {
+      where.stock = 0;
+    }
+
+    const [
+      total,
+      items,
+      totalProducts,
+      pendingReview,
+      rejected,
+      passive,
+      outOfStock,
+    ] = await this.prisma.$transaction([
+      this.prisma.productListing.count({ where }),
+      this.prisma.productListing.findMany({
+        where,
+        orderBy: [{ updatedAt: 'desc' }],
+        skip: input.skip,
+        take: input.take,
+        select: productListingSelect,
+      }),
+      this.prisma.productListing.count({ where: baseWhere }),
+      this.prisma.productListing.count({
+        where: { ...baseWhere, status: ProductListingStatus.PENDING_REVIEW },
+      }),
+      this.prisma.productListing.count({
+        where: { ...baseWhere, status: ProductListingStatus.REJECTED },
+      }),
+      this.prisma.productListing.count({
+        where: { ...baseWhere, isActive: false },
+      }),
+      this.prisma.productListing.count({
+        where: { ...baseWhere, stock: 0 },
+      }),
+    ]);
+
+    return {
+      total,
+      items: items.map((listing) => this.mapListingRecord(listing)),
+      summary: {
+        totalProducts,
+        pendingReview,
+        rejected,
+        passive,
+        outOfStock,
+      },
+    };
+  }
+
+  async findProductListingsForAdmin(): Promise<ProductListingRecord[]> {
+    const listings = await this.prisma.productListing.findMany({
+      where: {
+        deletedAt: null,
+      },
+      orderBy: [{ updatedAt: 'desc' }],
+      select: productListingSelect,
+    });
+
+    return listings.map((listing) => this.mapListingRecord(listing));
+  }
+
+  async updateProductListingActiveStatus(
+    id: string,
+    isActive: boolean,
+  ): Promise<ProductListingRecord> {
+    const updated = await this.prisma.productListing.update({
+      where: { id },
+      data: { isActive },
+      select: productListingSelect,
+    });
+
+    return this.mapListingRecord(updated);
+  }
+
+  async softDeleteProductListing(id: string): Promise<ProductListingRecord> {
+    const updated = await this.prisma.productListing.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+      select: productListingSelect,
+    });
+
+    return this.mapListingRecord(updated);
+  }
+
+  async findProductListingMediaById(
+    id: string,
+  ): Promise<{ filePath: string; mimeType: string; originalName: string } | null> {
+    return this.prisma.productListingMedia.findUnique({
+      where: { id },
+      select: {
+        filePath: true,
+        mimeType: true,
+        originalName: true,
+      },
+    });
+  }
+
   async updateProductListingStepTwo(
     id: string,
     input: UpdateProductListingStepTwoInput,
@@ -643,7 +814,11 @@ export class ProductsRepository {
         id,
       },
       data: {
+        packageType: input.packageType,
         leadTimeDays: input.leadTimeDays,
+        shippingTime: input.shippingTime,
+        deliveryMethods: input.deliveryMethods,
+        dynamicFreightAgreement: input.dynamicFreightAgreement,
         packageLengthCm: input.packageLengthCm,
         packageWidthCm: input.packageWidthCm,
         packageHeightCm: input.packageHeightCm,
@@ -718,9 +893,11 @@ export class ProductsRepository {
     listing: ProductListingSelectRecord,
   ): ProductListingRecord {
     const pricingTiers = this.parsePricingTiers(listing.pricingTiers);
+    const { category, ...restListing } = listing;
 
     return {
-      ...listing,
+      ...restListing,
+      categoryName: category.name,
       pricingTiers,
       sectors: listing.sectors.map((item) => ({
         sectorId: item.sectorId,

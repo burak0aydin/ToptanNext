@@ -1,11 +1,45 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsNumber, Min } from 'class-validator';
+import {
+  ArrayNotEmpty,
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsNumber,
+  Min,
+} from 'class-validator';
+import {
+  ProductListingDeliveryMethod,
+  ProductListingPackageType,
+  ProductListingShippingTime,
+} from '@prisma/client';
 
 export class UpdateProductListingStepThreeDto {
+  @IsEnum(ProductListingPackageType, {
+    message: 'Geçerli bir paket tipi seçiniz.',
+  })
+  packageType: ProductListingPackageType;
+
   @Type(() => Number)
   @IsInt({ message: 'Tedarik süresi tam sayı olmalıdır.' })
   @Min(0, { message: 'Tedarik süresi negatif olamaz.' })
   leadTimeDays: number;
+
+  @IsEnum(ProductListingShippingTime, {
+    message: 'Geçerli bir kargoya verilme süresi seçiniz.',
+  })
+  shippingTime: ProductListingShippingTime;
+
+  @IsArray({ message: 'Teslimat yöntemleri liste olarak gönderilmelidir.' })
+  @ArrayNotEmpty({ message: 'En az bir teslimat yöntemi seçmelisiniz.' })
+  @IsEnum(ProductListingDeliveryMethod, {
+    each: true,
+    message: 'Geçerli teslimat yöntemleri seçiniz.',
+  })
+  deliveryMethods: ProductListingDeliveryMethod[];
+
+  @IsBoolean({ message: 'Dinamik navlun anlaşması true/false olmalıdır.' })
+  dynamicFreightAgreement: boolean;
 
   @Type(() => Number)
   @IsNumber({}, { message: 'Paket uzunluğu sayısal olmalıdır.' })

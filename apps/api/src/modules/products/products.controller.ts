@@ -4,28 +4,37 @@ import {
   Body,
   Catch,
   Controller,
+  Delete,
   ExceptionFilter,
+  ForbiddenException,
   Get,
+  NotFoundException,
   Param,
+  Patch,
   Post,
   Put,
+  Query,
   Req,
+  Res,
+  StreamableFile,
   UploadedFiles,
   UseFilters,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { Request } from 'express';
+import { Role } from '@prisma/client';
+import { Request, Response } from 'express';
 import { MulterError } from 'multer';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
-import { mkdirSync } from 'fs';
+import { createReadStream, existsSync, mkdirSync } from 'fs';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { CreateProductListingStepOneDto } from './dto/create-product-listing-step-one.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { SubmitProductListingDto } from './dto/submit-product-listing.dto';
+import { UpdateProductListingActiveStatusDto } from './dto/update-product-listing-active-status.dto';
 import { UpdateProductListingStepThreeDto } from './dto/update-product-listing-step-three.dto';
 import { UpdateProductListingStepTwoDto } from './dto/update-product-listing-step-two.dto';
 import { ProductsService } from './products.service';
@@ -145,6 +154,40 @@ export class ProductsController {
     };
   }
 
+  @Get('admin/listings')
+  @UseGuards(AuthGuard('jwt'))
+  async getAdminListings(@Req() req: AuthenticatedRequest) {
+    this.ensureAdmin(req.user.role);
+
+    const data = await this.productsService.getAdminListings(req.user.role);
+
+    return {
+      success: true,
+      data,
+      message: 'Ürün başvuruları başarıyla getirildi.',
+    };
+  }
+
+  @Get('media/:mediaId')
+  async getListingMedia(
+    @Param('mediaId') mediaId: string,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<StreamableFile> {
+    const media = await this.productsService.getListingMediaById(mediaId);
+
+    if (!existsSync(media.filePath)) {
+      throw new NotFoundException('Medya dosyası bulunamadı.');
+    }
+
+    response.setHeader('Content-Type', media.mimeType);
+    response.setHeader(
+      'Content-Disposition',
+      `inline; filename="${encodeURIComponent(media.originalName)}"`,
+    );
+
+    return new StreamableFile(createReadStream(media.filePath));
+  }
+
   @Post()
   @UseGuards(AuthGuard('jwt'))
   async create(
@@ -162,7 +205,38 @@ export class ProductsController {
 
   @Get('me/listings')
   @UseGuards(AuthGuard('jwt'))
-  async getMyListings(@Req() req: AuthenticatedRequest) {
+  async getMyListings(
+    @Req() req: AuthenticatedRequest,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('status') status?: string,
+  ) {
+    const numericPage = Number(page);
+    const numericLimit = Number(limit);
+    const normalizedStatus = this.normalizeManagementStatus(status);
+
+    const data = await this.productsService.getMyListingManagement(
+      req.user.sub,
+      req.user.role,
+      {
+        page: Number.isFinite(numericPage) ? numericPage : 1,
+        limit: Number.isFinite(numericLimit) ? numericLimit : 10,
+        categoryId: categoryId?.trim() || undefined,
+        status: normalizedStatus,
+      },
+    );
+
+    return {
+      success: true,
+      data,
+      message: 'Ürün listesi başarıyla getirildi.',
+    };
+  }
+
+  @Get('me/listings/drafts')
+  @UseGuards(AuthGuard('jwt'))
+  async getMyListingDrafts(@Req() req: AuthenticatedRequest) {
     const data = await this.productsService.getMyListings(
       req.user.sub,
       req.user.role,
@@ -191,6 +265,46 @@ export class ProductsController {
       success: true,
       data,
       message: 'Ürün taslağı başarıyla getirildi.',
+    };
+  }
+
+  @Patch('me/listings/:id/active')
+  @UseGuards(AuthGuard('jwt'))
+  async updateMyListingActiveStatus(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: UpdateProductListingActiveStatusDto,
+  ) {
+    const data = await this.productsService.updateMyListingActiveStatus(
+      req.user.sub,
+      req.user.role,
+      id,
+      dto.isActive,
+    );
+
+    return {
+      success: true,
+      data,
+      message: 'Ürün aktiflik durumu güncellendi.',
+    };
+  }
+
+  @Delete('me/listings/:id')
+  @UseGuards(AuthGuard('jwt'))
+  async deleteMyListing(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    const data = await this.productsService.deleteMyListing(
+      req.user.sub,
+      req.user.role,
+      id,
+    );
+
+    return {
+      success: true,
+      data,
+      message: 'Ürün silindi.',
     };
   }
 
@@ -360,5 +474,33 @@ export class ProductsController {
       fileSize: file.size,
       filePath: file.path,
     }));
+  }
+
+  private ensureAdmin(role: Role): void {
+    if (role !== Role.ADMIN) {
+      throw new ForbiddenException('Bu işlem için admin yetkisi gereklidir.');
+    }
+  }
+
+  private normalizeManagementStatus(
+    value: string | undefined,
+  ):
+    | 'ALL'
+    | 'ACTIVE'
+    | 'PENDING_REVIEW'
+    | 'REJECTED'
+    | 'PASSIVE'
+    | 'OUT_OF_STOCK' {
+    if (
+      value === 'ACTIVE' ||
+      value === 'PENDING_REVIEW' ||
+      value === 'REJECTED' ||
+      value === 'PASSIVE' ||
+      value === 'OUT_OF_STOCK'
+    ) {
+      return value;
+    }
+
+    return 'ALL';
   }
 }

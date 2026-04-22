@@ -3,6 +3,9 @@ import type {
   ProductListingStepThreeDto,
   ProductListingStepTwoDto,
   ProductListingSubmitDto,
+  ProductListingDeliveryMethod,
+  ProductListingPackageType,
+  ProductListingShippingTime,
 } from '@toptannext/types';
 import { requestJson } from '@/lib/api';
 
@@ -49,7 +52,9 @@ export type ProductListingRecord = {
   sku: string;
   description: string;
   categoryId: string;
+  categoryName: string;
   status: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+  isActive: boolean;
   featuredFeatures: string[];
   isCustomizable: boolean;
   customizationNote: string | null;
@@ -60,7 +65,11 @@ export type ProductListingRecord = {
   isNegotiationEnabled: boolean;
   negotiationThreshold: number | null;
   pricingTiers: ProductListingPricingTierRecord[];
+  packageType: ProductListingPackageType | null;
   leadTimeDays: number | null;
+  shippingTime: ProductListingShippingTime | null;
+  deliveryMethods: ProductListingDeliveryMethod[];
+  dynamicFreightAgreement: boolean;
   packageLengthCm: string | null;
   packageWidthCm: string | null;
   packageHeightCm: string | null;
@@ -72,6 +81,36 @@ export type ProductListingRecord = {
   deletedAt: string | null;
   sectors: ProductListingSectorRecord[];
   media: ProductListingMediaRecord[];
+};
+
+export type ProductListingManagementStatus =
+  | 'ALL'
+  | 'ACTIVE'
+  | 'PENDING_REVIEW'
+  | 'REJECTED'
+  | 'PASSIVE'
+  | 'OUT_OF_STOCK';
+
+export type ProductListingManagementResult = {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  items: ProductListingRecord[];
+  summary: {
+    totalProducts: number;
+    pendingReview: number;
+    rejected: number;
+    passive: number;
+    outOfStock: number;
+  };
+};
+
+export type ProductListingManagementQuery = {
+  page?: number;
+  limit?: number;
+  categoryId?: string;
+  status?: ProductListingManagementStatus;
 };
 
 export async function fetchCategoriesTree(): Promise<CategoryTreeNode[]> {
@@ -86,8 +125,73 @@ export async function fetchSectors(): Promise<SectorRecord[]> {
   });
 }
 
-export async function fetchMyProductListings(): Promise<ProductListingRecord[]> {
-  return requestJson<ProductListingRecord[]>('/products/me/listings', {
+export async function fetchMyProductListings(
+  query: ProductListingManagementQuery = {},
+): Promise<ProductListingManagementResult> {
+  const searchParams = new URLSearchParams();
+
+  if (query.page) {
+    searchParams.set('page', String(query.page));
+  }
+
+  if (query.limit) {
+    searchParams.set('limit', String(query.limit));
+  }
+
+  if (query.categoryId) {
+    searchParams.set('categoryId', query.categoryId);
+  }
+
+  if (query.status && query.status !== 'ALL') {
+    searchParams.set('status', query.status);
+  }
+
+  const queryString = searchParams.toString();
+
+  return requestJson<ProductListingManagementResult>(
+    `/products/me/listings${queryString ? `?${queryString}` : ''}`,
+    {
+      auth: true,
+    },
+  );
+}
+
+export async function fetchMyProductListingDrafts(): Promise<ProductListingRecord[]> {
+  return requestJson<ProductListingRecord[]>('/products/me/listings/drafts', {
+    auth: true,
+  });
+}
+
+export async function fetchAdminProductListings(): Promise<ProductListingRecord[]> {
+  return requestJson<ProductListingRecord[]>('/products/admin/listings', {
+    auth: true,
+  });
+}
+
+export function resolveProductListingMediaUrl(mediaId: string): string {
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+  return `${baseUrl}/products/media/${mediaId}`;
+}
+
+export async function updateProductListingActiveStatus(
+  listingId: string,
+  isActive: boolean,
+): Promise<ProductListingRecord> {
+  return requestJson<ProductListingRecord, { isActive: boolean }>(
+    `/products/me/listings/${listingId}/active`,
+    {
+      method: 'PATCH',
+      auth: true,
+      body: { isActive },
+    },
+  );
+}
+
+export async function deleteProductListing(
+  listingId: string,
+): Promise<ProductListingRecord> {
+  return requestJson<ProductListingRecord>(`/products/me/listings/${listingId}`, {
+    method: 'DELETE',
     auth: true,
   });
 }

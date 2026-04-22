@@ -5,16 +5,19 @@ import {
   productListingStepOneSchema,
   productListingStepThreeSchema,
   productListingStepTwoSchema,
+  type ProductListingDeliveryMethod,
+  type ProductListingPackageType,
   type ProductListingStepOneDto,
   type ProductListingStepThreeDto,
   type ProductListingStepTwoDto,
+  type ProductListingShippingTime,
 } from '@toptannext/types';
 import { type ChangeEvent, type DragEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import {
   createProductListingStepOne,
   fetchCategoriesTree,
-  fetchMyProductListings,
+  fetchMyProductListingDrafts,
   fetchSectors,
   submitProductListing,
   updateProductListingStepOne,
@@ -62,12 +65,61 @@ const STEP_TWO_DEFAULT_VALUES: ProductListingStepTwoDto = {
 };
 
 const STEP_THREE_DEFAULT_VALUES: ProductListingStepThreeDto = {
+  packageType: '' as ProductListingPackageType,
   leadTimeDays: 0,
+  shippingTime: '' as ProductListingShippingTime,
+  deliveryMethods: [],
+  dynamicFreightAgreement: false,
   packageLengthCm: 0,
   packageWidthCm: 0,
   packageHeightCm: 0,
   packageWeightKg: 0,
 };
+
+const PACKAGE_TYPE_OPTIONS: Array<{ value: ProductListingPackageType; label: string }> = [
+  { value: 'BOX', label: 'Koli' },
+  { value: 'PALLET', label: 'Palet' },
+  { value: 'SACK', label: 'Çuval' },
+  { value: 'OTHER', label: 'Diğer' },
+];
+
+const SHIPPING_TIME_OPTIONS: Array<{
+  value: ProductListingShippingTime;
+  label: string;
+  leadTimeDays: number;
+}> = [
+  { value: 'ONE_TO_THREE_DAYS', label: '1-3 İş Günü (Hızlı Gönderim)', leadTimeDays: 3 },
+  { value: 'THREE_TO_FIVE_DAYS', label: '3-5 İş Günü', leadTimeDays: 5 },
+  { value: 'ONE_WEEK', label: '1 Hafta', leadTimeDays: 7 },
+  { value: 'CUSTOM_PRODUCTION', label: 'Özel Üretim / Termin Süreli', leadTimeDays: 14 },
+];
+
+const DELIVERY_METHOD_OPTIONS: Array<{
+  value: ProductListingDeliveryMethod;
+  title: string;
+  description: string;
+}> = [
+  {
+    value: 'CONTRACTED_CARGO',
+    title: 'Anlaşmalı Kargo Firmaları',
+    description: 'Yurtiçi, Aras, PTT',
+  },
+  {
+    value: 'FREIGHT_FORWARDER',
+    title: 'Ambar / Nakliyat Firması',
+    description: 'Büyük hacimli siparişler için',
+  },
+  {
+    value: 'BUYER_PICKUP',
+    title: 'Alıcı Kendi Teslim Alabilir',
+    description: 'Depodan teslim',
+  },
+  {
+    value: 'OWN_VEHICLE',
+    title: 'Kendi Aracımızla Gönderim',
+    description: 'Bölgesel dağıtım ağı',
+  },
+];
 
 const OTHER_OPTION_VALUE = 'other';
 const MAX_TOTAL_IMAGE_COUNT = 6;
@@ -196,7 +248,7 @@ export default function SellerProductUploadPage() {
         const [categoryResponse, sectorsResponse, listingsResponse] = await Promise.all([
           fetchCategoriesTree(),
           fetchSectors(),
-          fetchMyProductListings(),
+          fetchMyProductListingDrafts(),
         ]);
 
         if (!isMounted) {
@@ -254,7 +306,11 @@ export default function SellerProductUploadPage() {
         });
 
         stepThreeForm.reset({
+          packageType: latestEditableDraft.packageType ?? STEP_THREE_DEFAULT_VALUES.packageType,
           leadTimeDays: Math.max(latestEditableDraft.leadTimeDays ?? 0, 0),
+          shippingTime: latestEditableDraft.shippingTime ?? STEP_THREE_DEFAULT_VALUES.shippingTime,
+          deliveryMethods: latestEditableDraft.deliveryMethods,
+          dynamicFreightAgreement: latestEditableDraft.dynamicFreightAgreement,
           packageLengthCm: Math.max(Number(latestEditableDraft.packageLengthCm ?? '0'), 0),
           packageWidthCm: Math.max(Number(latestEditableDraft.packageWidthCm ?? '0'), 0),
           packageHeightCm: Math.max(Number(latestEditableDraft.packageHeightCm ?? '0'), 0),
@@ -665,6 +721,33 @@ export default function SellerProductUploadPage() {
     }
   };
 
+  const updateShippingTime = (shippingTime: ProductListingShippingTime | ''): void => {
+    stepThreeForm.setValue('shippingTime', shippingTime as ProductListingShippingTime, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+
+    const selectedOption = SHIPPING_TIME_OPTIONS.find((option) => option.value === shippingTime);
+    if (selectedOption) {
+      stepThreeForm.setValue('leadTimeDays', selectedOption.leadTimeDays, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+    }
+  };
+
+  const toggleDeliveryMethod = (method: ProductListingDeliveryMethod): void => {
+    const currentMethods = stepThreeForm.getValues('deliveryMethods') ?? [];
+    const nextMethods = currentMethods.includes(method)
+      ? currentMethods.filter((item) => item !== method)
+      : [...currentMethods, method];
+
+    stepThreeForm.setValue('deliveryMethods', nextMethods, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  };
+
   const onSubmitStepOne = stepOneForm.handleSubmit(async (values) => {
     const existingImageCount = getExistingImageCount();
     const existingVideoCount = getExistingVideoCount();
@@ -870,6 +953,28 @@ export default function SellerProductUploadPage() {
     : draftRecord?.isNegotiationEnabled
       ? draftRecord.negotiationThreshold
       : null;
+  const packageTypeLabel = PACKAGE_TYPE_OPTIONS.find(
+    (option) => option.value === watchedStepThree.packageType,
+  )?.label ?? (draftRecord?.packageType
+    ? PACKAGE_TYPE_OPTIONS.find((option) => option.value === draftRecord.packageType)?.label
+    : null);
+  const packageDimensionSummary =
+    watchedStepThree.packageWidthCm > 0 &&
+    watchedStepThree.packageLengthCm > 0 &&
+    watchedStepThree.packageHeightCm > 0
+      ? `${watchedStepThree.packageWidthCm} x ${watchedStepThree.packageLengthCm} x ${watchedStepThree.packageHeightCm} cm`
+      : draftRecord?.packageWidthCm && draftRecord.packageLengthCm && draftRecord.packageHeightCm
+        ? `${draftRecord.packageWidthCm} x ${draftRecord.packageLengthCm} x ${draftRecord.packageHeightCm} cm`
+        : 'Henüz girilmedi';
+  const shippingTimeLabel = SHIPPING_TIME_OPTIONS.find(
+    (option) => option.value === watchedStepThree.shippingTime,
+  )?.label ?? (draftRecord?.shippingTime
+    ? SHIPPING_TIME_OPTIONS.find((option) => option.value === draftRecord.shippingTime)?.label
+    : null);
+  const selectedDeliveryMethodCount =
+    watchedStepThree.deliveryMethods.length > 0
+      ? watchedStepThree.deliveryMethods.length
+      : draftRecord?.deliveryMethods.length ?? 0;
 
   return (
     <div ref={pageTopRef} className='space-y-8'>
@@ -1658,92 +1763,212 @@ export default function SellerProductUploadPage() {
               <>
                 <div className='mb-6 flex items-center gap-2'>
                   <span className='material-symbols-outlined text-primary'>local_shipping</span>
-                  <h3 className='text-xl font-bold tracking-tight text-on-surface'>Lojistik ve Medya</h3>
+                  <h3 className='text-xl font-bold tracking-tight text-on-surface'>Profesyonel Lojistik</h3>
                 </div>
 
-                <form className='grid grid-cols-1 gap-6 md:grid-cols-2' onSubmit={onSubmitStepThree}>
-                  <label>
-                    <span className='mb-2 block text-sm font-bold text-on-surface-variant'>Tedarik Süresi (Gün)</span>
-                    <input
-                      className='w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-3 text-sm outline-none transition-all focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20'
-                      type='number'
-                      min='0'
-                      {...stepThreeForm.register('leadTimeDays')}
-                    />
-                    {stepThreeForm.formState.errors.leadTimeDays ? (
-                      <p className='mt-1 text-xs text-red-600'>
-                        {stepThreeForm.formState.errors.leadTimeDays.message}
-                      </p>
-                    ) : null}
-                  </label>
+                <form className='space-y-8' onSubmit={onSubmitStepThree}>
+                  <section className='rounded-xl border border-outline-variant bg-surface-container-low p-5 md:p-6'>
+                    <h4 className='mb-6 text-[1.625rem] font-semibold text-on-surface'>Paketleme ve Boyut Bilgileri</h4>
 
-                  <div></div>
+                    <div className='grid grid-cols-1 gap-5 md:grid-cols-2'>
+                      <label>
+                        <span className='mb-2 block text-sm font-bold text-on-surface-variant'>Paket Tipi</span>
+                        <div className='relative'>
+                          <select
+                            className='w-full appearance-none rounded-lg border border-outline-variant bg-white px-3 py-3 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20'
+                            {...stepThreeForm.register('packageType')}
+                            disabled={isSubmittingStep}
+                          >
+                            <option value=''>Seçiniz...</option>
+                            {PACKAGE_TYPE_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                          <span className='material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400'>
+                            expand_more
+                          </span>
+                        </div>
+                        {stepThreeForm.formState.errors.packageType ? (
+                          <p className='mt-1 text-xs text-red-600'>
+                            {stepThreeForm.formState.errors.packageType.message}
+                          </p>
+                        ) : null}
+                      </label>
 
-                  <label>
-                    <span className='mb-2 block text-sm font-bold text-on-surface-variant'>Paket Uzunluğu (cm)</span>
-                    <input
-                      className='w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-3 text-sm outline-none transition-all focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20'
-                      type='number'
-                      step='0.01'
-                      min='0'
-                      {...stepThreeForm.register('packageLengthCm')}
-                    />
-                    {stepThreeForm.formState.errors.packageLengthCm ? (
-                      <p className='mt-1 text-xs text-red-600'>
-                        {stepThreeForm.formState.errors.packageLengthCm.message}
-                      </p>
-                    ) : null}
-                  </label>
+                      <label>
+                        <span className='mb-2 block text-sm font-bold text-on-surface-variant'>Paket Ağırlığı (kg)</span>
+                        <input
+                          className='w-full rounded-lg border border-outline-variant bg-white px-3 py-3 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20'
+                          placeholder='Örn: 2.5'
+                          type='number'
+                          step='0.001'
+                          min='0'
+                          {...stepThreeForm.register('packageWeightKg')}
+                        />
+                        {stepThreeForm.formState.errors.packageWeightKg ? (
+                          <p className='mt-1 text-xs text-red-600'>
+                            {stepThreeForm.formState.errors.packageWeightKg.message}
+                          </p>
+                        ) : null}
+                      </label>
+                    </div>
 
-                  <label>
-                    <span className='mb-2 block text-sm font-bold text-on-surface-variant'>Paket Genişliği (cm)</span>
-                    <input
-                      className='w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-3 text-sm outline-none transition-all focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20'
-                      type='number'
-                      step='0.01'
-                      min='0'
-                      {...stepThreeForm.register('packageWidthCm')}
-                    />
-                    {stepThreeForm.formState.errors.packageWidthCm ? (
-                      <p className='mt-1 text-xs text-red-600'>
-                        {stepThreeForm.formState.errors.packageWidthCm.message}
-                      </p>
-                    ) : null}
-                  </label>
+                    <div className='mt-6'>
+                      <span className='mb-2 block text-sm font-bold text-on-surface-variant'>Boyutlar (cm)</span>
+                      <div className='grid grid-cols-1 gap-3 sm:grid-cols-3'>
+                        <label>
+                          <span className='sr-only'>En</span>
+                          <input
+                            className='w-full rounded-lg border border-outline-variant bg-white px-3 py-3 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20'
+                            placeholder='En'
+                            type='number'
+                            step='0.01'
+                            min='0'
+                            {...stepThreeForm.register('packageWidthCm')}
+                          />
+                          {stepThreeForm.formState.errors.packageWidthCm ? (
+                            <p className='mt-1 text-xs text-red-600'>
+                              {stepThreeForm.formState.errors.packageWidthCm.message}
+                            </p>
+                          ) : null}
+                        </label>
 
-                  <label>
-                    <span className='mb-2 block text-sm font-bold text-on-surface-variant'>Paket Yüksekliği (cm)</span>
-                    <input
-                      className='w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-3 text-sm outline-none transition-all focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20'
-                      type='number'
-                      step='0.01'
-                      min='0'
-                      {...stepThreeForm.register('packageHeightCm')}
-                    />
-                    {stepThreeForm.formState.errors.packageHeightCm ? (
-                      <p className='mt-1 text-xs text-red-600'>
-                        {stepThreeForm.formState.errors.packageHeightCm.message}
-                      </p>
-                    ) : null}
-                  </label>
+                        <label>
+                          <span className='sr-only'>Boy</span>
+                          <input
+                            className='w-full rounded-lg border border-outline-variant bg-white px-3 py-3 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20'
+                            placeholder='Boy'
+                            type='number'
+                            step='0.01'
+                            min='0'
+                            {...stepThreeForm.register('packageLengthCm')}
+                          />
+                          {stepThreeForm.formState.errors.packageLengthCm ? (
+                            <p className='mt-1 text-xs text-red-600'>
+                              {stepThreeForm.formState.errors.packageLengthCm.message}
+                            </p>
+                          ) : null}
+                        </label>
 
-                  <label>
-                    <span className='mb-2 block text-sm font-bold text-on-surface-variant'>Paket Ağırlığı (kg)</span>
-                    <input
-                      className='w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-3 text-sm outline-none transition-all focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20'
-                      type='number'
-                      step='0.001'
-                      min='0'
-                      {...stepThreeForm.register('packageWeightKg')}
-                    />
-                    {stepThreeForm.formState.errors.packageWeightKg ? (
-                      <p className='mt-1 text-xs text-red-600'>
-                        {stepThreeForm.formState.errors.packageWeightKg.message}
-                      </p>
-                    ) : null}
-                  </label>
+                        <label>
+                          <span className='sr-only'>Yükseklik</span>
+                          <input
+                            className='w-full rounded-lg border border-outline-variant bg-white px-3 py-3 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20'
+                            placeholder='Yükseklik'
+                            type='number'
+                            step='0.01'
+                            min='0'
+                            {...stepThreeForm.register('packageHeightCm')}
+                          />
+                          {stepThreeForm.formState.errors.packageHeightCm ? (
+                            <p className='mt-1 text-xs text-red-600'>
+                              {stepThreeForm.formState.errors.packageHeightCm.message}
+                            </p>
+                          ) : null}
+                        </label>
+                      </div>
+                    </div>
+                  </section>
 
-                  <label className='md:col-span-2 flex items-center gap-3 rounded-lg border border-outline-variant/50 bg-surface-container-low px-3 py-3'>
+                  <section className='rounded-xl border border-outline-variant bg-surface-container-low p-5 md:p-6'>
+                    <h4 className='mb-6 text-[1.625rem] font-semibold text-on-surface'>Lojistik ve Teslimat Bilgileri</h4>
+
+                    <label className='block max-w-xl'>
+                      <span className='mb-2 block text-sm font-bold text-on-surface-variant'>
+                        Sipariş Onayından Sonra Kargoya Verilme Süresi
+                      </span>
+                      <div className='relative'>
+                        <select
+                          className='w-full appearance-none rounded-lg border border-outline-variant bg-white px-3 py-3 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20'
+                          value={watchedStepThree.shippingTime}
+                          onChange={(event) => updateShippingTime(event.target.value as ProductListingShippingTime | '')}
+                          disabled={isSubmittingStep}
+                        >
+                          <option value=''>Seçiniz...</option>
+                          {SHIPPING_TIME_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <span className='material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400'>
+                          expand_more
+                        </span>
+                      </div>
+                      {stepThreeForm.formState.errors.shippingTime ? (
+                        <p className='mt-1 text-xs text-red-600'>
+                          {stepThreeForm.formState.errors.shippingTime.message}
+                        </p>
+                      ) : null}
+                    </label>
+
+                    <div className='mt-8'>
+                      <span className='mb-3 block text-sm font-bold text-on-surface-variant'>Teslimat Yöntemleri</span>
+                      <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+                        {DELIVERY_METHOD_OPTIONS.map((option) => {
+                          const isChecked = watchedStepThree.deliveryMethods.includes(option.value);
+
+                          return (
+                            <label
+                              key={option.value}
+                              className={`flex cursor-pointer items-start gap-4 rounded-xl border p-4 transition-all ${
+                                isChecked
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-outline-variant bg-white hover:border-primary hover:bg-surface-container-low'
+                              }`}
+                            >
+                              <input
+                                className='mt-0.5 h-5 w-5 rounded border-outline-variant text-primary focus:ring-primary'
+                                type='checkbox'
+                                checked={isChecked}
+                                onChange={() => toggleDeliveryMethod(option.value)}
+                                disabled={isSubmittingStep}
+                              />
+                              <span>
+                                <span className='block text-sm font-semibold text-on-surface'>{option.title}</span>
+                                <span className='mt-1 block text-xs text-on-surface-variant'>{option.description}</span>
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {stepThreeForm.formState.errors.deliveryMethods ? (
+                        <p className='mt-2 text-xs text-red-600'>
+                          {stepThreeForm.formState.errors.deliveryMethods.message}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div className='mt-8 border-t border-outline-variant pt-6'>
+                      <div className='flex flex-col gap-4 rounded-xl border border-outline-variant/60 bg-white p-5 sm:flex-row sm:items-center sm:justify-between'>
+                        <div className='sm:pr-6'>
+                          <h5 className='text-base font-semibold text-on-surface'>Dinamik Navlun Anlaşması</h5>
+                          <p className='mt-1 text-sm leading-relaxed text-on-surface-variant'>
+                            Kargo veya nakliye ücreti alıcı ile mesajlaşma/teklif aşamasında netleşsin.
+                          </p>
+                        </div>
+                        <label className='inline-flex cursor-pointer items-center self-start sm:self-center'>
+                          <input
+                            className='peer sr-only'
+                            type='checkbox'
+                            checked={Boolean(watchedStepThree.dynamicFreightAgreement)}
+                            onChange={(event) => {
+                              stepThreeForm.setValue('dynamicFreightAgreement', event.target.checked, {
+                                shouldValidate: true,
+                                shouldDirty: true,
+                              });
+                            }}
+                            disabled={isSubmittingStep}
+                          />
+                          <span className='relative h-6 w-11 rounded-full bg-surface-container-highest transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-transform after:content-[""] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white' />
+                        </label>
+                      </div>
+                    </div>
+                  </section>
+
+                  <label className='flex items-center gap-3 rounded-lg border border-outline-variant/50 bg-surface-container-low px-3 py-3'>
                     <input
                       className='h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary'
                       type='checkbox'
@@ -1756,7 +1981,7 @@ export default function SellerProductUploadPage() {
                     </span>
                   </label>
 
-                  <div className='md:col-span-2 flex items-center justify-between'>
+                  <div className='flex items-center justify-between'>
                     <button
                       className='inline-flex items-center gap-2 rounded-xl border border-outline-variant bg-white px-5 py-3 text-sm font-bold text-on-surface transition-colors hover:bg-slate-50'
                       type='button'
@@ -1844,6 +2069,30 @@ export default function SellerProductUploadPage() {
                     {summaryNegotiationThreshold
                       ? `${summaryNegotiationThreshold} adet`
                       : 'Kapalı'}
+                  </span>
+                </div>
+                <div className='flex items-start justify-between gap-3'>
+                  <span className='font-medium text-on-surface-variant'>Paket Tipi:</span>
+                  <span className='text-right font-semibold text-on-surface'>
+                    {packageTypeLabel ?? 'Henüz seçilmedi'}
+                  </span>
+                </div>
+                <div className='flex items-start justify-between gap-3'>
+                  <span className='font-medium text-on-surface-variant'>Paket/Boyutlar:</span>
+                  <span className='text-right font-semibold text-on-surface'>{packageDimensionSummary}</span>
+                </div>
+                <div className='flex items-start justify-between gap-3'>
+                  <span className='font-medium text-on-surface-variant'>Kargoya Verilme:</span>
+                  <span className='text-right font-semibold text-on-surface'>
+                    {shippingTimeLabel ?? 'Henüz seçilmedi'}
+                  </span>
+                </div>
+                <div className='flex items-start justify-between gap-3 rounded-lg bg-surface-container p-2'>
+                  <span className='font-medium text-on-surface-variant'>Lojistik:</span>
+                  <span className='text-right font-semibold text-primary'>
+                    {selectedDeliveryMethodCount > 0
+                      ? `${selectedDeliveryMethodCount} yöntem`
+                      : 'Belirleniyor'}
                   </span>
                 </div>
               </div>

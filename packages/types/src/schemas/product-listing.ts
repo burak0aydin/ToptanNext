@@ -10,6 +10,27 @@ export const productListingStatusValues = [
   'REJECTED',
 ] as const;
 
+export const productListingPackageTypeValues = [
+  'BOX',
+  'PALLET',
+  'SACK',
+  'OTHER',
+] as const;
+
+export const productListingShippingTimeValues = [
+  'ONE_TO_THREE_DAYS',
+  'THREE_TO_FIVE_DAYS',
+  'ONE_WEEK',
+  'CUSTOM_PRODUCTION',
+] as const;
+
+export const productListingDeliveryMethodValues = [
+  'CONTRACTED_CARGO',
+  'FREIGHT_FORWARDER',
+  'BUYER_PICKUP',
+  'OWN_VEHICLE',
+] as const;
+
 export const productListingStatusSchema = z
   .string()
   .min(1, requiredFieldMessage('Durum'))
@@ -180,10 +201,20 @@ export const productListingStepTwoSchema = z.object({
 });
 
 export const productListingStepThreeSchema = z.object({
+  packageType: z.enum(productListingPackageTypeValues, {
+    message: 'Geçerli bir paket tipi seçiniz.',
+  }),
   leadTimeDays: z.coerce
     .number()
     .int('Tedarik süresi tam sayı olmalıdır.')
     .min(0, 'Tedarik süresi negatif olamaz.'),
+  shippingTime: z.enum(productListingShippingTimeValues, {
+    message: 'Geçerli bir kargoya verilme süresi seçiniz.',
+  }),
+  deliveryMethods: z
+    .array(z.enum(productListingDeliveryMethodValues))
+    .min(1, 'En az bir teslimat yöntemi seçmelisiniz.'),
+  dynamicFreightAgreement: z.boolean().default(false),
   packageLengthCm: z.coerce
     .number()
     .min(0.01, 'Paket uzunluğu 0 değerinden büyük olmalıdır.'),
@@ -208,6 +239,12 @@ export const productListingSubmitSchema = z.object({
 
 export type ProductListingStatus =
   (typeof productListingStatusValues)[number];
+export type ProductListingPackageType =
+  (typeof productListingPackageTypeValues)[number];
+export type ProductListingShippingTime =
+  (typeof productListingShippingTimeValues)[number];
+export type ProductListingDeliveryMethod =
+  (typeof productListingDeliveryMethodValues)[number];
 export type ProductListingStepOneDto = z.infer<typeof productListingStepOneSchema>;
 export type ProductListingStepTwoDto = z.infer<typeof productListingStepTwoSchema>;
 export type ProductListingStepThreeDto = z.infer<typeof productListingStepThreeSchema>;

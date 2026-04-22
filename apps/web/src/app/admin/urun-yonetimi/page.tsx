@@ -1,3 +1,11 @@
+"use client";
+
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+	fetchAdminProductListings,
+	type ProductListingRecord,
+} from "@/features/product-listing/api/product-listing.api";
 import { AdminPageHeader } from "../_components/AdminPageHeader";
 
 type ProductApplication = {
@@ -7,6 +15,9 @@ type ProductApplication = {
 	email: string;
 	applicationDate: string;
 	category: string;
+	status: ProductListingRecord["status"];
+	packageSummary: string;
+	logisticsSummary: string;
 };
 
 const productGrowthBars = [
@@ -19,41 +30,6 @@ const productGrowthBars = [
 	{ label: "Paz", value: 25, heightClassName: "h-[25%]", isActive: false },
 ] as const;
 
-const productApplications: ProductApplication[] = [
-	{
-		initials: "AT",
-		initialsClassName: "bg-blue-50 text-primary",
-		companyName: "Alp Teknoloji A.Ş.",
-		email: "alp_tek@info.com",
-		applicationDate: "12.10.2023",
-		category: "Giyim ve Aksesuar",
-	},
-	{
-		initials: "GÜ",
-		initialsClassName: "bg-orange-50 text-orange-700",
-		companyName: "Global Üretim Ltd.",
-		email: "global@uret.tr",
-		applicationDate: "11.10.2023",
-		category: "Ev, Yaşam ve Bahçe",
-	},
-	{
-		initials: "ÖL",
-		initialsClassName: "bg-green-50 text-green-700",
-		companyName: "Öz Lojistik Market",
-		email: "oz@market.com",
-		applicationDate: "10.10.2023",
-		category: "Ambalaj Baskı",
-	},
-	{
-		initials: "MK",
-		initialsClassName: "bg-purple-50 text-purple-700",
-		companyName: "Moda Kimya",
-		email: "moda@kimya.com",
-		applicationDate: "09.10.2023",
-		category: "Giyim Ve Aksesuar",
-	},
-];
-
 const categoryDistribution = [
 	{ name: "Giyim ve Aksesuar", percentage: 34, count: 4_244 },
 	{ name: "Ev, Yaşam ve Bahçe", percentage: 26, count: 3_246 },
@@ -62,7 +38,71 @@ const categoryDistribution = [
 	{ name: "Diğer", percentage: 9, count: 1_124 },
 ] as const;
 
+const statusLabelMap: Record<ProductListingRecord["status"], string> = {
+	DRAFT: "Taslak",
+	PENDING_REVIEW: "Beklemede",
+	APPROVED: "Onaylandı",
+	REJECTED: "Reddedildi",
+};
+
+const packageTypeLabelMap: Record<NonNullable<ProductListingRecord["packageType"]>, string> = {
+	BOX: "Koli",
+	PALLET: "Palet",
+	SACK: "Çuval",
+	OTHER: "Diğer",
+};
+
+function formatDate(value: string | null): string {
+	if (!value) {
+		return "-";
+	}
+
+	return new Intl.DateTimeFormat("tr-TR").format(new Date(value));
+}
+
+function getInitials(value: string): string {
+	return value
+		.split(/\s+/)
+		.filter(Boolean)
+		.slice(0, 2)
+		.map((part) => part[0]?.toLocaleUpperCase("tr-TR") ?? "")
+		.join("") || "Ü";
+}
+
+function mapListingToApplication(listing: ProductListingRecord): ProductApplication {
+	const packageType = listing.packageType ? packageTypeLabelMap[listing.packageType] : "Paket tipi yok";
+	const dimensions =
+		listing.packageWidthCm && listing.packageLengthCm && listing.packageHeightCm
+			? `${listing.packageWidthCm} x ${listing.packageLengthCm} x ${listing.packageHeightCm} cm`
+			: "Boyut yok";
+
+	return {
+		initials: getInitials(listing.name),
+		initialsClassName: "bg-blue-50 text-primary",
+		companyName: listing.name,
+		email: listing.sku,
+		applicationDate: formatDate(listing.submittedAt ?? listing.updatedAt),
+		category: listing.categoryName,
+		status: listing.status,
+		packageSummary: `${packageType} / ${dimensions}`,
+		logisticsSummary: listing.deliveryMethods.length > 0
+			? `${listing.deliveryMethods.length} teslimat yöntemi`
+			: "Belirlenmedi",
+	};
+}
+
 export default function AdminProductManagementPage() {
+	const { data: listings = [], isLoading, error } = useQuery({
+		queryKey: ["admin", "product-listings"],
+		queryFn: fetchAdminProductListings,
+	});
+
+	const productApplications = useMemo(
+		() => listings.map(mapListingToApplication),
+		[listings],
+	);
+	const pendingCount = listings.filter((listing) => listing.status === "PENDING_REVIEW").length;
+
 	return (
 		<div className="mx-auto max-w-7xl space-y-8">
 			<AdminPageHeader
@@ -79,7 +119,7 @@ export default function AdminProductManagementPage() {
 				<div className="group flex cursor-default items-center justify-between rounded-xl border border-slate-100/50 bg-surface-container-lowest p-6 shadow-sm transition-shadow hover:shadow-md">
 					<div>
 						<p className="text-sm font-medium text-on-surface-variant">Toplam Ürün Sayısı</p>
-						<h3 className="mt-1 text-3xl font-bold tracking-tight text-primary">12,482</h3>
+						<h3 className="mt-1 text-3xl font-bold tracking-tight text-primary">{listings.length}</h3>
 						<p className="mt-2 flex items-center text-xs font-semibold text-green-600">
 							<span className="material-symbols-outlined mr-1 text-sm">trending_up</span>
 							Geçen aya göre +4.2%
@@ -93,7 +133,7 @@ export default function AdminProductManagementPage() {
 				<div className="group flex cursor-default items-center justify-between rounded-xl border border-slate-100/50 bg-surface-container-lowest p-6 shadow-sm transition-shadow hover:shadow-md">
 					<div>
 						<p className="text-sm font-medium text-on-surface-variant">Bekleyen Ürün Başvuruları</p>
-						<h3 className="mt-1 text-3xl font-bold tracking-tight text-secondary">142</h3>
+						<h3 className="mt-1 text-3xl font-bold tracking-tight text-secondary">{pendingCount}</h3>
 						<p className="mt-2 flex items-center text-xs font-semibold text-secondary-container">
 							<span className="material-symbols-outlined mr-1 text-sm">priority_high</span>
 							Aksiyon bekleniyor
@@ -168,6 +208,16 @@ export default function AdminProductManagementPage() {
 				</div>
 
 				<div className="overflow-x-auto">
+					{error ? (
+						<p className="border-b border-red-100 bg-red-50 px-6 py-4 text-sm text-red-700">
+							Ürün başvuruları yüklenemedi.
+						</p>
+					) : null}
+					{isLoading ? (
+						<p className="border-b border-slate-100 px-6 py-4 text-sm text-on-surface-variant">
+							Ürün başvuruları yükleniyor...
+						</p>
+					) : null}
 					<table className="w-full text-left">
 						<thead>
 							<tr className="bg-surface-container-low">
@@ -179,6 +229,12 @@ export default function AdminProductManagementPage() {
 								</th>
 								<th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">
 									Kategori
+								</th>
+								<th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">
+									Paket / Boyut
+								</th>
+								<th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">
+									Lojistik
 								</th>
 								<th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">
 									Durum
@@ -214,10 +270,16 @@ export default function AdminProductManagementPage() {
 											{application.category}
 										</span>
 									</td>
+									<td className="px-6 py-4 text-xs font-medium text-on-surface-variant">
+										{application.packageSummary}
+									</td>
+									<td className="px-6 py-4 text-xs font-medium text-on-surface-variant">
+										{application.logisticsSummary}
+									</td>
 									<td className="px-6 py-4">
 										<span className="inline-flex items-center rounded-full bg-secondary-fixed px-2.5 py-1 text-[11px] font-bold uppercase tracking-tight text-on-secondary-container">
 											<span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-secondary" />
-											Beklemede
+											{statusLabelMap[application.status]}
 										</span>
 									</td>
 									<td className="px-6 py-4 text-right">
@@ -247,7 +309,7 @@ export default function AdminProductManagementPage() {
 
 				<div className="flex items-center justify-between bg-surface-container-low p-6">
 					<p className="text-xs font-medium text-on-surface-variant">
-						Toplam 142 başvurudan 1-10 arası gösteriliyor
+						Toplam {listings.length} ürün başvurusu gösteriliyor
 					</p>
 					<div className="flex space-x-2">
 						<button className="rounded-lg border border-slate-100 bg-white p-2 shadow-sm disabled:opacity-50">

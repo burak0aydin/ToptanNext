@@ -47,7 +47,10 @@ describe('UsersRepository', () => {
       select: {
         id: true,
         fullName: true,
+        firstName: true,
+        lastName: true,
         email: true,
+        phoneNumber: true,
         role: true,
         isVerified: true,
         isActive: true,
@@ -88,7 +91,10 @@ describe('UsersRepository', () => {
       select: {
         id: true,
         fullName: true,
+        firstName: true,
+        lastName: true,
         email: true,
+        phoneNumber: true,
         role: true,
         isVerified: true,
         isActive: true,
