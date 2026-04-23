@@ -155,6 +155,57 @@ export class ProductsController {
     };
   }
 
+  @Get('public/listings')
+  async getPublicListings(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('categoryIds') categoryIds?: string,
+    @Query('sectorId') sectorId?: string,
+    @Query('minPrice') minPrice?: string,
+    @Query('maxPrice') maxPrice?: string,
+    @Query('msmRange') msmRange?: string,
+    @Query('sort') sort?: string,
+  ) {
+    const numericPage = Number(page);
+    const numericLimit = Number(limit);
+    const numericMinPrice = Number(minPrice);
+    const numericMaxPrice = Number(maxPrice);
+    const parsedCategoryIds = (categoryIds ?? '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+
+    const data = await this.productsService.getPublicListingManagement({
+      page: Number.isFinite(numericPage) ? numericPage : 1,
+      limit: Number.isFinite(numericLimit) ? numericLimit : 20,
+      categoryIds: parsedCategoryIds.length > 0 ? parsedCategoryIds : undefined,
+      sectorId: sectorId?.trim() || undefined,
+      minPrice: Number.isFinite(numericMinPrice) ? numericMinPrice : undefined,
+      maxPrice: Number.isFinite(numericMaxPrice) ? numericMaxPrice : undefined,
+      msmRange: this.normalizePublicListingMsmRange(msmRange),
+      sort: this.normalizePublicListingSort(sort),
+    });
+
+    return {
+      success: true,
+      data,
+      message: 'Yayınlanmış ürün listesi başarıyla getirildi.',
+    };
+  }
+
+  @Get('public/listings/:id')
+  async getPublicListingById(
+    @Param('id') id: string,
+  ) {
+    const data = await this.productsService.getPublicListingById(id);
+
+    return {
+      success: true,
+      data,
+      message: 'Yayınlanmış ürün detayı başarıyla getirildi.',
+    };
+  }
+
   @Get('admin/listings')
   @UseGuards(AuthGuard('jwt'))
   async getAdminListings(
@@ -654,5 +705,29 @@ export class ProductsController {
     }
 
     return 'WEEKLY';
+  }
+
+  private normalizePublicListingSort(
+    value: string | undefined,
+  ): 'LATEST' | 'PRICE_ASC' | 'PRICE_DESC' {
+    if (value === 'PRICE_ASC' || value === 'PRICE_DESC' || value === 'LATEST') {
+      return value;
+    }
+
+    return 'LATEST';
+  }
+
+  private normalizePublicListingMsmRange(
+    value: string | undefined,
+  ): 'ANY' | 'RANGE_1_100' | 'RANGE_100_500' | 'RANGE_500_PLUS' {
+    if (
+      value === 'RANGE_1_100'
+      || value === 'RANGE_100_500'
+      || value === 'RANGE_500_PLUS'
+    ) {
+      return value;
+    }
+
+    return 'ANY';
   }
 }

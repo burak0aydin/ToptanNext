@@ -25,6 +25,9 @@ import {
   CreateProductListingInput,
   CreateProductInput,
   CreateProductListingMediaInput,
+  PublicProductListingMsmRange,
+  PublicProductListingSort,
+  PublicProductListingResult,
   ProductListingVariantGroupRecord,
   ProductListingPricingTierRecord,
   ProductListingManagementResult,
@@ -47,6 +50,17 @@ export type ProductListingManagementQuery = {
   limit: number;
   categoryId?: string;
   status?: ProductListingManagementStatusFilter;
+};
+
+export type PublicProductListingQuery = {
+  page: number;
+  limit: number;
+  categoryIds?: string[];
+  sectorId?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  msmRange?: PublicProductListingMsmRange;
+  sort?: PublicProductListingSort;
 };
 
 type AdminProductListingGrowthPeriod = 'DAILY' | 'WEEKLY' | 'MONTHLY';
@@ -390,6 +404,51 @@ export class ProductsService {
       limit,
       totalPages: Math.max(1, Math.ceil(result.total / limit)),
     };
+  }
+
+  async getPublicListingManagement(
+    query: PublicProductListingQuery,
+  ): Promise<PublicProductListingResult & {
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const page = Math.max(1, query.page);
+    const limit = Math.min(Math.max(query.limit, 8), 60);
+    const normalizedCategoryIds = this.normalizeStringArray(query.categoryIds ?? []);
+    const normalizedSectorId = query.sectorId?.trim();
+
+    const result = await this.productsRepository.findPublicProductListings({
+      categoryIds: normalizedCategoryIds.length > 0 ? normalizedCategoryIds : undefined,
+      sectorId: normalizedSectorId && normalizedSectorId.length > 0 ? normalizedSectorId : undefined,
+      minPrice: query.minPrice,
+      maxPrice: query.maxPrice,
+      msmRange: query.msmRange ?? 'ANY',
+      skip: (page - 1) * limit,
+      take: limit,
+      sort: query.sort ?? 'LATEST',
+    });
+
+    return {
+      ...result,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(result.total / limit)),
+    };
+  }
+
+  async getPublicListingById(
+    listingId: string,
+  ): Promise<ProductListingRecord> {
+    const listing = await this.productsRepository.findPublicProductListingById(
+      listingId,
+    );
+
+    if (!listing) {
+      throw new NotFoundException('Yayınlanmış ürün bulunamadı.');
+    }
+
+    return listing;
   }
 
   async getMyListingById(

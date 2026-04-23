@@ -213,18 +213,18 @@ export function MainHeader() {
               ) : null}
               <div className='grid grid-cols-4 gap-3'>
                 {sectorItems.map((sector) => (
-                  <a
+                  <Link
                     key={sector.id}
                     className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                       activeSectorId === sector.id
                         ? 'border-primary/30 bg-[#EEF4FF] text-primary'
                         : 'border-slate-100 text-slate-700 hover:border-primary/30 hover:bg-[#EEF4FF] hover:text-primary'
                     }`}
-                    href='#'
+                    href={`/sektorler/${sector.slug}`}
                     onMouseEnter={() => setActiveSectorId(sector.id)}
                   >
                     {sector.name}
-                  </a>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -249,10 +249,25 @@ export function MainHeader() {
                 <div className='space-y-2 rounded-lg border border-slate-100 p-3'>
                   {categoryRoots.map((root) => (
                     <div key={root.id} className='space-y-1'>
-                      <p className='text-sm font-semibold text-[#003FB1]'>{root.name}</p>
-                      <p className='text-xs text-slate-500'>
-                        {root.groups.slice(0, 4).map((item) => item.title).join(', ')}
-                      </p>
+                      <Link
+                        href={root.href}
+                        className='text-sm font-semibold text-[#003FB1] hover:underline'
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        {root.name}
+                      </Link>
+                      <div className='flex flex-wrap gap-1.5'>
+                        {root.groups.slice(0, 4).map((item) => (
+                          <Link
+                            key={item.id}
+                            href={item.href}
+                            className='rounded-md bg-slate-50 px-2 py-1 text-xs text-slate-600 hover:bg-[#EEF4FF] hover:text-primary'
+                            onClick={() => setMobileMenuOpen(false)}
+                          >
+                            {item.title}
+                          </Link>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -272,12 +287,14 @@ export function MainHeader() {
               {mobileSectorOpen ? (
                 <div className='grid grid-cols-2 gap-2 rounded-lg border border-slate-100 p-3'>
                   {sectorItems.map((sector) => (
-                    <span
+                    <Link
                       key={sector.id}
+                      href={`/sektorler/${sector.slug}`}
                       className='rounded-md bg-slate-50 px-2 py-1.5 text-xs font-medium text-slate-700'
+                      onClick={() => setMobileMenuOpen(false)}
                     >
                       {sector.name}
-                    </span>
+                    </Link>
                   ))}
                 </div>
               ) : null}

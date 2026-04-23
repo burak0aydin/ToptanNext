@@ -19,6 +19,20 @@ const HIDDEN_OTHER_SECTOR_SLUG = 'diger-gizli-sektor';
 const productListingSelect = {
   id: true,
   supplierId: true,
+  supplier: {
+    select: {
+      fullName: true,
+      firstName: true,
+      lastName: true,
+      supplierApplication: {
+        select: {
+          companyName: true,
+          city: true,
+          district: true,
+        },
+      },
+    },
+  },
   name: true,
   slug: true,
   sku: true,
@@ -154,6 +168,10 @@ export type ProductListingFeaturedFeatureRecord = {
 export type ProductListingRecord = {
   id: string;
   supplierId: string;
+  supplierName: string | null;
+  supplierCompanyName: string | null;
+  supplierCity: string | null;
+  supplierDistrict: string | null;
   name: string;
   slug: string;
   sku: string;
@@ -217,6 +235,29 @@ export type ProductListingManagementResult = {
     passive: number;
     outOfStock: number;
   };
+};
+
+export type PublicProductListingSort = 'LATEST' | 'PRICE_ASC' | 'PRICE_DESC';
+export type PublicProductListingMsmRange =
+  | 'ANY'
+  | 'RANGE_1_100'
+  | 'RANGE_100_500'
+  | 'RANGE_500_PLUS';
+
+export type PublicProductListingFilters = {
+  categoryIds?: string[];
+  sectorId?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  msmRange?: PublicProductListingMsmRange;
+  skip: number;
+  take: number;
+  sort: PublicProductListingSort;
+};
+
+export type PublicProductListingResult = {
+  total: number;
+  items: ProductListingRecord[];
 };
 
 export type AdminProductListingStatusFilter =
@@ -730,6 +771,92 @@ export class ProductsRepository {
     };
   }
 
+  async findPublicProductListings(
+    input: PublicProductListingFilters,
+  ): Promise<PublicProductListingResult> {
+    const where: Prisma.ProductListingWhereInput = {
+      deletedAt: null,
+      status: ProductListingStatus.APPROVED,
+      isActive: true,
+    };
+
+    if (input.categoryIds && input.categoryIds.length > 0) {
+      where.categoryId = {
+        in: input.categoryIds,
+      };
+    }
+
+    if (input.sectorId) {
+      where.sectors = {
+        some: {
+          sectorId: input.sectorId,
+        },
+      };
+    }
+
+    if (input.minPrice !== undefined || input.maxPrice !== undefined) {
+      where.basePrice = {
+        gte: input.minPrice,
+        lte: input.maxPrice,
+      };
+    }
+
+    if (input.msmRange === 'RANGE_1_100') {
+      where.minOrderQuantity = {
+        gte: 1,
+        lte: 100,
+      };
+    } else if (input.msmRange === 'RANGE_100_500') {
+      where.minOrderQuantity = {
+        gte: 100,
+        lte: 500,
+      };
+    } else if (input.msmRange === 'RANGE_500_PLUS') {
+      where.minOrderQuantity = {
+        gte: 500,
+      };
+    }
+
+    const orderBy: Prisma.ProductListingOrderByWithRelationInput[] =
+      input.sort === 'PRICE_ASC'
+        ? [{ basePrice: 'asc' }, { createdAt: 'desc' }]
+        : input.sort === 'PRICE_DESC'
+          ? [{ basePrice: 'desc' }, { createdAt: 'desc' }]
+          : [{ createdAt: 'desc' }];
+
+    const [total, items] = await this.prisma.$transaction([
+      this.prisma.productListing.count({ where }),
+      this.prisma.productListing.findMany({
+        where,
+        orderBy,
+        skip: input.skip,
+        take: input.take,
+        select: productListingSelect,
+      }),
+    ]);
+
+    return {
+      total,
+      items: items.map((listing) => this.mapListingRecord(listing)),
+    };
+  }
+
+  async findPublicProductListingById(
+    id: string,
+  ): Promise<ProductListingRecord | null> {
+    const listing = await this.prisma.productListing.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+        status: ProductListingStatus.APPROVED,
+        isActive: true,
+      },
+      select: productListingSelect,
+    });
+
+    return this.mapListingRecordOrNull(listing);
+  }
+
   async findProductListingsForAdmin(): Promise<ProductListingRecord[]> {
     const listings = await this.prisma.productListing.findMany({
       where: {
@@ -1091,10 +1218,22 @@ export class ProductsRepository {
     const pricingTiers = this.parsePricingTiers(listing.pricingTiers);
     const variantGroups = this.parseVariantGroups(listing.variantGroups);
     const featuredFeatures = this.parseFeaturedFeatures(listing.featuredFeatures);
-    const { category, ...restListing } = listing;
+    const { category, supplier, ...restListing } = listing;
+    const supplierName = [
+      supplier.firstName?.trim(),
+      supplier.lastName?.trim(),
+    ]
+      .filter((item): item is string => Boolean(item && item.length > 0))
+      .join(' ')
+      || supplier.fullName?.trim()
+      || null;
 
     return {
       ...restListing,
+      supplierName,
+      supplierCompanyName: supplier.supplierApplication?.companyName ?? null,
+      supplierCity: supplier.supplierApplication?.city ?? null,
+      supplierDistrict: supplier.supplierApplication?.district ?? null,
       categoryName: category.name,
       featuredFeatures,
       pricingTiers,

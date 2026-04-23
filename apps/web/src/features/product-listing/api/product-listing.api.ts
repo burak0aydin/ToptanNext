@@ -22,6 +22,7 @@ export type CategoryTreeNode = {
 export type SectorRecord = {
   id: string;
   name: string;
+  slug: string;
 };
 
 export type ProductListingSectorRecord = {
@@ -49,6 +50,10 @@ export type ProductListingMediaRecord = {
 export type ProductListingRecord = {
   id: string;
   supplierId: string;
+  supplierName: string | null;
+  supplierCompanyName: string | null;
+  supplierCity: string | null;
+  supplierDistrict: string | null;
   name: string;
   slug: string;
   sku: string;
@@ -114,6 +119,32 @@ export type ProductListingManagementQuery = {
   limit?: number;
   categoryId?: string;
   status?: ProductListingManagementStatus;
+};
+
+export type PublicProductListingSort = 'LATEST' | 'PRICE_ASC' | 'PRICE_DESC';
+export type PublicProductListingMsmRange =
+  | 'ANY'
+  | 'RANGE_1_100'
+  | 'RANGE_100_500'
+  | 'RANGE_500_PLUS';
+
+export type PublicProductListingQuery = {
+  page?: number;
+  limit?: number;
+  categoryIds?: string[];
+  sectorId?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  msmRange?: PublicProductListingMsmRange;
+  sort?: PublicProductListingSort;
+};
+
+export type PublicProductListingResult = {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  items: ProductListingRecord[];
 };
 
 export type AdminProductListingStatus =
@@ -214,6 +245,64 @@ export async function fetchSectors(): Promise<SectorRecord[]> {
   return requestJson<SectorRecord[]>('/sectors', {
     auth: true,
   });
+}
+
+export async function fetchPublicProductListings(
+  query: PublicProductListingQuery = {},
+): Promise<PublicProductListingResult> {
+  const searchParams = new URLSearchParams();
+
+  if (query.page) {
+    searchParams.set('page', String(query.page));
+  }
+
+  if (query.limit) {
+    searchParams.set('limit', String(query.limit));
+  }
+
+  if (query.categoryIds && query.categoryIds.length > 0) {
+    searchParams.set('categoryIds', query.categoryIds.join(','));
+  }
+
+  if (query.sectorId) {
+    searchParams.set('sectorId', query.sectorId);
+  }
+
+  if (query.sort) {
+    searchParams.set('sort', query.sort);
+  }
+
+  if (query.minPrice !== undefined) {
+    searchParams.set('minPrice', String(query.minPrice));
+  }
+
+  if (query.maxPrice !== undefined) {
+    searchParams.set('maxPrice', String(query.maxPrice));
+  }
+
+  if (query.msmRange) {
+    searchParams.set('msmRange', query.msmRange);
+  }
+
+  const queryString = searchParams.toString();
+  const result = await requestJson<PublicProductListingResult>(
+    `/products/public/listings${queryString ? `?${queryString}` : ''}`,
+  );
+
+  return {
+    ...result,
+    items: result.items.map((item) => normalizeProductListingRecord(item)),
+  };
+}
+
+export async function fetchPublicProductListingById(
+  listingId: string,
+): Promise<ProductListingRecord> {
+  const record = await requestJson<ProductListingRecord>(
+    `/products/public/listings/${listingId}`,
+  );
+
+  return normalizeProductListingRecord(record);
 }
 
 export async function fetchMyProductListings(
