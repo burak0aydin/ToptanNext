@@ -153,6 +153,7 @@ model ProductListing {
   featuredFeatures  String[]             @default([]) @map("featured_features")
   isCustomizable    Boolean              @default(false) @map("is_customizable")
   customizationNote String?              @map("customization_note")
+  variantGroups     Json                 @default("[]") @map("variant_groups")
   basePrice         Decimal?             @db.Decimal(12, 2) @map("base_price")
   currency          String               @default("TRY")
   minOrderQuantity  Int?                 @map("min_order_quantity")

@@ -34,6 +34,7 @@ const productListingSelect = {
   featuredFeatures: true,
   isCustomizable: true,
   customizationNote: true,
+  variantGroups: true,
   basePrice: true,
   currency: true,
   minOrderQuantity: true,
@@ -134,6 +135,17 @@ export type ProductListingPricingTierRecord = {
   unitPrice: number;
 };
 
+export type ProductListingVariantOptionRecord = {
+  label: string;
+  imageUrl: string | null;
+};
+
+export type ProductListingVariantGroupRecord = {
+  groupName: string;
+  displayType: 'image' | 'text';
+  options: ProductListingVariantOptionRecord[];
+};
+
 export type ProductListingRecord = {
   id: string;
   supplierId: string;
@@ -148,6 +160,7 @@ export type ProductListingRecord = {
   featuredFeatures: string[];
   isCustomizable: boolean;
   customizationNote: string | null;
+  variantGroups: ProductListingVariantGroupRecord[];
   basePrice: Prisma.Decimal | null;
   currency: string;
   minOrderQuantity: number | null;
@@ -244,6 +257,7 @@ export type CreateProductListingInput = {
   featuredFeatures: string[];
   isCustomizable: boolean;
   customizationNote: string | null;
+  variantGroups: ProductListingVariantGroupRecord[];
 };
 
 export type UpdateProductListingStepOneInput = {
@@ -256,6 +270,7 @@ export type UpdateProductListingStepOneInput = {
   featuredFeatures: string[];
   isCustomizable: boolean;
   customizationNote: string | null;
+  variantGroups: ProductListingVariantGroupRecord[];
 };
 
 export type UpdateProductListingStepTwoInput = {
@@ -580,6 +595,7 @@ export class ProductsRepository {
           featuredFeatures: input.featuredFeatures,
           isCustomizable: input.isCustomizable,
           customizationNote: input.customizationNote,
+          variantGroups: input.variantGroups as Prisma.InputJsonValue,
         },
         select: {
           id: true,
@@ -947,6 +963,7 @@ export class ProductsRepository {
           featuredFeatures: input.featuredFeatures,
           isCustomizable: input.isCustomizable,
           customizationNote: input.customizationNote,
+          variantGroups: input.variantGroups as Prisma.InputJsonValue,
         },
         select: {
           id: true,
@@ -1067,12 +1084,14 @@ export class ProductsRepository {
     listing: ProductListingSelectRecord,
   ): ProductListingRecord {
     const pricingTiers = this.parsePricingTiers(listing.pricingTiers);
+    const variantGroups = this.parseVariantGroups(listing.variantGroups);
     const { category, ...restListing } = listing;
 
     return {
       ...restListing,
       categoryName: category.name,
       pricingTiers,
+      variantGroups,
       sectors: listing.sectors.map((item) => ({
         sectorId: item.sectorId,
         sectorName: item.sector.name,
@@ -1111,5 +1130,68 @@ export class ProductsRepository {
         };
       })
       .filter((tier): tier is ProductListingPricingTierRecord => tier !== null);
+  }
+
+  private parseVariantGroups(value: Prisma.JsonValue): ProductListingVariantGroupRecord[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value
+      .map((groupItem) => {
+        if (!groupItem || typeof groupItem !== 'object' || Array.isArray(groupItem)) {
+          return null;
+        }
+
+        const typedGroup = groupItem as Record<string, unknown>;
+        const groupName = typeof typedGroup.groupName === 'string'
+          ? typedGroup.groupName.trim()
+          : '';
+        const displayType = typedGroup.displayType;
+
+        if (groupName.length === 0 || (displayType !== 'image' && displayType !== 'text')) {
+          return null;
+        }
+
+        if (!Array.isArray(typedGroup.options)) {
+          return null;
+        }
+
+        const options = typedGroup.options
+          .map((optionItem) => {
+            if (!optionItem || typeof optionItem !== 'object' || Array.isArray(optionItem)) {
+              return null;
+            }
+
+            const typedOption = optionItem as Record<string, unknown>;
+            const label = typeof typedOption.label === 'string' ? typedOption.label.trim() : '';
+
+            if (label.length === 0) {
+              return null;
+            }
+
+            const rawImageUrl = typedOption.imageUrl;
+            const imageUrl = typeof rawImageUrl === 'string' && rawImageUrl.trim().length > 0
+              ? rawImageUrl.trim()
+              : null;
+
+            return {
+              label,
+              imageUrl,
+            };
+          })
+          .filter((option): option is ProductListingVariantOptionRecord => option !== null);
+
+        if (options.length === 0) {
+          return null;
+        }
+
+        return {
+          groupName,
+          displayType,
+          options,
+        };
+      })
+      .filter((group): group is ProductListingVariantGroupRecord => group !== null);
   }
 }

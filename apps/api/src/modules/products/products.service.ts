@@ -22,6 +22,7 @@ import {
   CreateProductListingInput,
   CreateProductInput,
   CreateProductListingMediaInput,
+  ProductListingVariantGroupRecord,
   ProductListingPricingTierRecord,
   ProductListingManagementResult,
   ProductListingManagementStatusFilter,
@@ -198,6 +199,7 @@ export class ProductsService {
       dto.description,
       'Ürün açıklaması boş olamaz.',
     );
+    const variantGroups = this.normalizeVariantGroups(dto.variantGroups ?? []);
     const stepOneRefs = await this.resolveStepOneReferences(dto);
 
     const duplicateSku = await this.productsRepository.findProductListingBySupplierAndSku(
@@ -227,6 +229,7 @@ export class ProductsService {
       featuredFeatures: this.normalizeStringArray(dto.featuredFeatures ?? []),
       isCustomizable: dto.isCustomizable ?? false,
       customizationNote: this.normalizeOptionalText(dto.customizationNote),
+      variantGroups,
     };
 
     return this.productsRepository.updateProductListingStepOne(listing.id, input);
@@ -454,6 +457,7 @@ export class ProductsService {
       dto.description,
       'Ürün açıklaması boş olamaz.',
     );
+    const variantGroups = this.normalizeVariantGroups(dto.variantGroups ?? []);
     const stepOneRefs = await this.resolveStepOneReferences(dto);
 
     const duplicateSku = await this.productsRepository.findProductListingBySupplierAndSku(
@@ -477,6 +481,7 @@ export class ProductsService {
       featuredFeatures: this.normalizeStringArray(dto.featuredFeatures ?? []),
       isCustomizable: dto.isCustomizable ?? false,
       customizationNote: this.normalizeOptionalText(dto.customizationNote),
+      variantGroups,
     };
 
     return this.productsRepository.createProductListing(input);
@@ -498,6 +503,7 @@ export class ProductsService {
       dto.description,
       'Ürün açıklaması boş olamaz.',
     );
+    const variantGroups = this.normalizeVariantGroups(dto.variantGroups ?? []);
     const stepOneRefs = await this.resolveStepOneReferences(dto);
 
     const duplicateSku = await this.productsRepository.findProductListingBySupplierAndSku(
@@ -523,6 +529,7 @@ export class ProductsService {
       featuredFeatures: this.normalizeStringArray(dto.featuredFeatures ?? []),
       isCustomizable: dto.isCustomizable ?? false,
       customizationNote: this.normalizeOptionalText(dto.customizationNote),
+      variantGroups,
     };
 
     return this.productsRepository.updateProductListingStepOne(listing.id, input);
@@ -715,6 +722,80 @@ export class ProductsService {
   private normalizeStringArray(values: string[]): string[] {
     const normalized = values.map((value) => value.trim()).filter((value) => value.length > 0);
     return [...new Set(normalized)];
+  }
+
+  private normalizeVariantGroups(
+    groups: Array<{
+      groupName: string;
+      displayType: 'image' | 'text';
+      options: Array<{ label: string; imageUrl?: string }>;
+    }>,
+  ): ProductListingVariantGroupRecord[] {
+    if (groups.length > 6) {
+      throw new BadRequestException('En fazla 6 varyant grubu ekleyebilirsiniz.');
+    }
+
+    const normalizedGroups = groups.map((group, groupIndex) => {
+      const groupName = this.normalizeRequiredText(
+        group.groupName,
+        `Varyant grup ${groupIndex + 1} adı boş olamaz.`,
+      );
+
+      if (group.displayType !== 'image' && group.displayType !== 'text') {
+        throw new BadRequestException(`Varyant grup ${groupIndex + 1} görünüm tipi geçersiz.`);
+      }
+
+      if (!Array.isArray(group.options) || group.options.length === 0) {
+        throw new BadRequestException(`Varyant grup ${groupIndex + 1} için en az 1 seçenek eklemelisiniz.`);
+      }
+
+      if (group.options.length > 30) {
+        throw new BadRequestException(`Varyant grup ${groupIndex + 1} için en fazla 30 seçenek ekleyebilirsiniz.`);
+      }
+
+      const optionLabelSet = new Set<string>();
+      const options = group.options.map((option, optionIndex) => {
+        const label = this.normalizeRequiredText(
+          option.label,
+          `Varyant grup ${groupIndex + 1}, seçenek ${optionIndex + 1} etiketi boş olamaz.`,
+        );
+        const normalizedLabel = label.toLocaleLowerCase('tr-TR');
+
+        if (optionLabelSet.has(normalizedLabel)) {
+          throw new BadRequestException(`Varyant grup ${groupIndex + 1} içinde seçenek etiketleri benzersiz olmalıdır.`);
+        }
+
+        optionLabelSet.add(normalizedLabel);
+
+        const normalizedImageUrl = option.imageUrl?.trim() || null;
+        if (group.displayType === 'image' && !normalizedImageUrl) {
+          throw new BadRequestException(`Varyant grup ${groupIndex + 1} içinde her seçenek için görsel seçmelisiniz.`);
+        }
+
+        return {
+          label,
+          imageUrl: normalizedImageUrl,
+        };
+      });
+
+      return {
+        groupName,
+        displayType: group.displayType,
+        options,
+      };
+    });
+
+    const groupNameSet = new Set<string>();
+    for (const group of normalizedGroups) {
+      const normalizedGroupName = group.groupName.toLocaleLowerCase('tr-TR');
+      if (groupNameSet.has(normalizedGroupName)) {
+        throw new BadRequestException('Varyant grup adları benzersiz olmalıdır.');
+      }
+
+      groupNameSet.add(normalizedGroupName);
+    }
+
+    return normalizedGroups;
   }
 
   private async buildAdminGrowth(

@@ -1,4 +1,5 @@
 import type {
+  ProductListingVariantGroup,
   ProductListingStepOneDto,
   ProductListingStepThreeDto,
   ProductListingStepTwoDto,
@@ -58,6 +59,7 @@ export type ProductListingRecord = {
   featuredFeatures: string[];
   isCustomizable: boolean;
   customizationNote: string | null;
+  variantGroups: ProductListingVariantGroup[];
   basePrice: string | null;
   currency: string;
   minOrderQuantity: number | null;

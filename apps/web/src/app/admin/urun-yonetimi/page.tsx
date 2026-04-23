@@ -323,6 +323,7 @@ export default function AdminProductManagementPage() {
 				featuredFeatures: normalizedFeatures,
 				isCustomizable: form.isCustomizable,
 				customizationNote: form.customizationNote.trim(),
+				variantGroups: selectedListingQuery.data?.variantGroups ?? [],
 				description: form.description.trim(),
 			};
 

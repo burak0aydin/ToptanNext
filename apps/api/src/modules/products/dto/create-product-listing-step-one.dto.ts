@@ -1,11 +1,14 @@
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
+  ArrayMinSize,
   ArrayMaxSize,
+  IsIn,
   IsArray,
   IsBoolean,
   IsOptional,
   IsString,
   MaxLength,
+  ValidateNested,
 } from 'class-validator';
 
 const toTrimmedString = ({ value }: { value: unknown }): unknown => {
@@ -57,6 +60,57 @@ const toBoolean = ({ value }: { value: unknown }): unknown => {
   return value;
 };
 
+const toOptionalVariantGroups = ({ value }: { value: unknown }): unknown => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  }
+
+  return value;
+};
+
+export class ProductListingVariantOptionDto {
+  @Transform(toTrimmedString)
+  @IsString({ message: 'Varyant seçenek etiketi metin olmalıdır.' })
+  @MaxLength(80, { message: 'Varyant seçenek etiketi en fazla 80 karakter olabilir.' })
+  label: string;
+
+  @Transform(toTrimmedString)
+  @IsOptional()
+  @IsString({ message: 'Varyant seçenek görsel bağlantısı metin olmalıdır.' })
+  @MaxLength(1024, {
+    message: 'Varyant seçenek görsel bağlantısı en fazla 1024 karakter olabilir.',
+  })
+  imageUrl?: string;
+}
+
+export class ProductListingVariantGroupDto {
+  @Transform(toTrimmedString)
+  @IsString({ message: 'Varyant grup adı metin olmalıdır.' })
+  @MaxLength(60, { message: 'Varyant grup adı en fazla 60 karakter olabilir.' })
+  groupName: string;
+
+  @Transform(toTrimmedString)
+  @IsIn(['image', 'text'], {
+    message: 'Varyant görünüm tipi image veya text olmalıdır.',
+  })
+  displayType: 'image' | 'text';
+
+  @IsArray({ message: 'Varyant seçenekleri dizi olmalıdır.' })
+  @ArrayMinSize(1, { message: 'Her varyant grubunda en az 1 seçenek olmalıdır.' })
+  @ArrayMaxSize(30, { message: 'Her varyant grubunda en fazla 30 seçenek olabilir.' })
+  @ValidateNested({ each: true })
+  @Type(() => ProductListingVariantOptionDto)
+  options: ProductListingVariantOptionDto[];
+}
+
 export class CreateProductListingStepOneDto {
   @Transform(toTrimmedString)
   @IsString({ message: 'Ürün adı metin olmalıdır.' })
@@ -102,6 +156,14 @@ export class CreateProductListingStepOneDto {
     message: 'Özelleştirme açıklaması en fazla 500 karakter olabilir.',
   })
   customizationNote?: string;
+
+  @Transform(toOptionalVariantGroups)
+  @IsOptional()
+  @IsArray({ message: 'Varyant grupları dizi olmalıdır.' })
+  @ArrayMaxSize(6, { message: 'En fazla 6 varyant grubu ekleyebilirsiniz.' })
+  @ValidateNested({ each: true })
+  @Type(() => ProductListingVariantGroupDto)
+  variantGroups?: ProductListingVariantGroupDto[];
 
   @Transform(toTrimmedString)
   @IsString({ message: 'Ürün açıklaması metin olmalıdır.' })

@@ -31,6 +31,8 @@ export const productListingDeliveryMethodValues = [
   'OWN_VEHICLE',
 ] as const;
 
+export const productListingVariantDisplayTypeValues = ['image', 'text'] as const;
+
 export const productListingStatusSchema = z
   .string()
   .min(1, requiredFieldMessage('Durum'))
@@ -45,6 +47,60 @@ const optionalTrimmedString = z
   .trim()
   .optional()
   .or(z.literal(''));
+
+export const productListingVariantOptionSchema = z.object({
+  label: z
+    .string()
+    .trim()
+    .min(1, 'Seçenek etiketi boş bırakılamaz.')
+    .max(80, 'Seçenek etiketi en fazla 80 karakter olabilir.'),
+  imageUrl: z
+    .string()
+    .trim()
+    .min(1, 'Görsel eşleştirmesi zorunludur.')
+    .nullable()
+    .default(null),
+});
+
+export const productListingVariantGroupSchema = z
+  .object({
+    groupName: z
+      .string()
+      .trim()
+      .min(1, 'Varyant grup adı zorunludur.')
+      .max(60, 'Varyant grup adı en fazla 60 karakter olabilir.'),
+    displayType: z.enum(productListingVariantDisplayTypeValues, {
+      message: 'Varyant görünüm tipi geçersiz.',
+    }),
+    options: z
+      .array(productListingVariantOptionSchema)
+      .min(1, 'En az 1 seçenek eklemelisiniz.')
+      .max(30, 'Bir grup için en fazla 30 seçenek ekleyebilirsiniz.'),
+  })
+  .superRefine((value, context) => {
+    const optionSet = new Set<string>();
+
+    value.options.forEach((option, index) => {
+      const normalizedLabel = option.label.trim().toLocaleLowerCase('tr-TR');
+      if (optionSet.has(normalizedLabel)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['options', index, 'label'],
+          message: 'Aynı grup içinde seçenek etiketleri benzersiz olmalıdır.',
+        });
+      }
+
+      optionSet.add(normalizedLabel);
+
+      if (value.displayType === 'image' && !option.imageUrl) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['options', index, 'imageUrl'],
+          message: 'Görsel tipinde her seçenek için galeri görseli seçmelisiniz.',
+        });
+      }
+    });
+  });
 
 const normalizeRichTextToPlainText = (value: string): string => {
   return value
@@ -87,6 +143,10 @@ export const productListingStepOneSchema = z
       .default([]),
     isCustomizable: z.boolean().default(false),
     customizationNote: optionalTrimmedString,
+    variantGroups: z
+      .array(productListingVariantGroupSchema)
+      .max(6, 'En fazla 6 varyant grubu ekleyebilirsiniz.')
+      .default([]),
     description: z
       .string()
       .trim()
@@ -106,6 +166,20 @@ export const productListingStepOneSchema = z
         message: 'Ürün özelleştirilebiliyorsa açıklama girilmelidir.',
       });
     }
+
+    const groupSet = new Set<string>();
+    value.variantGroups.forEach((group, index) => {
+      const normalizedName = group.groupName.trim().toLocaleLowerCase('tr-TR');
+      if (groupSet.has(normalizedName)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['variantGroups', index, 'groupName'],
+          message: 'Varyant grup adları benzersiz olmalıdır.',
+        });
+      }
+
+      groupSet.add(normalizedName);
+    });
   });
 
 export const productListingPricingTierSchema = z
@@ -245,6 +319,10 @@ export type ProductListingShippingTime =
   (typeof productListingShippingTimeValues)[number];
 export type ProductListingDeliveryMethod =
   (typeof productListingDeliveryMethodValues)[number];
+export type ProductListingVariantDisplayType =
+  (typeof productListingVariantDisplayTypeValues)[number];
+export type ProductListingVariantOption = z.infer<typeof productListingVariantOptionSchema>;
+export type ProductListingVariantGroup = z.infer<typeof productListingVariantGroupSchema>;
 export type ProductListingStepOneDto = z.infer<typeof productListingStepOneSchema>;
 export type ProductListingStepTwoDto = z.infer<typeof productListingStepTwoSchema>;
 export type ProductListingStepThreeDto = z.infer<typeof productListingStepThreeSchema>;

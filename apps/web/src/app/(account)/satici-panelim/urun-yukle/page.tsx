@@ -11,6 +11,8 @@ import {
   type ProductListingStepThreeDto,
   type ProductListingStepTwoDto,
   type ProductListingShippingTime,
+  type ProductListingVariantDisplayType,
+  type ProductListingVariantGroup,
 } from '@toptannext/types';
 import { type ChangeEvent, type DragEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
@@ -53,6 +55,7 @@ const STEP_ONE_DEFAULT_VALUES: ProductListingStepOneDto = {
   featuredFeatures: [],
   isCustomizable: false,
   customizationNote: '',
+  variantGroups: [],
   description: '',
 };
 
@@ -132,16 +135,33 @@ const MAX_TOTAL_IMAGE_COUNT = 6;
 const MAX_GALLERY_IMAGE_COUNT = 5;
 const MAX_VIDEO_COUNT = 1;
 const MAX_PRICE_TIER_COUNT = 6;
+const MAX_VARIANT_GROUP_COUNT = 6;
+const MAX_VARIANT_OPTION_COUNT = 30;
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const MAX_VIDEO_SIZE_BYTES = 15 * 1024 * 1024;
 const MAX_VIDEO_DURATION_SECONDS = 20;
 const IMAGE_ACCEPT_MIME = 'image/jpeg,image/png,image/webp';
 const VIDEO_ACCEPT_MIME = 'video/mp4,video/webm';
 const CROPPED_IMAGE_OUTPUT_SIZE = 1200;
+const PENDING_VARIANT_IMAGE_PREFIX = 'pending:';
 
 type PendingImageFile = {
+  tempId: string;
   file: File;
   previewUrl: string;
+};
+
+type VariantImagePickerTarget = {
+  groupIndex: number;
+  optionIndex: number;
+};
+
+type VariantImageSource = {
+  sourceType: 'existing' | 'pending';
+  sourceId: string;
+  displayName: string;
+  previewUrl: string;
+  persistedUrl: string | null;
 };
 
 type ImageCropTarget = 'cover' | 'gallery';
@@ -281,6 +301,26 @@ function revokePendingImage(item: PendingImageFile | null): void {
   URL.revokeObjectURL(item.previewUrl);
 }
 
+function generateTempId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function buildPendingVariantImageReference(tempId: string): string {
+  return `${PENDING_VARIANT_IMAGE_PREFIX}${tempId}`;
+}
+
+function parsePendingVariantImageReference(value: string | null): string | null {
+  if (!value || !value.startsWith(PENDING_VARIANT_IMAGE_PREFIX)) {
+    return null;
+  }
+
+  return value.slice(PENDING_VARIANT_IMAGE_PREFIX.length);
+}
+
 export default function SellerProductUploadPage() {
   const [currentStep, setCurrentStep] = useState<WizardStep>(1);
   const [draftRecord, setDraftRecord] = useState<ProductListingRecord | null>(null);
@@ -292,6 +332,9 @@ export default function SellerProductUploadPage() {
   const [sectorInput, setSectorInput] = useState('');
   const [pendingCoverImage, setPendingCoverImage] = useState<PendingImageFile | null>(null);
   const [pendingGalleryImages, setPendingGalleryImages] = useState<PendingImageFile[]>([]);
+  const [variantOptionInputs, setVariantOptionInputs] = useState<Record<string, string>>({});
+  const [variantImagePickerTarget, setVariantImagePickerTarget] =
+    useState<VariantImagePickerTarget | null>(null);
   const [pendingVideoFile, setPendingVideoFile] = useState<File | null>(null);
   const [isValidatingVideo, setIsValidatingVideo] = useState(false);
   const [cropQueue, setCropQueue] = useState<CropQueueItem[]>([]);
@@ -409,6 +452,19 @@ export default function SellerProductUploadPage() {
           featuredFeatures: latestEditableDraft.featuredFeatures,
           isCustomizable: latestEditableDraft.isCustomizable,
           customizationNote: latestEditableDraft.customizationNote ?? '',
+          variantGroups: (latestEditableDraft.variantGroups ?? []).map((group) => ({
+            groupName: group.groupName,
+            displayType: group.displayType,
+            options: group.options.map((option) => {
+              const pendingReference = parsePendingVariantImageReference(option.imageUrl);
+              return {
+                label: option.label,
+                imageUrl: group.displayType === 'image' && !pendingReference
+                  ? option.imageUrl
+                  : null,
+              };
+            }),
+          })),
           description: latestEditableDraft.description,
         });
 
@@ -821,6 +877,7 @@ export default function SellerProductUploadPage() {
       }
 
       const previewItem: PendingImageFile = {
+        tempId: generateTempId(),
         file: croppedFile,
         previewUrl: URL.createObjectURL(croppedFile),
       };
@@ -887,9 +944,269 @@ export default function SellerProductUploadPage() {
       const target = prev[index];
       if (target) {
         URL.revokeObjectURL(target.previewUrl);
+
+        const pendingReference = buildPendingVariantImageReference(target.tempId);
+        const currentGroups = stepOneForm.getValues('variantGroups') ?? [];
+        const nextGroups = currentGroups.map((group) => ({
+          ...group,
+          options: group.options.map((option) => {
+            if (option.imageUrl !== pendingReference) {
+              return option;
+            }
+
+            return {
+              ...option,
+              imageUrl: null,
+            };
+          }),
+        }));
+
+        stepOneForm.setValue('variantGroups', nextGroups, {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+
+        if (variantImagePickerTarget) {
+          setVariantImagePickerTarget(null);
+        }
       }
 
       return prev.filter((_, itemIndex) => itemIndex !== index);
+    });
+  };
+
+  const addVariantGroup = (): void => {
+    const currentGroups = stepOneForm.getValues('variantGroups') ?? [];
+    if (currentGroups.length >= MAX_VARIANT_GROUP_COUNT) {
+      setGlobalError('En fazla 6 varyant grubu ekleyebilirsiniz.');
+      return;
+    }
+
+    stepOneForm.setValue('variantGroups', [
+      ...currentGroups,
+      {
+        groupName: '',
+        displayType: 'text',
+        options: [],
+      },
+    ], {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+    setGlobalError(null);
+  };
+
+  const removeVariantGroupAt = (groupIndex: number): void => {
+    const currentGroups = stepOneForm.getValues('variantGroups') ?? [];
+    const nextGroups = currentGroups.filter((_, index) => index !== groupIndex);
+
+    stepOneForm.setValue('variantGroups', nextGroups, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+
+    setVariantOptionInputs((previous) => {
+      const nextEntries = Object.entries(previous).reduce<Record<string, string>>((acc, [key, value]) => {
+        const index = Number(key);
+        if (Number.isNaN(index) || index === groupIndex) {
+          return acc;
+        }
+
+        const nextKey = index > groupIndex ? String(index - 1) : key;
+        acc[nextKey] = value;
+        return acc;
+      }, {});
+
+      return nextEntries;
+    });
+
+    if (variantImagePickerTarget && variantImagePickerTarget.groupIndex === groupIndex) {
+      setVariantImagePickerTarget(null);
+    }
+  };
+
+  const updateVariantGroupName = (groupIndex: number, nextGroupName: string): void => {
+    const currentGroups = stepOneForm.getValues('variantGroups') ?? [];
+    const nextGroups = currentGroups.map((group, index) => {
+      if (index !== groupIndex) {
+        return group;
+      }
+
+      return {
+        ...group,
+        groupName: nextGroupName,
+      };
+    });
+
+    stepOneForm.setValue('variantGroups', nextGroups, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  };
+
+  const updateVariantDisplayType = (
+    groupIndex: number,
+    displayType: ProductListingVariantDisplayType,
+  ): void => {
+    const currentGroups = stepOneForm.getValues('variantGroups') ?? [];
+    const nextGroups = currentGroups.map((group, index) => {
+      if (index !== groupIndex) {
+        return group;
+      }
+
+      return {
+        ...group,
+        displayType,
+        options: group.options.map((option) => ({
+          ...option,
+          imageUrl: displayType === 'image' ? option.imageUrl : null,
+        })),
+      };
+    });
+
+    stepOneForm.setValue('variantGroups', nextGroups, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+
+    if (displayType !== 'image' && variantImagePickerTarget?.groupIndex === groupIndex) {
+      setVariantImagePickerTarget(null);
+    }
+  };
+
+  const addVariantOption = (groupIndex: number): void => {
+    const optionDraft = (variantOptionInputs[String(groupIndex)] ?? '').trim();
+    if (optionDraft.length === 0) {
+      return;
+    }
+
+    const currentGroups = stepOneForm.getValues('variantGroups') ?? [];
+    const targetGroup = currentGroups[groupIndex];
+    if (!targetGroup) {
+      return;
+    }
+
+    if (targetGroup.options.length >= MAX_VARIANT_OPTION_COUNT) {
+      setGlobalError('Bir varyant grubu içinde en fazla 30 seçenek ekleyebilirsiniz.');
+      return;
+    }
+
+    const nextGroups = currentGroups.map((group, index) => {
+      if (index !== groupIndex) {
+        return group;
+      }
+
+      return {
+        ...group,
+        options: [
+          ...group.options,
+          {
+            label: optionDraft,
+            imageUrl: null,
+          },
+        ],
+      };
+    });
+
+    stepOneForm.setValue('variantGroups', nextGroups, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+    setVariantOptionInputs((previous) => ({
+      ...previous,
+      [String(groupIndex)]: '',
+    }));
+    setGlobalError(null);
+  };
+
+  const removeVariantOptionAt = (groupIndex: number, optionIndex: number): void => {
+    const currentGroups = stepOneForm.getValues('variantGroups') ?? [];
+    const nextGroups = currentGroups.map((group, index) => {
+      if (index !== groupIndex) {
+        return group;
+      }
+
+      return {
+        ...group,
+        options: group.options.filter((_, indexOption) => indexOption !== optionIndex),
+      };
+    });
+
+    stepOneForm.setValue('variantGroups', nextGroups, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+
+    if (
+      variantImagePickerTarget
+      && variantImagePickerTarget.groupIndex === groupIndex
+      && variantImagePickerTarget.optionIndex === optionIndex
+    ) {
+      setVariantImagePickerTarget(null);
+    }
+  };
+
+  const updateVariantOptionLabel = (
+    groupIndex: number,
+    optionIndex: number,
+    label: string,
+  ): void => {
+    const currentGroups = stepOneForm.getValues('variantGroups') ?? [];
+    const nextGroups = currentGroups.map((group, index) => {
+      if (index !== groupIndex) {
+        return group;
+      }
+
+      return {
+        ...group,
+        options: group.options.map((option, indexOption) => {
+          if (indexOption !== optionIndex) {
+            return option;
+          }
+
+          return {
+            ...option,
+            label,
+          };
+        }),
+      };
+    });
+
+    stepOneForm.setValue('variantGroups', nextGroups, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  };
+
+  const setVariantOptionImage = (
+    groupIndex: number,
+    optionIndex: number,
+    imageReference: string | null,
+  ): void => {
+    const currentGroups = stepOneForm.getValues('variantGroups') ?? [];
+    const nextGroups = currentGroups.map((group, index) => {
+      if (index !== groupIndex) {
+        return group;
+      }
+
+      return {
+        ...group,
+        options: group.options.map((option, indexOption) => {
+          if (indexOption !== optionIndex) {
+            return option;
+          }
+
+          return {
+            ...option,
+            imageUrl: imageReference,
+          };
+        }),
+      };
+    });
+
+    stepOneForm.setValue('variantGroups', nextGroups, {
+      shouldValidate: true,
+      shouldDirty: true,
     });
   };
 
@@ -1007,10 +1324,23 @@ export default function SellerProductUploadPage() {
       setGlobalError(null);
       setSuccessMessage(null);
 
+      const normalizedVariantGroups: ProductListingVariantGroup[] = (values.variantGroups ?? []).map((group) => ({
+        ...group,
+        options: group.options.map((option) => ({
+          ...option,
+          imageUrl: group.displayType === 'image' ? option.imageUrl : null,
+        })),
+      }));
+
+      const stepOnePayload: ProductListingStepOneDto = {
+        ...values,
+        variantGroups: normalizedVariantGroups,
+      };
+
       const isUpdatingExistingDraft = Boolean(draftRecord?.id);
       const savedStepOne = draftRecord?.id
-        ? await updateProductListingStepOne(draftRecord.id, values)
-        : await createProductListingStepOne(values);
+        ? await updateProductListingStepOne(draftRecord.id, stepOnePayload)
+        : await createProductListingStepOne(stepOnePayload);
       setDraftRecord(savedStepOne);
 
       const pendingMediaToUpload = [
@@ -1023,17 +1353,88 @@ export default function SellerProductUploadPage() {
         ? await uploadProductListingMedia(savedStepOne.id, pendingMediaToUpload)
         : savedStepOne;
 
-      setDraftRecord(saved);
+      const previousMediaIdSet = new Set(savedStepOne.media.map((media) => media.id));
+      const newlyUploadedImageMedia = saved.media.filter((media) => (
+        media.mediaType === 'IMAGE' && !previousMediaIdSet.has(media.id)
+      ));
+      const uploadedImageSignatureMap = new Map<string, ProductListingMediaRecord[]>();
+
+      newlyUploadedImageMedia.forEach((media) => {
+        const signature = `${media.originalName}::${media.fileSize}::${media.mimeType}`;
+        const existingList = uploadedImageSignatureMap.get(signature) ?? [];
+        existingList.push(media);
+        uploadedImageSignatureMap.set(signature, existingList);
+      });
+
+      const pendingGalleryUrlMap = new Map<string, string>();
+      pendingGalleryImages.forEach((pendingItem) => {
+        const signature = `${pendingItem.file.name}::${pendingItem.file.size}::${pendingItem.file.type}`;
+        const matchingList = uploadedImageSignatureMap.get(signature);
+        const matchedMedia = matchingList?.shift();
+        if (matchedMedia?.filePath) {
+          pendingGalleryUrlMap.set(pendingItem.tempId, matchedMedia.filePath);
+        }
+      });
+
+      let hasUnresolvedPendingImage = false;
+      let hasResolvedVariantImage = false;
+
+      const resolvedVariantGroups: ProductListingVariantGroup[] = normalizedVariantGroups.map((group) => ({
+        ...group,
+        options: group.options.map((option) => {
+          if (group.displayType !== 'image') {
+            return {
+              ...option,
+              imageUrl: null,
+            };
+          }
+
+          const pendingId = parsePendingVariantImageReference(option.imageUrl);
+          if (!pendingId) {
+            return option;
+          }
+
+          const resolvedUrl = pendingGalleryUrlMap.get(pendingId);
+          if (!resolvedUrl) {
+            hasUnresolvedPendingImage = true;
+            return {
+              ...option,
+              imageUrl: null,
+            };
+          }
+
+          hasResolvedVariantImage = true;
+          return {
+            ...option,
+            imageUrl: resolvedUrl,
+          };
+        }),
+      }));
+
+      if (hasUnresolvedPendingImage) {
+        throw new Error('Seçilen varyant görselleri çözümlenemedi. Lütfen görselleri tekrar seçip kaydedin.');
+      }
+
+      const finalizedRecord = hasResolvedVariantImage
+        ? await updateProductListingStepOne(saved.id, {
+          ...stepOnePayload,
+          variantGroups: resolvedVariantGroups,
+        })
+        : saved;
+
+      setDraftRecord(finalizedRecord);
       revokePendingImage(pendingCoverImage);
       pendingGalleryImages.forEach((item) => URL.revokeObjectURL(item.previewUrl));
       setPendingCoverImage(null);
       setPendingGalleryImages([]);
+      setVariantOptionInputs({});
+      setVariantImagePickerTarget(null);
       setCropQueue([]);
       setActiveCropItem(null);
       setPendingVideoFile(null);
 
-      if (saved.categoryId) {
-        const categoryPath = findCategoryPath(categoryTree, saved.categoryId);
+      if (finalizedRecord.categoryId) {
+        const categoryPath = findCategoryPath(categoryTree, finalizedRecord.categoryId);
         if (categoryPath) {
           setMainCategoryId(categoryPath.mainId);
           setSubCategoryId(categoryPath.subId);
@@ -1150,6 +1551,10 @@ export default function SellerProductUploadPage() {
     () => sectorOptions.filter((sector) => selectedSectorIds.includes(sector.id)),
     [sectorOptions, selectedSectorIds],
   );
+  const watchedVariantGroups = useMemo(
+    () => watchedStepOne.variantGroups ?? [],
+    [watchedStepOne.variantGroups],
+  );
   const existingImageMedia = useMemo(
     () => (draftRecord?.media ?? []).filter((media) => media.mediaType === 'IMAGE'),
     [draftRecord?.media],
@@ -1160,6 +1565,29 @@ export default function SellerProductUploadPage() {
   );
   const existingCoverMedia = existingImageMedia[0] ?? null;
   const existingGalleryMedia = existingImageMedia.slice(1, MAX_TOTAL_IMAGE_COUNT);
+  const variantImageSources = useMemo<VariantImageSource[]>(
+    () => [
+      ...existingGalleryMedia.map((media) => ({
+        sourceType: 'existing' as const,
+        sourceId: media.filePath,
+        displayName: media.originalName,
+        previewUrl: media.filePath,
+        persistedUrl: media.filePath,
+      })),
+      ...pendingGalleryImages.map((pendingImage) => ({
+        sourceType: 'pending' as const,
+        sourceId: buildPendingVariantImageReference(pendingImage.tempId),
+        displayName: pendingImage.file.name,
+        previewUrl: pendingImage.previewUrl,
+        persistedUrl: null,
+      })),
+    ],
+    [existingGalleryMedia, pendingGalleryImages],
+  );
+  const variantImageSourceMap = useMemo(
+    () => new Map(variantImageSources.map((source) => [source.sourceId, source])),
+    [variantImageSources],
+  );
 
   const summaryName =
     watchedStepOne.name.trim().length > 0
@@ -1765,6 +2193,209 @@ export default function SellerProductUploadPage() {
                       </div>
                     </div>
                   </div>
+                  </div>
+
+                  <div className='md:col-span-2'>
+                    <div className='mb-3 flex items-center justify-between gap-3'>
+                      <div className='flex items-center gap-2'>
+                        <span className='text-sm font-bold text-on-surface-variant'>Dinamik Varyant Sistemi</span>
+                        <FieldInfoHint text='Örn: Renk, Beden gibi varyant grupları ekleyin. Görsel tipinde, seçenekleri galeri görselleriyle eşleştirebilirsiniz.' />
+                      </div>
+                      <button
+                        type='button'
+                        className='inline-flex items-center gap-1 rounded-lg border border-outline-variant bg-white px-3 py-2 text-xs font-semibold text-on-surface transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50'
+                        onClick={addVariantGroup}
+                        disabled={isSubmittingStep || watchedVariantGroups.length >= MAX_VARIANT_GROUP_COUNT}
+                      >
+                        <span className='material-symbols-outlined text-[18px]'>add</span>
+                        Grup Ekle
+                      </button>
+                    </div>
+
+                    <div className='rounded-xl border border-outline-variant bg-surface-container-low p-4 md:p-5'>
+                      {watchedVariantGroups.length === 0 ? (
+                        <p className='text-xs text-on-surface-variant'>
+                          Henüz varyant grubu eklenmedi. Renk/Beden gibi gruplar tanımlayarak ürün seçeneklerini zenginleştirebilirsiniz.
+                        </p>
+                      ) : (
+                        <div className='space-y-4'>
+                          {watchedVariantGroups.map((group, groupIndex) => (
+                            <div key={`variant-group-${groupIndex}`} className='rounded-xl border border-outline-variant bg-white p-4'>
+                              <div className='mb-4 flex items-start justify-between gap-3'>
+                                <div className='grid flex-1 grid-cols-1 gap-3 md:grid-cols-2'>
+                                  <label>
+                                    <span className='mb-1 block text-xs font-semibold text-on-surface-variant'>Varyant Grup Adı</span>
+                                    <input
+                                      className='w-full rounded-lg border border-outline-variant bg-white px-3 py-2.5 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20'
+                                      placeholder='Örn: Renk'
+                                      value={group.groupName}
+                                      onChange={(event) => updateVariantGroupName(groupIndex, event.target.value)}
+                                      disabled={isSubmittingStep}
+                                    />
+                                    {stepOneForm.formState.errors.variantGroups?.[groupIndex]?.groupName ? (
+                                      <p className='mt-1 text-xs text-red-600'>
+                                        {stepOneForm.formState.errors.variantGroups[groupIndex]?.groupName?.message}
+                                      </p>
+                                    ) : null}
+                                  </label>
+
+                                  <label>
+                                    <span className='mb-1 block text-xs font-semibold text-on-surface-variant'>Görünüm Tipi</span>
+                                    <select
+                                      className='w-full rounded-lg border border-outline-variant bg-white px-3 py-2.5 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20'
+                                      value={group.displayType}
+                                      onChange={(event) => updateVariantDisplayType(groupIndex, event.target.value as ProductListingVariantDisplayType)}
+                                      disabled={isSubmittingStep}
+                                    >
+                                      <option value='text'>Metin</option>
+                                      <option value='image'>Görsel</option>
+                                    </select>
+                                  </label>
+                                </div>
+
+                                <button
+                                  type='button'
+                                  className='inline-flex rounded p-1 text-on-surface-variant transition-colors hover:bg-red-50 hover:text-red-600'
+                                  onClick={() => removeVariantGroupAt(groupIndex)}
+                                  disabled={isSubmittingStep}
+                                >
+                                  <span className='material-symbols-outlined text-[18px]'>delete</span>
+                                </button>
+                              </div>
+
+                              <div className='space-y-2'>
+                                {group.options.map((option, optionIndex) => {
+                                  const imageSource = option.imageUrl ? variantImageSourceMap.get(option.imageUrl) : null;
+
+                                  return (
+                                    <div
+                                      key={`variant-option-${groupIndex}-${optionIndex}`}
+                                      className='grid grid-cols-1 gap-2 rounded-lg border border-outline-variant/70 bg-surface-container-low p-3 md:grid-cols-[1fr_auto_auto]'
+                                    >
+                                      <div>
+                                        <input
+                                          className='w-full rounded-md border border-outline-variant bg-white px-3 py-2 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20'
+                                          placeholder='Seçenek adı (Örn: Kırmızı)'
+                                          value={option.label}
+                                          onChange={(event) => {
+                                            updateVariantOptionLabel(groupIndex, optionIndex, event.target.value);
+                                          }}
+                                          disabled={isSubmittingStep}
+                                        />
+                                        {stepOneForm.formState.errors.variantGroups?.[groupIndex]?.options?.[optionIndex]?.label ? (
+                                          <p className='mt-1 text-xs text-red-600'>
+                                            {stepOneForm.formState.errors.variantGroups[groupIndex]?.options?.[optionIndex]?.label?.message}
+                                          </p>
+                                        ) : null}
+                                      </div>
+
+                                      {group.displayType === 'image' ? (
+                                        <div className='flex items-center gap-2'>
+                                          <button
+                                            type='button'
+                                            className='inline-flex items-center gap-1 rounded-md border border-outline-variant bg-white px-3 py-2 text-xs font-semibold text-on-surface transition-colors hover:border-primary hover:text-primary'
+                                            onClick={() => {
+                                              setVariantImagePickerTarget({ groupIndex, optionIndex });
+                                            }}
+                                            disabled={isSubmittingStep || variantImageSources.length === 0}
+                                          >
+                                            <span className='material-symbols-outlined text-[16px]'>imagesmode</span>
+                                            {option.imageUrl ? 'Görseli Değiştir' : 'Görsel Seç'}
+                                          </button>
+                                          {option.imageUrl ? (
+                                            <button
+                                              type='button'
+                                              className='inline-flex rounded p-1 text-on-surface-variant transition-colors hover:bg-red-50 hover:text-red-600'
+                                              onClick={() => setVariantOptionImage(groupIndex, optionIndex, null)}
+                                              disabled={isSubmittingStep}
+                                            >
+                                              <span className='material-symbols-outlined text-[18px]'>close</span>
+                                            </button>
+                                          ) : null}
+                                        </div>
+                                      ) : (
+                                        <div />
+                                      )}
+
+                                      <div className='flex items-center justify-end gap-2'>
+                                        {group.displayType === 'image' ? (
+                                          <div className='h-10 w-10 overflow-hidden rounded-md border border-outline-variant bg-slate-100'>
+                                            {imageSource ? (
+                                              <img
+                                                src={imageSource.previewUrl}
+                                                alt='Varyant görseli'
+                                                className='h-full w-full object-cover'
+                                              />
+                                            ) : null}
+                                          </div>
+                                        ) : null}
+
+                                        <button
+                                          type='button'
+                                          className='inline-flex rounded p-1 text-on-surface-variant transition-colors hover:bg-red-50 hover:text-red-600'
+                                          onClick={() => removeVariantOptionAt(groupIndex, optionIndex)}
+                                          disabled={isSubmittingStep}
+                                        >
+                                          <span className='material-symbols-outlined text-[18px]'>delete</span>
+                                        </button>
+                                      </div>
+
+                                      {group.displayType === 'image' && stepOneForm.formState.errors.variantGroups?.[groupIndex]?.options?.[optionIndex]?.imageUrl ? (
+                                        <p className='md:col-span-3 text-xs text-red-600'>
+                                          {stepOneForm.formState.errors.variantGroups[groupIndex]?.options?.[optionIndex]?.imageUrl?.message}
+                                        </p>
+                                      ) : null}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              <div className='mt-3 grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto]'>
+                                <input
+                                  className='w-full rounded-lg border border-outline-variant bg-white px-3 py-2.5 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20'
+                                  placeholder='Yeni seçenek ekle (Örn: Mavi)'
+                                  value={variantOptionInputs[String(groupIndex)] ?? ''}
+                                  onChange={(event) => {
+                                    setVariantOptionInputs((previous) => ({
+                                      ...previous,
+                                      [String(groupIndex)]: event.target.value,
+                                    }));
+                                  }}
+                                  onKeyDown={(event) => {
+                                    if (event.key === 'Enter') {
+                                      event.preventDefault();
+                                      addVariantOption(groupIndex);
+                                    }
+                                  }}
+                                  disabled={isSubmittingStep}
+                                />
+                                <button
+                                  type='button'
+                                  className='rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50'
+                                  onClick={() => addVariantOption(groupIndex)}
+                                  disabled={isSubmittingStep || !(variantOptionInputs[String(groupIndex)] ?? '').trim()}
+                                >
+                                  Seçenek Ekle
+                                </button>
+                              </div>
+
+                              {stepOneForm.formState.errors.variantGroups?.[groupIndex]?.options?.message ? (
+                                <p className='mt-2 text-xs text-red-600'>
+                                  {stepOneForm.formState.errors.variantGroups[groupIndex]?.options?.message}
+                                </p>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className='mt-2 flex items-center justify-between text-[11px] text-on-surface-variant'>
+                      <span>{watchedVariantGroups.length} / {MAX_VARIANT_GROUP_COUNT} grup kullanılıyor.</span>
+                      {stepOneForm.formState.errors.variantGroups?.message ? (
+                        <span className='text-red-600'>{stepOneForm.formState.errors.variantGroups.message}</span>
+                      ) : null}
+                    </div>
                   </div>
 
                   <div className='md:col-span-2 flex justify-end'>
@@ -2436,6 +3067,66 @@ export default function SellerProductUploadPage() {
                 disabled={isApplyingCrop}
               >
                 {isApplyingCrop ? 'Kaydediliyor...' : 'Onayla'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {variantImagePickerTarget ? (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4'>
+          <div className='w-full max-w-3xl rounded-xl border border-slate-200 bg-white p-4 shadow-xl md:p-6'>
+            <div className='mb-4 flex items-center justify-between'>
+              <h4 className='text-base font-bold text-slate-900'>Galeri Görseli Seç</h4>
+              <button
+                type='button'
+                className='rounded p-1 text-slate-500 transition-colors hover:bg-slate-100'
+                onClick={() => setVariantImagePickerTarget(null)}
+              >
+                <span className='material-symbols-outlined'>close</span>
+              </button>
+            </div>
+
+            {variantImageSources.length === 0 ? (
+              <p className='rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700'>
+                Önce galeriye görsel eklemelisiniz.
+              </p>
+            ) : (
+              <div className='grid max-h-[55vh] grid-cols-2 gap-3 overflow-auto pr-1 md:grid-cols-3'>
+                {variantImageSources.map((source) => (
+                  <button
+                    key={source.sourceId}
+                    type='button'
+                    className='rounded-lg border border-outline-variant bg-surface-container-low p-2 text-left transition-colors hover:border-primary'
+                    onClick={() => {
+                      setVariantOptionImage(
+                        variantImagePickerTarget.groupIndex,
+                        variantImagePickerTarget.optionIndex,
+                        source.sourceId,
+                      );
+                      setVariantImagePickerTarget(null);
+                    }}
+                  >
+                    <img
+                      src={source.previewUrl}
+                      alt={source.displayName}
+                      className='h-24 w-full rounded object-cover'
+                    />
+                    <p className='mt-2 line-clamp-2 break-all text-[11px] text-on-surface-variant'>
+                      {source.displayName}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className='mt-4 flex items-center justify-end'>
+              <button
+                type='button'
+                className='rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700'
+                onClick={() => setVariantImagePickerTarget(null)}
+              >
+                Kapat
               </button>
             </div>
           </div>

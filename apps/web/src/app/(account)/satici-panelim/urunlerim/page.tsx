@@ -135,6 +135,8 @@ export default function SellerProductsPage() {
   const [categoryId, setCategoryId] = useState("");
   const [status, setStatus] = useState<ProductListingManagementStatus>("ALL");
   const [stock, setStock] = useState<StockFilter>("ALL");
+  const [previewListing, setPreviewListing] = useState<ProductListingRecord | null>(null);
+  const [previewImageIndex, setPreviewImageIndex] = useState(0);
 
   const effectiveStatus: ProductListingManagementStatus =
     stock === "OUT_OF_STOCK" ? "OUT_OF_STOCK" : status;
@@ -232,6 +234,16 @@ export default function SellerProductsPage() {
   const totalPages = activePayload?.totalPages ?? 1;
   const startIndex = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const endIndex = Math.min(page * PAGE_SIZE, total);
+  const previewImages = previewListing
+    ? previewListing.media
+        .filter((media) => media.mediaType === "IMAGE")
+        .sort((a, b) => a.displayOrder - b.displayOrder)
+        .map((media) => resolveProductListingMediaUrl(media.id))
+    : [];
+  const previewMainImage = previewImages[previewImageIndex] ?? null;
+  const previewDescription = previewListing
+    ? previewListing.description.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+    : "";
 
   return (
     <div className="space-y-8">
@@ -450,6 +462,17 @@ export default function SellerProductsPage() {
 
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-3">
+                          <button
+                            className="text-slate-400 transition-colors hover:text-primary"
+                            title="Önizle"
+                            type="button"
+                            onClick={() => {
+                              setPreviewListing(row);
+                              setPreviewImageIndex(0);
+                            }}
+                          >
+                            <span className="material-symbols-outlined text-[20px]">visibility</span>
+                          </button>
                           <Link
                             href="/satici-panelim/urun-yukle"
                             className="text-slate-400 transition-colors hover:text-primary"
@@ -568,6 +591,143 @@ export default function SellerProductsPage() {
           </p>
         </div>
       </section>
+
+      {previewListing ? (
+        <div className="fixed inset-0 z-[60] bg-slate-950/70 p-3 backdrop-blur-sm md:p-8">
+          <div className="mx-auto h-full max-w-6xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+            <div className="flex h-full flex-col">
+              <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Alıcı Önizleme</p>
+                  <h3 className="mt-1 text-lg font-bold text-slate-900">
+                    {previewListing.name}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+                  onClick={() => setPreviewListing(null)}
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <div className="grid min-h-0 flex-1 gap-0 overflow-y-auto md:grid-cols-2">
+                <div className="border-b border-slate-200 bg-slate-100/70 p-4 md:border-b-0 md:border-r">
+                  <div className="aspect-square overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                    {previewMainImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={previewMainImage}
+                        alt={previewListing.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-slate-400">
+                        <span className="material-symbols-outlined text-5xl">inventory_2</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {previewImages.length > 1 ? (
+                    <div className="mt-3 grid grid-cols-5 gap-2">
+                      {previewImages.map((image, index) => (
+                        <button
+                          key={`${image}-${index}`}
+                          type="button"
+                          onClick={() => setPreviewImageIndex(index)}
+                          className={`overflow-hidden rounded-xl border bg-white ${
+                            previewImageIndex === index ? "border-primary ring-2 ring-primary/20" : "border-slate-200"
+                          }`}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={image} alt={`${previewListing.name} ${index + 1}`} className="h-16 w-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="p-5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                      {previewListing.categoryName}
+                    </span>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                      SKU: {previewListing.sku}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 flex items-end justify-between gap-4">
+                    <div>
+                      <p className="text-sm text-slate-500">Başlangıç Fiyatı</p>
+                      <p className="text-3xl font-black tracking-tight text-slate-900">
+                        {formatCurrency(previewListing.basePrice)}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-right">
+                      <p className="text-xs text-slate-500">Min. Sipariş</p>
+                      <p className="text-sm font-semibold text-slate-800">
+                        {formatNumber(previewListing.minOrderQuantity ?? 0)} Adet
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-xl border border-slate-200 p-3">
+                      <p className="text-slate-500">Stok</p>
+                      <p className={`mt-1 font-semibold ${(previewListing.stock ?? 0) === 0 ? "text-red-600" : "text-slate-900"}`}>
+                        {formatNumber(previewListing.stock ?? 0)}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 p-3">
+                      <p className="text-slate-500">Teslim Süresi</p>
+                      <p className="mt-1 font-semibold text-slate-900">{previewListing.shippingTime ?? "-"}</p>
+                    </div>
+                  </div>
+
+                  {previewListing.featuredFeatures.length > 0 ? (
+                    <div className="mt-5">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Öne Çıkan Özellikler</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {previewListing.featuredFeatures.map((feature) => (
+                          <span key={feature} className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                            {feature}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="mt-5 rounded-2xl border border-slate-200 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Ürün Açıklaması</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-700">
+                      {previewDescription || "Bu ürün için henüz açıklama girilmedi."}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      type="button"
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">request_quote</span>
+                      Teklif İste
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">chat</span>
+                      Satıcıya Mesaj Gönder
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
