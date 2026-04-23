@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { type MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { MainHeader } from '@/app/components/MainHeader';
 import {
   fetchCategoriesTree,
   fetchPublicProductListingById,
+  resolveProductListingAssetUrl,
   resolveProductListingMediaUrl,
   type CategoryTreeNode,
 } from '@/features/product-listing/api/product-listing.api';
@@ -55,6 +56,11 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
   const [selectedMediaId, setSelectedMediaId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [variantSelections, setVariantSelections] = useState<Record<string, string>>({});
+  const [activeDetailSection, setActiveDetailSection] = useState<'description' | 'reviews' | 'company'>('description');
+  const [isPrimaryPanelVisible, setIsPrimaryPanelVisible] = useState(true);
+  const [primaryPanelHeight, setPrimaryPanelHeight] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const primaryPanelRef = useRef<HTMLDivElement | null>(null);
 
   const listingQuery = useQuery({
     queryKey: ['public', 'listing-detail', id],
@@ -113,6 +119,81 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
       return next;
     });
   }, [allMedia, listing]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const node = primaryPanelRef.current;
+    if (!node) {
+      return;
+    }
+
+    const stickyTopOffset = 106;
+
+    const updateVisibility = () => {
+      const rect = node.getBoundingClientRect();
+      // 1. panelin en ufak kısmı sticky çizgisinin altında kaldığı sürece görünür kabul edilir.
+      setIsPrimaryPanelVisible(rect.bottom > stickyTopOffset);
+      setPrimaryPanelHeight(node.offsetHeight);
+      setViewportHeight(window.innerHeight);
+    };
+
+    updateVisibility();
+    window.addEventListener('scroll', updateVisibility, { passive: true });
+    window.addEventListener('resize', updateVisibility);
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => {
+          updateVisibility();
+        })
+      : null;
+
+    resizeObserver?.observe(node);
+
+    return () => {
+      window.removeEventListener('scroll', updateVisibility);
+      window.removeEventListener('resize', updateVisibility);
+      resizeObserver?.disconnect();
+    };
+  }, [listing?.id]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !listing) {
+      return;
+    }
+
+    const orderedSectionIds: Array<'description' | 'reviews' | 'company'> = ['description', 'reviews', 'company'];
+    const activationOffset = 210;
+
+    const updateActiveSection = () => {
+      const currentLine = window.scrollY + activationOffset;
+      let nextActiveSection: 'description' | 'reviews' | 'company' = 'description';
+
+      orderedSectionIds.forEach((sectionId) => {
+        const section = document.getElementById(sectionId);
+        if (!section) {
+          return;
+        }
+
+        if (section.offsetTop <= currentLine) {
+          nextActiveSection = sectionId;
+        }
+      });
+
+      setActiveDetailSection(nextActiveSection);
+    };
+
+    updateActiveSection();
+    window.addEventListener('scroll', updateActiveSection, { passive: true });
+    window.addEventListener('resize', updateActiveSection);
+
+    return () => {
+      window.removeEventListener('scroll', updateActiveSection);
+      window.removeEventListener('resize', updateActiveSection);
+    };
+  }, [listing]);
 
   const selectedMedia = useMemo(
     () => allMedia.find((item) => item.id === selectedMediaId) ?? allMedia[0] ?? null,
@@ -197,6 +278,289 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
     ?? listing?.supplierName
     ?? 'Onaylı Tedarikçi';
 
+  const findMediaForVariantImage = (rawImageUrl: string | null | undefined) => {
+    if (!rawImageUrl || !listing) {
+      return null;
+    }
+
+    const value = rawImageUrl.trim();
+    if (value.length === 0) {
+      return null;
+    }
+
+    const normalizePath = (pathValue: string) => pathValue.replace(/\\/g, '/');
+    const normalizedValue = normalizePath(value);
+    const optionBasename = normalizedValue.split('/').pop() ?? '';
+
+    return listing.media.find((media) => {
+      const normalizedFilePath = normalizePath(media.filePath);
+      const mediaBasename = normalizedFilePath.split('/').pop() ?? '';
+
+      return (
+        normalizedFilePath === normalizedValue
+        || normalizedFilePath.endsWith(normalizedValue)
+        || normalizedValue.endsWith(normalizedFilePath)
+        || (optionBasename.length > 0 && mediaBasename === optionBasename)
+      );
+    }) ?? null;
+  };
+
+  const resolveVariantOptionImageUrl = (rawImageUrl: string | null | undefined): string | null => {
+    if (!rawImageUrl || !listing) {
+      return null;
+    }
+
+    const value = rawImageUrl.trim();
+    if (value.length === 0) {
+      return null;
+    }
+
+    if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('data:')) {
+      return value;
+    }
+
+    const matchedMedia = findMediaForVariantImage(value);
+
+    if (matchedMedia) {
+      return resolveProductListingMediaUrl(matchedMedia.id);
+    }
+
+    return resolveProductListingAssetUrl(value);
+  };
+
+  const renderSidebarBody = () => (
+    <>
+      <div>
+        {listing!.isCustomizable ? (
+          <span className='mb-3 inline-flex rounded border border-blue-200 bg-blue-100 px-3 py-1 text-[11px] font-extrabold uppercase tracking-widest text-blue-700'>
+            Özelleştirilebilir
+          </span>
+        ) : null}
+      </div>
+
+      {listing!.variantGroups.length > 0 ? (
+        <div className='rounded-xl border border-outline-variant/20 bg-surface-container-low p-5'>
+          <div className='space-y-4'>
+            {listing!.variantGroups.map((group, groupIndex) => {
+              const groupKey = `${group.groupName}-${groupIndex}`;
+              const selectedLabel = variantSelections[groupKey];
+
+              return (
+                <div key={groupKey}>
+                  <p className='mb-2 text-sm font-semibold text-on-surface'>{group.groupName}</p>
+                  <div className='flex flex-wrap gap-2'>
+                    {group.options.map((option) => {
+                      const isSelected = selectedLabel === option.label;
+                      return (
+                        <button
+                          key={option.label}
+                          className={[
+                            'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+                            isSelected
+                              ? 'border-primary bg-primary/10 text-primary'
+                              : 'border-outline-variant/40 bg-white text-on-surface hover:border-primary/40',
+                          ].join(' ')}
+                          onClick={() => {
+                            setVariantSelections((current) => ({
+                              ...current,
+                              [groupKey]: option.label,
+                            }));
+                            if (group.displayType === 'image' && option.imageUrl) {
+                              const matchedMedia = findMediaForVariantImage(option.imageUrl);
+                              if (matchedMedia) {
+                                setSelectedMediaId(matchedMedia.id);
+                              }
+                            }
+                          }}
+                          type='button'
+                        >
+                          {group.displayType === 'image' && option.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              alt={option.label}
+                              className='h-5 w-5 rounded-full border border-outline-variant/30 object-cover'
+                              src={resolveVariantOptionImageUrl(option.imageUrl) ?? ''}
+                            />
+                          ) : null}
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      <div className='rounded-xl border border-outline-variant/20 bg-surface-container-low p-5'>
+        {sortedPricingTiers.length > 0 ? (
+          <div className='grid grid-cols-1 gap-3 sm:grid-cols-3'>
+            {sortedPricingTiers.map((tier) => {
+              const isActive = selectedTier
+                ? selectedTier.minQuantity === tier.minQuantity && selectedTier.maxQuantity === tier.maxQuantity
+                : false;
+              return (
+                <button
+                  key={`${tier.minQuantity}-${tier.maxQuantity}`}
+                  className={[
+                    'rounded-xl border p-4 text-center transition-colors',
+                    isActive
+                      ? 'border-2 border-primary/40 bg-primary/5'
+                      : 'border-outline-variant/30 bg-white hover:border-primary/30',
+                  ].join(' ')}
+                  onClick={() => setQuantity(Math.max(minOrderQuantity, tier.minQuantity))}
+                  type='button'
+                >
+                  <div className={`mb-1 text-[11px] font-medium uppercase tracking-[0.03em] ${isActive ? 'text-primary' : 'text-outline'}`}>
+                    {tier.maxQuantity >= 1_000_000 ? `${tier.minQuantity}+ Adet` : `${tier.minQuantity}-${tier.maxQuantity} Adet`}
+                  </div>
+                  <div className={`text-[1.40rem] font-medium leading-none tracking-[-0.01em] ${isActive ? 'text-primary' : 'text-on-surface'}`}>
+                    {formatTryAmount(tier.unitPrice)}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className='rounded-lg border border-outline-variant/30 bg-white p-4 text-center'>
+            <div className='text-xs font-bold uppercase text-outline'>Birim Fiyat</div>
+            <div className='text-[1.40rem] font-medium leading-none tracking-[-0.01em] text-on-surface'>
+              {formatTryAmount(unitPrice)}
+            </div>
+          </div>
+        )}
+
+        <div className='mt-4 flex items-center justify-center gap-2 rounded-lg border border-outline-variant/20 bg-surface-container-highest py-1.5'>
+          <span className='material-symbols-outlined text-sm text-outline'>trending_down</span>
+          <p className='text-[11px] font-medium text-on-surface-variant'>
+            Bu alımla {formatTryAmount(savingsAmount)} kar ettiniz
+          </p>
+        </div>
+      </div>
+
+      <div className='rounded-2xl border border-outline-variant/40 bg-white p-6 shadow-sm'>
+        <div className='mb-6'>
+          <label className='mb-2 block text-xs font-bold uppercase tracking-wide text-outline'>
+            Miktar Seçin
+          </label>
+          <div className='flex items-center overflow-hidden rounded-lg border border-outline-variant'>
+            <button
+              className='p-3 transition-colors hover:bg-surface-container-low'
+              type='button'
+              onClick={() => setQuantity((current) => Math.max(minOrderQuantity, current - 1))}
+            >
+              <span className='material-symbols-outlined text-sm'>remove</span>
+            </button>
+            <input
+              className='w-full border-none text-center font-bold text-on-surface focus:ring-0'
+              min={minOrderQuantity}
+              type='number'
+              value={quantity}
+              onChange={(event) => {
+                const raw = Number(event.target.value);
+                if (!Number.isFinite(raw)) {
+                  return;
+                }
+                setQuantity(Math.max(minOrderQuantity, Math.floor(raw)));
+              }}
+            />
+            <button
+              className='p-3 transition-colors hover:bg-surface-container-low'
+              type='button'
+              onClick={() => setQuantity((current) => current + 1)}
+            >
+              <span className='material-symbols-outlined text-sm'>add</span>
+            </button>
+          </div>
+          <p className='mt-1.5 text-center text-[10px] font-medium text-primary'>
+            Minimum Sipariş (MSM): {minOrderQuantity} Adet
+          </p>
+        </div>
+
+        <div className='mb-6 space-y-3'>
+          <div className='flex items-center justify-between text-sm'>
+            <span className='text-outline'>Birim Fiyat</span>
+            <span className='font-bold'>{formatTryAmount(unitPrice)}</span>
+          </div>
+          <div className='flex items-center justify-between text-sm'>
+            <span className='text-outline'>Ara Toplam</span>
+            <span className='font-bold'>{formatTryAmount(subtotal)}</span>
+          </div>
+          <div className='h-px bg-outline-variant/30' />
+          <div className='flex items-end justify-between'>
+            <span className='text-sm font-bold text-on-surface'>Toplam Tahmini</span>
+            <span className='text-xl font-extrabold text-primary'>{formatTryAmount(subtotal)}</span>
+          </div>
+        </div>
+
+        <div className='mt-6 space-y-4 border-t border-outline-variant/30 pt-6'>
+          <div className='flex items-start gap-3'>
+            <span className='material-symbols-outlined text-green-600'>verified_user</span>
+            <p className='text-[11px] leading-tight'>
+              <span className='block font-bold'>Güvenli Ödeme</span>
+              ToptanNext Güvence Paketi ile paranız teslimat onayına kadar bizde kalır.
+            </p>
+          </div>
+          <div className='flex items-start gap-3'>
+            <span className='material-symbols-outlined text-blue-500'>local_shipping</span>
+            <p className='text-[11px] leading-tight'>
+              <span className='block font-bold'>Hızlı Lojistik</span>
+              Global depolardan 7-14 iş günü içinde adrese teslimat.
+            </p>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
+  const renderSidebarActions = (sticky: boolean) => (
+    <div className={[
+      'border-t border-outline-variant/30 bg-white p-4 sm:p-5',
+      sticky ? 'sticky bottom-0 z-30 shrink-0 bg-white/95 backdrop-blur' : '',
+    ].join(' ')}>
+      <div className='grid grid-cols-2 gap-3'>
+        <button
+          className='flex w-full items-center justify-center gap-2 rounded-xl bg-[#1A56DB] py-3 font-bold text-white shadow-md transition-all hover:opacity-90 active:scale-[0.98]'
+          type='button'
+        >
+          <span className='material-symbols-outlined'>shopping_cart</span>
+          Sepete Ekle
+        </button>
+        <button
+          className='flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1A56DB] bg-white py-3 font-bold text-[#1A56DB] transition-all hover:bg-surface-container-low active:scale-[0.98]'
+          type='button'
+        >
+          <span className='material-symbols-outlined'>chat</span>
+          Sohbet Et
+        </button>
+      </div>
+    </div>
+  );
+
+  const scrollToSection = (
+    event: MouseEvent<HTMLAnchorElement>,
+    sectionId: 'description' | 'reviews' | 'company',
+  ) => {
+    event.preventDefault();
+
+    const target = document.getElementById(sectionId);
+    if (!target) {
+      return;
+    }
+
+    const topOffset = 160;
+    const nextTop = target.getBoundingClientRect().top + window.scrollY - topOffset;
+
+    setActiveDetailSection(sectionId);
+    window.history.replaceState(null, '', `#${sectionId}`);
+    window.scrollTo({
+      top: Math.max(0, nextTop),
+      behavior: 'smooth',
+    });
+  };
+
   if (listingQuery.isLoading) {
     return (
       <div className='bg-surface text-on-surface'>
@@ -253,6 +617,9 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
 
         <div className='mb-12 grid grid-cols-1 gap-8 lg:grid-cols-12'>
           <div className='space-y-8 lg:col-span-7'>
+            <h1 className='text-[1.35rem] font-medium leading-tight tracking-normal text-on-surface'>
+              {listing.name}
+            </h1>
             <div className='grid grid-cols-1 gap-4 md:grid-cols-[96px_minmax(0,1fr)]'>
               {allMedia.length > 0 ? (
                 <div className='hidden max-h-[640px] space-y-3 overflow-y-auto pr-1 md:block'>
@@ -374,7 +741,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                   .map((feature, index) => (
                     <div
                       key={`${feature.title}-${index}`}
-                      className='flex items-center gap-3 rounded-lg border border-outline-variant/10 bg-white p-3'
+                      className='flex items-center gap-3 rounded-lg border border-outline-variant/30 bg-white p-3'
                     >
                       <span className='material-symbols-outlined text-primary'>
                         {index % 2 === 0 ? 'bolt' : 'speed'}
@@ -392,15 +759,42 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
               </div>
             </div>
 
-            <div className='sticky top-[104px] z-40 -mx-6 mb-2 border-b border-outline-variant/30 bg-white px-6'>
-              <div className='flex max-w-[820px] items-center gap-8'>
-                <a className='border-b-2 border-primary py-4 text-sm font-bold text-primary' href='#description'>
+            <div className='sticky top-[104px] z-40 mb-2 py-2'>
+              <div className='grid max-w-[820px] grid-cols-3 overflow-hidden rounded-xl border border-outline-variant/30 bg-white'>
+                <a
+                  className={[
+                    'flex items-center justify-center border-b-2 px-3 py-4 text-center text-sm font-bold transition-colors',
+                    activeDetailSection === 'description'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-outline',
+                  ].join(' ')}
+                  href='#description'
+                  onClick={(event) => scrollToSection(event, 'description')}
+                >
                   Ürün Açıklaması
                 </a>
-                <a className='border-b-2 border-transparent py-4 text-sm font-bold text-outline hover:border-primary hover:text-primary' href='#reviews'>
+                <a
+                  className={[
+                    'flex items-center justify-center border-b-2 px-3 py-4 text-center text-sm font-bold transition-colors',
+                    activeDetailSection === 'reviews'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-outline',
+                  ].join(' ')}
+                  href='#reviews'
+                  onClick={(event) => scrollToSection(event, 'reviews')}
+                >
                   Değerlendirmeler
                 </a>
-                <a className='border-b-2 border-transparent py-4 text-sm font-bold text-outline hover:border-primary hover:text-primary' href='#company'>
+                <a
+                  className={[
+                    'flex items-center justify-center border-b-2 px-3 py-4 text-center text-sm font-bold transition-colors',
+                    activeDetailSection === 'company'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-outline',
+                  ].join(' ')}
+                  href='#company'
+                  onClick={(event) => scrollToSection(event, 'company')}
+                >
                   Şirket Profili
                 </a>
               </div>
@@ -554,204 +948,35 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
           </div>
 
           <aside className='lg:col-span-5 lg:self-start'>
-            <div className='rounded-2xl border border-outline-variant/30 bg-white shadow-sm lg:sticky lg:top-[106px] lg:h-[calc(100vh-124px)] lg:overflow-hidden'>
-              <div className='flex h-full flex-col'>
-                <div className='min-h-0 flex-1 space-y-6 overflow-y-auto p-5 sm:p-6 [scrollbar-width:thin] [scrollbar-color:#c8ced9_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300 hover:[&::-webkit-scrollbar-thumb]:bg-slate-400'>
-                  <div>
-                    {listing.isCustomizable ? (
-                      <span className='mb-3 inline-flex rounded border border-blue-200 bg-blue-100 px-3 py-1 text-[11px] font-extrabold uppercase tracking-widest text-blue-700'>
-                        Özelleştirilebilir
-                      </span>
-                    ) : null}
-                    <h1 className='text-3xl font-bold leading-tight tracking-tight text-on-surface'>
-                      {listing.name}
-                    </h1>
-                  </div>
-
-                  {listing.variantGroups.length > 0 ? (
-                    <div className='rounded-xl border border-outline-variant/20 bg-surface-container-low p-5'>
-                      <div className='space-y-4'>
-                        {listing.variantGroups.map((group, groupIndex) => {
-                          const groupKey = `${group.groupName}-${groupIndex}`;
-                          const selectedLabel = variantSelections[groupKey];
-
-                          return (
-                            <div key={groupKey}>
-                              <p className='mb-2 text-sm font-semibold text-on-surface'>{group.groupName}</p>
-                              <div className='flex flex-wrap gap-2'>
-                                {group.options.map((option) => {
-                                  const isSelected = selectedLabel === option.label;
-                                  return (
-                                    <button
-                                      key={option.label}
-                                      className={[
-                                        'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
-                                        isSelected
-                                          ? 'border-primary bg-primary/10 text-primary'
-                                          : 'border-outline-variant/40 bg-white text-on-surface hover:border-primary/40',
-                                      ].join(' ')}
-                                      onClick={() => setVariantSelections((current) => ({
-                                        ...current,
-                                        [groupKey]: option.label,
-                                      }))}
-                                      type='button'
-                                    >
-                                      {group.displayType === 'image' && option.imageUrl ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
-                                        <img
-                                          alt={option.label}
-                                          className='h-5 w-5 rounded-full border border-outline-variant/30 object-cover'
-                                          src={option.imageUrl}
-                                        />
-                                      ) : null}
-                                      {option.label}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  <div className='rounded-xl border border-outline-variant/20 bg-surface-container-low p-5'>
-                    {sortedPricingTiers.length > 0 ? (
-                      <div className='grid grid-cols-1 gap-3 sm:grid-cols-3'>
-                        {sortedPricingTiers.map((tier) => {
-                          const isActive = selectedTier
-                            ? selectedTier.minQuantity === tier.minQuantity && selectedTier.maxQuantity === tier.maxQuantity
-                            : false;
-                          return (
-                            <button
-                              key={`${tier.minQuantity}-${tier.maxQuantity}`}
-                              className={[
-                                'rounded-xl border p-4 text-center transition-colors',
-                                isActive
-                                  ? 'border-2 border-primary/40 bg-primary/5'
-                                  : 'border-outline-variant/30 bg-white hover:border-primary/30',
-                              ].join(' ')}
-                              onClick={() => setQuantity(Math.max(minOrderQuantity, tier.minQuantity))}
-                              type='button'
-                            >
-                              <div className={`mb-1 text-xs font-bold uppercase ${isActive ? 'text-primary' : 'text-outline'}`}>
-                                {tier.maxQuantity >= 1_000_000 ? `${tier.minQuantity}+ Adet` : `${tier.minQuantity}-${tier.maxQuantity} Adet`}
-                              </div>
-                              <div className={`text-2xl font-black tracking-tighter ${isActive ? 'text-primary' : 'text-on-surface'}`}>
-                                {formatTryAmount(tier.unitPrice)}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className='rounded-lg border border-outline-variant/30 bg-white p-4 text-center'>
-                        <div className='text-xs font-bold uppercase text-outline'>Birim Fiyat</div>
-                        <div className='text-2xl font-black tracking-tighter text-on-surface'>
-                          {formatTryAmount(unitPrice)}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className='mt-4 flex items-center justify-center gap-2 rounded-lg border border-outline-variant/20 bg-surface-container-highest py-1.5'>
-                      <span className='material-symbols-outlined text-sm text-outline'>trending_down</span>
-                      <p className='text-[11px] font-medium text-on-surface-variant'>
-                        Bu alımla {formatTryAmount(savingsAmount)} kar ettiniz
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className='rounded-2xl border border-outline-variant/40 bg-white p-6 shadow-sm'>
-                    <div className='mb-6'>
-                      <label className='mb-2 block text-xs font-bold uppercase tracking-wide text-outline'>
-                        Miktar Seçin
-                      </label>
-                      <div className='flex items-center overflow-hidden rounded-lg border border-outline-variant'>
-                        <button
-                          className='p-3 transition-colors hover:bg-surface-container-low'
-                          type='button'
-                          onClick={() => setQuantity((current) => Math.max(minOrderQuantity, current - 1))}
-                        >
-                          <span className='material-symbols-outlined text-sm'>remove</span>
-                        </button>
-                        <input
-                          className='w-full border-none text-center font-bold text-on-surface focus:ring-0'
-                          min={minOrderQuantity}
-                          type='number'
-                          value={quantity}
-                          onChange={(event) => {
-                            const raw = Number(event.target.value);
-                            if (!Number.isFinite(raw)) {
-                              return;
-                            }
-                            setQuantity(Math.max(minOrderQuantity, Math.floor(raw)));
-                          }}
-                        />
-                        <button
-                          className='p-3 transition-colors hover:bg-surface-container-low'
-                          type='button'
-                          onClick={() => setQuantity((current) => current + 1)}
-                        >
-                          <span className='material-symbols-outlined text-sm'>add</span>
-                        </button>
-                      </div>
-                      <p className='mt-1.5 text-center text-[10px] font-medium text-primary'>
-                        Minimum Sipariş (MSM): {minOrderQuantity} Adet
-                      </p>
-                    </div>
-
-                    <div className='mb-6 space-y-3'>
-                      <div className='flex items-center justify-between text-sm'>
-                        <span className='text-outline'>Birim Fiyat</span>
-                        <span className='font-bold'>{formatTryAmount(unitPrice)}</span>
-                      </div>
-                      <div className='flex items-center justify-between text-sm'>
-                        <span className='text-outline'>Ara Toplam</span>
-                        <span className='font-bold'>{formatTryAmount(subtotal)}</span>
-                      </div>
-                      <div className='h-px bg-outline-variant/30' />
-                      <div className='flex items-end justify-between'>
-                        <span className='text-sm font-bold text-on-surface'>Toplam Tahmini</span>
-                        <span className='text-xl font-extrabold text-primary'>{formatTryAmount(subtotal)}</span>
-                      </div>
-                    </div>
-
-                    <div className='mt-6 space-y-4 border-t border-outline-variant/30 pt-6'>
-                      <div className='flex items-start gap-3'>
-                        <span className='material-symbols-outlined text-green-600'>verified_user</span>
-                        <p className='text-[11px] leading-tight'>
-                          <span className='block font-bold'>Güvenli Ödeme</span>
-                          ToptanNext Güvence Paketi ile paranız teslimat onayına kadar bizde kalır.
-                        </p>
-                      </div>
-                      <div className='flex items-start gap-3'>
-                        <span className='material-symbols-outlined text-blue-500'>local_shipping</span>
-                        <p className='text-[11px] leading-tight'>
-                          <span className='block font-bold'>Hızlı Lojistik</span>
-                          Global depolardan 7-14 iş günü içinde adrese teslimat.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+              <div className='space-y-8'>
+              <div ref={primaryPanelRef} className='rounded-2xl border border-outline-variant/30 bg-white shadow-sm'>
+                <div className='space-y-6 p-5 sm:p-6'>
+                  {renderSidebarBody()}
                 </div>
+                {renderSidebarActions(false)}
+              </div>
 
-                <div className='sticky bottom-0 z-30 border-t border-outline-variant/30 bg-white/95 p-4 backdrop-blur sm:p-5'>
-                  <div className='grid grid-cols-2 gap-3'>
-                    <button
-                      className='flex w-full items-center justify-center gap-2 rounded-xl bg-[#1A56DB] py-3 font-bold text-white shadow-md transition-all hover:opacity-90 active:scale-[0.98]'
-                      type='button'
-                    >
-                      <span className='material-symbols-outlined'>shopping_cart</span>
-                      Sepete Ekle
-                    </button>
-                    <button
-                      className='flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1A56DB] bg-white py-3 font-bold text-[#1A56DB] transition-all hover:bg-surface-container-low active:scale-[0.98]'
-                      type='button'
-                    >
-                      <span className='material-symbols-outlined'>chat</span>
-                      Sohbet Et
-                    </button>
+              <div
+                className='hidden lg:block'
+                style={{
+                  minHeight: primaryPanelHeight > 0 && viewportHeight > 0
+                    ? `${primaryPanelHeight + viewportHeight - 124}px`
+                    : 'calc(200vh - 124px)',
+                }}
+              >
+                <div
+                  className={[
+                    'rounded-2xl border border-outline-variant/30 bg-white shadow-sm lg:sticky lg:top-[106px] lg:h-[calc(100vh-124px)] lg:overflow-hidden lg:transition-all lg:duration-300 lg:ease-out',
+                    isPrimaryPanelVisible
+                      ? 'lg:pointer-events-none lg:invisible lg:translate-y-2 lg:opacity-0'
+                      : 'lg:visible lg:translate-y-0 lg:opacity-100',
+                  ].join(' ')}
+                >
+                  <div className='flex h-full flex-col'>
+                    <div className='min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain p-5 sm:p-6 [scrollbar-width:thin] [scrollbar-color:#c8ced9_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300 hover:[&::-webkit-scrollbar-thumb]:bg-slate-400'>
+                      {renderSidebarBody()}
+                    </div>
+                    {renderSidebarActions(true)}
                   </div>
                 </div>
               </div>

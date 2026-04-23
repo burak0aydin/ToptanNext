@@ -474,6 +474,22 @@ export function resolveProductListingMediaUrl(mediaId: string): string {
   return `${baseUrl}/products/media/${mediaId}`;
 }
 
+export function resolveProductListingAssetUrl(pathOrUrl: string): string {
+  const value = pathOrUrl.trim();
+  if (value.length === 0) {
+    return value;
+  }
+
+  if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('data:')) {
+    return value;
+  }
+
+  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+  const origin = new URL(apiBase).origin;
+
+  return value.startsWith('/') ? `${origin}${value}` : `${origin}/${value}`;
+}
+
 export async function updateProductListingActiveStatus(
   listingId: string,
   isActive: boolean,
