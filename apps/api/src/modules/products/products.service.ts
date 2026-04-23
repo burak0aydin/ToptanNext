@@ -11,7 +11,10 @@ import {
   ProductListingStatus,
   Role,
 } from '@prisma/client';
-import { CreateProductListingStepOneDto } from './dto/create-product-listing-step-one.dto';
+import {
+  CreateProductListingStepOneDto,
+  ProductListingFeaturedFeatureDto,
+} from './dto/create-product-listing-step-one.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { SubmitProductListingDto } from './dto/submit-product-listing.dto';
 import { ReviewProductListingDto } from './dto/review-product-listing.dto';
@@ -67,6 +70,7 @@ const MAX_IMAGE_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 const MAX_VIDEO_FILE_SIZE_BYTES = 15 * 1024 * 1024;
 const MAX_PRICING_TIER_COUNT = 6;
 const OTHER_OPTION_VALUE = 'other';
+const FEATURED_FEATURE_ENCODING_VERSION = 'ffv1';
 
 @Injectable()
 export class ProductsService {
@@ -226,7 +230,7 @@ export class ProductsService {
       description,
       categoryId: stepOneRefs.categoryId,
       sectorIds: stepOneRefs.sectorIds,
-      featuredFeatures: this.normalizeStringArray(dto.featuredFeatures ?? []),
+      featuredFeatures: this.serializeFeaturedFeatures(dto.featuredFeatures ?? []),
       isCustomizable: dto.isCustomizable ?? false,
       customizationNote: this.normalizeOptionalText(dto.customizationNote),
       variantGroups,
@@ -478,7 +482,7 @@ export class ProductsService {
       description,
       categoryId: stepOneRefs.categoryId,
       sectorIds: stepOneRefs.sectorIds,
-      featuredFeatures: this.normalizeStringArray(dto.featuredFeatures ?? []),
+      featuredFeatures: this.serializeFeaturedFeatures(dto.featuredFeatures ?? []),
       isCustomizable: dto.isCustomizable ?? false,
       customizationNote: this.normalizeOptionalText(dto.customizationNote),
       variantGroups,
@@ -526,7 +530,7 @@ export class ProductsService {
       description,
       categoryId: stepOneRefs.categoryId,
       sectorIds: stepOneRefs.sectorIds,
-      featuredFeatures: this.normalizeStringArray(dto.featuredFeatures ?? []),
+      featuredFeatures: this.serializeFeaturedFeatures(dto.featuredFeatures ?? []),
       isCustomizable: dto.isCustomizable ?? false,
       customizationNote: this.normalizeOptionalText(dto.customizationNote),
       variantGroups,
@@ -722,6 +726,51 @@ export class ProductsService {
   private normalizeStringArray(values: string[]): string[] {
     const normalized = values.map((value) => value.trim()).filter((value) => value.length > 0);
     return [...new Set(normalized)];
+  }
+
+  private serializeFeaturedFeatures(
+    values: Array<ProductListingFeaturedFeatureDto | string | null | undefined>,
+  ): string[] {
+    const normalized = values
+      .map((item) => {
+        if (typeof item === 'string') {
+          const title = item.trim();
+          return {
+            title,
+            description: '',
+          };
+        }
+
+        if (!item || typeof item !== 'object') {
+          return null;
+        }
+
+        const title = typeof item.title === 'string' ? item.title.trim() : '';
+        const description = typeof item.description === 'string'
+          ? item.description.trim()
+          : '';
+
+        return {
+          title,
+          description,
+        };
+      })
+      .filter((item): item is { title: string; description: string } => item !== null)
+      .filter((item) => item.title.length > 0 && item.description.length > 0);
+
+    const unique = new Map<string, { title: string; description: string }>();
+    normalized.forEach((item) => {
+      const key = `${item.title.toLocaleLowerCase('tr-TR')}||${item.description.toLocaleLowerCase('tr-TR')}`;
+      if (!unique.has(key)) {
+        unique.set(key, item);
+      }
+    });
+
+    return Array.from(unique.values()).map((item) => JSON.stringify({
+      v: FEATURED_FEATURE_ENCODING_VERSION,
+      title: item.title,
+      description: item.description,
+    }));
   }
 
   private normalizeVariantGroups(

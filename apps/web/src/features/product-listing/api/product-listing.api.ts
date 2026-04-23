@@ -1,4 +1,5 @@
 import type {
+  ProductListingFeaturedFeature,
   ProductListingVariantGroup,
   ProductListingStepOneDto,
   ProductListingStepThreeDto,
@@ -56,7 +57,7 @@ export type ProductListingRecord = {
   categoryName: string;
   status: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
   isActive: boolean;
-  featuredFeatures: string[];
+  featuredFeatures: ProductListingFeaturedFeature[];
   isCustomizable: boolean;
   customizationNote: string | null;
   variantGroups: ProductListingVariantGroup[];
@@ -157,6 +158,52 @@ export type AdminProductListingManagementResult = {
   };
 };
 
+function normalizeFeaturedFeature(
+  value: unknown,
+): ProductListingFeaturedFeature | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    if (typeof value === 'string') {
+      const title = value.trim();
+      if (title.length > 0) {
+        return {
+          title,
+          description: '',
+        };
+      }
+    }
+
+    return null;
+  }
+
+  const typedValue = value as Record<string, unknown>;
+  const title = typeof typedValue.title === 'string' ? typedValue.title.trim() : '';
+  const description = typeof typedValue.description === 'string'
+    ? typedValue.description.trim()
+    : '';
+
+  if (title.length === 0) {
+    return null;
+  }
+
+  return {
+    title,
+    description,
+  };
+}
+
+function normalizeProductListingRecord(record: ProductListingRecord): ProductListingRecord {
+  const featuredFeatures = Array.isArray(record.featuredFeatures)
+    ? record.featuredFeatures
+      .map((feature) => normalizeFeaturedFeature(feature))
+      .filter((feature): feature is ProductListingFeaturedFeature => feature !== null)
+    : [];
+
+  return {
+    ...record,
+    featuredFeatures,
+  };
+}
+
 export async function fetchCategoriesTree(): Promise<CategoryTreeNode[]> {
   return requestJson<CategoryTreeNode[]>('/categories', {
     auth: true,
@@ -192,18 +239,25 @@ export async function fetchMyProductListings(
 
   const queryString = searchParams.toString();
 
-  return requestJson<ProductListingManagementResult>(
+  const result = await requestJson<ProductListingManagementResult>(
     `/products/me/listings${queryString ? `?${queryString}` : ''}`,
     {
       auth: true,
     },
   );
+
+  return {
+    ...result,
+    items: result.items.map((item) => normalizeProductListingRecord(item)),
+  };
 }
 
 export async function fetchMyProductListingDrafts(): Promise<ProductListingRecord[]> {
-  return requestJson<ProductListingRecord[]>('/products/me/listings/drafts', {
+  const records = await requestJson<ProductListingRecord[]>('/products/me/listings/drafts', {
     auth: true,
   });
+
+  return records.map((record) => normalizeProductListingRecord(record));
 }
 
 export async function fetchAdminProductListings(
@@ -233,19 +287,27 @@ export async function fetchAdminProductListings(
 
   const queryString = searchParams.toString();
 
-  return requestJson<AdminProductListingManagementResult>(
+  const result = await requestJson<AdminProductListingManagementResult>(
     `/products/admin/listings${queryString ? `?${queryString}` : ''}`,
     {
       auth: true,
     },
   );
+
+  return {
+    ...result,
+    listings: {
+      ...result.listings,
+      items: result.listings.items.map((item) => normalizeProductListingRecord(item)),
+    },
+  };
 }
 
 export async function reviewProductListingByAdmin(
   id: string,
   payload: { status: 'APPROVED' | 'REJECTED'; reviewNote?: string },
 ): Promise<ProductListingRecord> {
-  return requestJson<
+  const record = await requestJson<
     ProductListingRecord,
     { status: 'APPROVED' | 'REJECTED'; reviewNote?: string }
   >(
@@ -256,21 +318,25 @@ export async function reviewProductListingByAdmin(
       body: payload,
     },
   );
+
+  return normalizeProductListingRecord(record);
 }
 
 export async function fetchAdminProductListingById(
   id: string,
 ): Promise<ProductListingRecord> {
-  return requestJson<ProductListingRecord>(`/products/admin/listings/${id}`, {
+  const record = await requestJson<ProductListingRecord>(`/products/admin/listings/${id}`, {
     auth: true,
   });
+
+  return normalizeProductListingRecord(record);
 }
 
 export async function updateAdminProductListingStepOne(
   listingId: string,
   payload: ProductListingStepOneDto,
 ): Promise<ProductListingRecord> {
-  return requestJson<ProductListingRecord, ProductListingStepOneDto>(
+  const record = await requestJson<ProductListingRecord, ProductListingStepOneDto>(
     `/products/admin/listings/${listingId}/step-one`,
     {
       method: 'PUT',
@@ -278,13 +344,15 @@ export async function updateAdminProductListingStepOne(
       body: payload,
     },
   );
+
+  return normalizeProductListingRecord(record);
 }
 
 export async function updateAdminProductListingStepTwo(
   listingId: string,
   payload: ProductListingStepTwoDto,
 ): Promise<ProductListingRecord> {
-  return requestJson<ProductListingRecord, ProductListingStepTwoDto>(
+  const record = await requestJson<ProductListingRecord, ProductListingStepTwoDto>(
     `/products/admin/listings/${listingId}/step-two`,
     {
       method: 'PUT',
@@ -292,13 +360,15 @@ export async function updateAdminProductListingStepTwo(
       body: payload,
     },
   );
+
+  return normalizeProductListingRecord(record);
 }
 
 export async function updateAdminProductListingStepThree(
   listingId: string,
   payload: ProductListingStepThreeDto,
 ): Promise<ProductListingRecord> {
-  return requestJson<ProductListingRecord, ProductListingStepThreeDto>(
+  const record = await requestJson<ProductListingRecord, ProductListingStepThreeDto>(
     `/products/admin/listings/${listingId}/step-three`,
     {
       method: 'PUT',
@@ -306,6 +376,8 @@ export async function updateAdminProductListingStepThree(
       body: payload,
     },
   );
+
+  return normalizeProductListingRecord(record);
 }
 
 export function resolveProductListingMediaUrl(mediaId: string): string {
@@ -317,7 +389,7 @@ export async function updateProductListingActiveStatus(
   listingId: string,
   isActive: boolean,
 ): Promise<ProductListingRecord> {
-  return requestJson<ProductListingRecord, { isActive: boolean }>(
+  const record = await requestJson<ProductListingRecord, { isActive: boolean }>(
     `/products/me/listings/${listingId}/active`,
     {
       method: 'PATCH',
@@ -325,29 +397,35 @@ export async function updateProductListingActiveStatus(
       body: { isActive },
     },
   );
+
+  return normalizeProductListingRecord(record);
 }
 
 export async function deleteProductListing(
   listingId: string,
 ): Promise<ProductListingRecord> {
-  return requestJson<ProductListingRecord>(`/products/me/listings/${listingId}`, {
+  const record = await requestJson<ProductListingRecord>(`/products/me/listings/${listingId}`, {
     method: 'DELETE',
     auth: true,
   });
+
+  return normalizeProductListingRecord(record);
 }
 
 export async function fetchMyProductListingById(
   listingId: string,
 ): Promise<ProductListingRecord> {
-  return requestJson<ProductListingRecord>(`/products/me/listings/${listingId}`, {
+  const record = await requestJson<ProductListingRecord>(`/products/me/listings/${listingId}`, {
     auth: true,
   });
+
+  return normalizeProductListingRecord(record);
 }
 
 export async function createProductListingStepOne(
   payload: ProductListingStepOneDto,
 ): Promise<ProductListingRecord> {
-  return requestJson<ProductListingRecord, ProductListingStepOneDto>(
+  const record = await requestJson<ProductListingRecord, ProductListingStepOneDto>(
     '/products/me/listings/step-one',
     {
       method: 'POST',
@@ -355,13 +433,15 @@ export async function createProductListingStepOne(
       body: payload,
     },
   );
+
+  return normalizeProductListingRecord(record);
 }
 
 export async function updateProductListingStepOne(
   listingId: string,
   payload: ProductListingStepOneDto,
 ): Promise<ProductListingRecord> {
-  return requestJson<ProductListingRecord, ProductListingStepOneDto>(
+  const record = await requestJson<ProductListingRecord, ProductListingStepOneDto>(
     `/products/me/listings/${listingId}/step-one`,
     {
       method: 'PUT',
@@ -369,13 +449,15 @@ export async function updateProductListingStepOne(
       body: payload,
     },
   );
+
+  return normalizeProductListingRecord(record);
 }
 
 export async function updateProductListingStepTwo(
   listingId: string,
   payload: ProductListingStepTwoDto,
 ): Promise<ProductListingRecord> {
-  return requestJson<ProductListingRecord, ProductListingStepTwoDto>(
+  const record = await requestJson<ProductListingRecord, ProductListingStepTwoDto>(
     `/products/me/listings/${listingId}/step-two`,
     {
       method: 'PUT',
@@ -383,13 +465,15 @@ export async function updateProductListingStepTwo(
       body: payload,
     },
   );
+
+  return normalizeProductListingRecord(record);
 }
 
 export async function updateProductListingStepThree(
   listingId: string,
   payload: ProductListingStepThreeDto,
 ): Promise<ProductListingRecord> {
-  return requestJson<ProductListingRecord, ProductListingStepThreeDto>(
+  const record = await requestJson<ProductListingRecord, ProductListingStepThreeDto>(
     `/products/me/listings/${listingId}/step-three`,
     {
       method: 'PUT',
@@ -397,6 +481,8 @@ export async function updateProductListingStepThree(
       body: payload,
     },
   );
+
+  return normalizeProductListingRecord(record);
 }
 
 export async function uploadProductListingMedia(
@@ -408,7 +494,7 @@ export async function uploadProductListingMedia(
     formData.append('mediaFiles', file);
   });
 
-  return requestJson<ProductListingRecord, FormData>(
+  const record = await requestJson<ProductListingRecord, FormData>(
     `/products/me/listings/${listingId}/media`,
     {
       method: 'POST',
@@ -416,13 +502,15 @@ export async function uploadProductListingMedia(
       body: formData,
     },
   );
+
+  return normalizeProductListingRecord(record);
 }
 
 export async function submitProductListing(
   listingId: string,
   payload: ProductListingSubmitDto,
 ): Promise<ProductListingRecord> {
-  return requestJson<ProductListingRecord, ProductListingSubmitDto>(
+  const record = await requestJson<ProductListingRecord, ProductListingSubmitDto>(
     `/products/me/listings/${listingId}/submit`,
     {
       method: 'POST',
@@ -430,4 +518,6 @@ export async function submitProductListing(
       body: payload,
     },
   );
+
+  return normalizeProductListingRecord(record);
 }

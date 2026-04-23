@@ -102,6 +102,19 @@ export const productListingVariantGroupSchema = z
     });
   });
 
+export const productListingFeaturedFeatureSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1, 'Özellik başlığı boş olamaz.')
+    .max(80, 'Özellik başlığı en fazla 80 karakter olabilir.'),
+  description: z
+    .string()
+    .trim()
+    .min(1, 'Özellik açıklaması boş olamaz.')
+    .max(140, 'Özellik açıklaması en fazla 140 karakter olabilir.'),
+});
+
 const normalizeRichTextToPlainText = (value: string): string => {
   return value
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
@@ -138,8 +151,7 @@ export const productListingStepOneSchema = z
       .max(12, 'En fazla 12 sektör seçebilirsiniz.')
       .default([]),
     featuredFeatures: z
-      .array(z.string().trim().min(1, 'Özellik alanı boş olamaz.').max(80, 'Her özellik en fazla 80 karakter olabilir.'))
-      .max(12, 'En fazla 12 özellik ekleyebilirsiniz.')
+      .array(productListingFeaturedFeatureSchema)
       .default([]),
     isCustomizable: z.boolean().default(false),
     customizationNote: optionalTrimmedString,
@@ -323,6 +335,7 @@ export type ProductListingVariantDisplayType =
   (typeof productListingVariantDisplayTypeValues)[number];
 export type ProductListingVariantOption = z.infer<typeof productListingVariantOptionSchema>;
 export type ProductListingVariantGroup = z.infer<typeof productListingVariantGroupSchema>;
+export type ProductListingFeaturedFeature = z.infer<typeof productListingFeaturedFeatureSchema>;
 export type ProductListingStepOneDto = z.infer<typeof productListingStepOneSchema>;
 export type ProductListingStepTwoDto = z.infer<typeof productListingStepTwoSchema>;
 export type ProductListingStepThreeDto = z.infer<typeof productListingStepThreeSchema>;

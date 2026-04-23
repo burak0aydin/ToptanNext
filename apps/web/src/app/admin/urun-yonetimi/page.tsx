@@ -153,7 +153,9 @@ function createInitialForm(listing: ProductListingRecord): ListingEditForm {
 		description: listing.description,
 		categoryId: listing.categoryId,
 		sectorIds: listing.sectors.map((item) => item.sectorId),
-		featuredFeatures: listing.featuredFeatures.join("\n"),
+		featuredFeatures: listing.featuredFeatures
+			.map((item) => `${item.title}: ${item.description}`)
+			.join("\n"),
 		isCustomizable: listing.isCustomizable,
 		customizationNote: listing.customizationNote ?? "",
 		minOrderQuantity: listing.minOrderQuantity !== null ? String(listing.minOrderQuantity) : "1",
@@ -311,9 +313,31 @@ export default function AdminProductManagementPage() {
 			}
 
 			const normalizedFeatures = form.featuredFeatures
-				.split(/\n|,/)
+				.split(/\n/)
 				.map((item) => item.trim())
-				.filter((item) => item.length > 0);
+				.filter((item) => item.length > 0)
+				.map((item) => {
+					const separatorIndex = item.indexOf(":");
+					if (separatorIndex <= 0 || separatorIndex >= item.length - 1) {
+						throw new Error(
+							"Öne çıkan özellikleri 'Başlık: Açıklama' formatında satır satır giriniz.",
+						);
+					}
+
+					const title = item.slice(0, separatorIndex).trim();
+					const description = item.slice(separatorIndex + 1).trim();
+
+					if (!title || !description) {
+						throw new Error(
+							"Öne çıkan özelliklerde hem başlık hem açıklama zorunludur.",
+						);
+					}
+
+					return {
+						title,
+						description,
+					};
+				});
 
 			const stepOnePayload: ProductListingStepOneDto = {
 				name: form.name.trim(),
@@ -970,7 +994,7 @@ export default function AdminProductManagementPage() {
 											</select>
 										</label>
 										<label className="text-sm font-medium text-slate-700">
-											Öne Çıkan Özellikler (satır satır)
+											Öne Çıkan Özellikler (Başlık: Açıklama)
 											<textarea
 												value={editForm.featuredFeatures}
 												onChange={(event) =>

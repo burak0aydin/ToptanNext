@@ -76,6 +76,22 @@ const toOptionalVariantGroups = ({ value }: { value: unknown }): unknown => {
   return value;
 };
 
+const toOptionalFeaturedFeatures = ({ value }: { value: unknown }): unknown => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  }
+
+  return value;
+};
+
 export class ProductListingVariantOptionDto {
   @Transform(toTrimmedString)
   @IsString({ message: 'Varyant seçenek etiketi metin olmalıdır.' })
@@ -111,6 +127,18 @@ export class ProductListingVariantGroupDto {
   options: ProductListingVariantOptionDto[];
 }
 
+export class ProductListingFeaturedFeatureDto {
+  @Transform(toTrimmedString)
+  @IsString({ message: 'Özellik başlığı metin olmalıdır.' })
+  @MaxLength(80, { message: 'Özellik başlığı en fazla 80 karakter olabilir.' })
+  title: string;
+
+  @Transform(toTrimmedString)
+  @IsString({ message: 'Özellik açıklaması metin olmalıdır.' })
+  @MaxLength(140, { message: 'Özellik açıklaması en fazla 140 karakter olabilir.' })
+  description: string;
+}
+
 export class CreateProductListingStepOneDto {
   @Transform(toTrimmedString)
   @IsString({ message: 'Ürün adı metin olmalıdır.' })
@@ -133,16 +161,12 @@ export class CreateProductListingStepOneDto {
   @IsString({ each: true, message: 'Her sektör bilgisi metin olmalıdır.' })
   sectorIds?: string[];
 
-  @Transform(toOptionalStringArray)
+  @Transform(toOptionalFeaturedFeatures)
   @IsOptional()
   @IsArray({ message: 'Öne çıkan özellikler dizi olmalıdır.' })
-  @ArrayMaxSize(12, { message: 'En fazla 12 öne çıkan özellik ekleyebilirsiniz.' })
-  @IsString({ each: true, message: 'Her özellik metin olmalıdır.' })
-  @MaxLength(80, {
-    each: true,
-    message: 'Her bir öne çıkan özellik en fazla 80 karakter olabilir.',
-  })
-  featuredFeatures?: string[];
+  @ValidateNested({ each: true })
+  @Type(() => ProductListingFeaturedFeatureDto)
+  featuredFeatures?: ProductListingFeaturedFeatureDto[];
 
   @Transform(toBoolean)
   @IsOptional()

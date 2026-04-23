@@ -146,6 +146,11 @@ export type ProductListingVariantGroupRecord = {
   options: ProductListingVariantOptionRecord[];
 };
 
+export type ProductListingFeaturedFeatureRecord = {
+  title: string;
+  description: string;
+};
+
 export type ProductListingRecord = {
   id: string;
   supplierId: string;
@@ -157,7 +162,7 @@ export type ProductListingRecord = {
   categoryName: string;
   status: ProductListingStatus;
   isActive: boolean;
-  featuredFeatures: string[];
+  featuredFeatures: ProductListingFeaturedFeatureRecord[];
   isCustomizable: boolean;
   customizationNote: string | null;
   variantGroups: ProductListingVariantGroupRecord[];
@@ -1085,11 +1090,13 @@ export class ProductsRepository {
   ): ProductListingRecord {
     const pricingTiers = this.parsePricingTiers(listing.pricingTiers);
     const variantGroups = this.parseVariantGroups(listing.variantGroups);
+    const featuredFeatures = this.parseFeaturedFeatures(listing.featuredFeatures);
     const { category, ...restListing } = listing;
 
     return {
       ...restListing,
       categoryName: category.name,
+      featuredFeatures,
       pricingTiers,
       variantGroups,
       sectors: listing.sectors.map((item) => ({
@@ -1193,5 +1200,67 @@ export class ProductsRepository {
         };
       })
       .filter((group): group is ProductListingVariantGroupRecord => group !== null);
+  }
+
+  private parseFeaturedFeatures(
+    values: unknown,
+  ): ProductListingFeaturedFeatureRecord[] {
+    if (!Array.isArray(values)) {
+      return [];
+    }
+
+    const parsedValues = values
+      .map((value) => {
+        if (typeof value !== 'string') {
+          return null;
+        }
+
+        const trimmed = value.trim();
+        if (trimmed.length === 0) {
+          return null;
+        }
+
+        try {
+          const parsed = JSON.parse(trimmed) as {
+            v?: string;
+            title?: unknown;
+            description?: unknown;
+          };
+
+          if (
+            parsed
+            && parsed.v === 'ffv1'
+            && typeof parsed.title === 'string'
+            && typeof parsed.description === 'string'
+          ) {
+            const title = parsed.title.trim();
+            const description = parsed.description.trim();
+            if (title.length > 0 && description.length > 0) {
+              return {
+                title,
+                description,
+              };
+            }
+          }
+        } catch {
+          // Keep backward compatibility with legacy plain string values.
+        }
+
+        return {
+          title: trimmed,
+          description: '',
+        };
+      })
+      .filter((feature): feature is ProductListingFeaturedFeatureRecord => feature !== null);
+
+    const unique = new Map<string, ProductListingFeaturedFeatureRecord>();
+    parsedValues.forEach((feature) => {
+      const key = `${feature.title.toLocaleLowerCase('tr-TR')}||${feature.description.toLocaleLowerCase('tr-TR')}`;
+      if (!unique.has(key)) {
+        unique.set(key, feature);
+      }
+    });
+
+    return Array.from(unique.values());
   }
 }

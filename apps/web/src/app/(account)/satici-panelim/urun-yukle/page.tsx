@@ -1,11 +1,13 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useSearchParams } from 'next/navigation';
 import {
   productListingStepOneSchema,
   productListingStepThreeSchema,
   productListingStepTwoSchema,
   type ProductListingDeliveryMethod,
+  type ProductListingFeaturedFeature,
   type ProductListingPackageType,
   type ProductListingStepOneDto,
   type ProductListingStepThreeDto,
@@ -144,6 +146,8 @@ const IMAGE_ACCEPT_MIME = 'image/jpeg,image/png,image/webp';
 const VIDEO_ACCEPT_MIME = 'video/mp4,video/webm';
 const CROPPED_IMAGE_OUTPUT_SIZE = 1200;
 const PENDING_VARIANT_IMAGE_PREFIX = 'pending:';
+const FEATURED_FEATURE_TITLE_MAX_LENGTH = 80;
+const FEATURED_FEATURE_DESCRIPTION_MAX_LENGTH = 140;
 
 type PendingImageFile = {
   tempId: string;
@@ -328,7 +332,6 @@ export default function SellerProductUploadPage() {
   const [sectors, setSectors] = useState<SectorRecord[]>([]);
   const [mainCategoryId, setMainCategoryId] = useState('');
   const [subCategoryId, setSubCategoryId] = useState('');
-  const [featureInput, setFeatureInput] = useState('');
   const [sectorInput, setSectorInput] = useState('');
   const [pendingCoverImage, setPendingCoverImage] = useState<PendingImageFile | null>(null);
   const [pendingGalleryImages, setPendingGalleryImages] = useState<PendingImageFile[]>([]);
@@ -350,6 +353,8 @@ export default function SellerProductUploadPage() {
   const [isCompleted, setIsCompleted] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const forceNewListing = searchParams.get('new') === '1';
   const coverImageInputRef = useRef<HTMLInputElement | null>(null);
   const galleryImageInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
@@ -403,20 +408,48 @@ export default function SellerProductUploadPage() {
         setIsLoadingMeta(true);
         setGlobalError(null);
 
-        const [categoryResponse, sectorsResponse, listingsResponse] = await Promise.all([
+        const listingsPromise = forceNewListing
+          ? Promise.resolve([] as ProductListingRecord[])
+          : fetchMyProductListingDrafts();
+
+        const [categoryResult, sectorsResult, listingsResult] = await Promise.allSettled([
           fetchCategoriesTree(),
           fetchSectors(),
-          fetchMyProductListingDrafts(),
+          listingsPromise,
         ]);
 
         if (!isMounted) {
           return;
         }
 
-        setCategoryTree(categoryResponse);
-        setSectors(sectorsResponse);
+        if (categoryResult.status === 'fulfilled') {
+          setCategoryTree(categoryResult.value);
+        } else {
+          throw new Error('Kategori verileri yüklenemedi.');
+        }
 
-        const latestEditableDraft = listingsResponse.find(
+        if (sectorsResult.status === 'fulfilled') {
+          setSectors(sectorsResult.value);
+        } else {
+          throw new Error('Sektör verileri yüklenemedi.');
+        }
+
+        if (forceNewListing) {
+          setDraftRecord(null);
+          setMainCategoryId('');
+          setSubCategoryId('');
+          stepOneForm.reset(STEP_ONE_DEFAULT_VALUES);
+          stepTwoForm.reset(STEP_TWO_DEFAULT_VALUES);
+          stepThreeForm.reset(STEP_THREE_DEFAULT_VALUES);
+          return;
+        }
+
+        if (listingsResult.status !== 'fulfilled') {
+          setDraftRecord(null);
+          return;
+        }
+
+        const latestEditableDraft = listingsResult.value.find(
           (listing) => listing.status === 'DRAFT' || listing.status === 'REJECTED',
         ) ?? null;
 
@@ -488,7 +521,7 @@ export default function SellerProductUploadPage() {
           packageWeightKg: Math.max(Number(latestEditableDraft.packageWeightKg ?? '0'), 0),
         });
 
-        const categoryPath = findCategoryPath(categoryResponse, latestEditableDraft.categoryId);
+        const categoryPath = findCategoryPath(categoryResult.value, latestEditableDraft.categoryId);
         if (categoryPath) {
           setMainCategoryId(categoryPath.mainId);
           setSubCategoryId(categoryPath.subId);
@@ -515,7 +548,7 @@ export default function SellerProductUploadPage() {
     return () => {
       isMounted = false;
     };
-  }, [stepOneForm, stepTwoForm, stepThreeForm]);
+  }, [forceNewListing, stepOneForm, stepTwoForm, stepThreeForm]);
 
   const activeCategoryPath = useMemo(() => {
     const categoryId = watchedStepOne.categoryId || draftRecord?.categoryId;
@@ -630,31 +663,41 @@ export default function SellerProductUploadPage() {
   };
 
   const addFeaturedFeature = (): void => {
-    const nextValue = featureInput.trim();
-    if (nextValue.length === 0) {
-      return;
-    }
-
     const current = stepOneForm.getValues('featuredFeatures') ?? [];
-    if (current.includes(nextValue)) {
-      setFeatureInput('');
-      return;
-    }
-
-    stepOneForm.setValue('featuredFeatures', [...current, nextValue], {
+    stepOneForm.setValue('featuredFeatures', [...current, { title: '', description: '' }], {
       shouldValidate: true,
       shouldDirty: true,
     });
-    setFeatureInput('');
   };
 
-  const removeFeature = (feature: string): void => {
+  const removeFeature = (index: number): void => {
     const current = stepOneForm.getValues('featuredFeatures') ?? [];
     stepOneForm.setValue(
       'featuredFeatures',
-      current.filter((item) => item !== feature),
+      current.filter((_, itemIndex) => itemIndex !== index),
       { shouldValidate: true, shouldDirty: true },
     );
+  };
+
+  const updateFeatureField = (
+    index: number,
+    field: keyof ProductListingFeaturedFeature,
+    value: string,
+  ): void => {
+    const current = stepOneForm.getValues('featuredFeatures') ?? [];
+    const nextFeatures = current.map((feature, itemIndex) => (
+      itemIndex === index
+        ? {
+          ...feature,
+          [field]: value,
+        }
+        : feature
+    ));
+
+    stepOneForm.setValue('featuredFeatures', nextFeatures, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
   };
 
   const addSector = (sectorId: string): void => {
@@ -1510,7 +1553,6 @@ export default function SellerProductUploadPage() {
       setDraftRecord(null);
       setMainCategoryId('');
       setSubCategoryId('');
-      setFeatureInput('');
       setSectorInput('');
       revokePendingImage(pendingCoverImage);
       pendingGalleryImages.forEach((item) => URL.revokeObjectURL(item.previewUrl));
@@ -1896,47 +1938,54 @@ export default function SellerProductUploadPage() {
 
                   <div className='md:col-span-2'>
                     <span className='mb-2 block text-sm font-bold text-on-surface-variant'>Öne Çıkan Özellikler</span>
-                    <div className='rounded-lg border border-outline-variant bg-surface-container-low p-2'>
-                      <div className='mb-2 flex flex-wrap gap-2'>
-                        {(watchedStepOne.featuredFeatures ?? []).map((feature) => (
-                          <span
-                            key={feature}
-                            className='inline-flex items-center gap-1 rounded bg-white px-2 py-1 text-xs font-medium text-on-surface'
+                    <div className='space-y-3 rounded-lg border border-outline-variant bg-surface-container-low p-3'>
+                      {(watchedStepOne.featuredFeatures ?? []).map((feature, index) => (
+                        <div
+                          key={`feature-${index}`}
+                          className='grid grid-cols-1 gap-2 rounded-lg border border-outline-variant/70 bg-white p-3 md:grid-cols-[1fr_1.4fr_auto]'
+                        >
+                          <input
+                            className='w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20'
+                            placeholder='Başlık (Örn: %100 Pamuk)'
+                            type='text'
+                            value={feature.title}
+                            maxLength={FEATURED_FEATURE_TITLE_MAX_LENGTH}
+                            onChange={(event) => updateFeatureField(index, 'title', event.target.value)}
+                            disabled={isSubmittingStep}
+                          />
+                          <div className='space-y-1'>
+                            <input
+                              className='w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20'
+                              placeholder='Kısa açıklama (Örn: Nefes alır, yumuşak doku)'
+                              type='text'
+                              value={feature.description}
+                              maxLength={FEATURED_FEATURE_DESCRIPTION_MAX_LENGTH}
+                              onChange={(event) => updateFeatureField(index, 'description', event.target.value)}
+                              disabled={isSubmittingStep}
+                            />
+                            <p className='text-[11px] text-on-surface-variant'>
+                              {feature.description.trim().length}/{FEATURED_FEATURE_DESCRIPTION_MAX_LENGTH}
+                            </p>
+                          </div>
+                          <button
+                            className='self-start rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50'
+                            onClick={() => removeFeature(index)}
+                            type='button'
+                            disabled={isSubmittingStep}
                           >
-                            {feature}
-                            <button
-                              className='inline-flex items-center text-slate-500 hover:text-red-600'
-                              onClick={() => removeFeature(feature)}
-                              type='button'
-                            >
-                              <span className='material-symbols-outlined text-sm'>close</span>
-                            </button>
-                          </span>
-                        ))}
-                      </div>
+                            Sil
+                          </button>
+                        </div>
+                      ))}
 
-                      <div className='grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto]'>
-                        <input
-                          className='w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20'
-                          placeholder='Örn: %100 Pamuk'
-                          type='text'
-                          value={featureInput}
-                          onChange={(event) => setFeatureInput(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ',') {
-                              event.preventDefault();
-                              addFeaturedFeature();
-                            }
-                          }}
-                          disabled={isSubmittingStep}
-                        />
+                      <div className='flex justify-end'>
                         <button
                           className='rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50'
                           onClick={addFeaturedFeature}
                           type='button'
-                          disabled={featureInput.trim().length === 0 || isSubmittingStep}
+                          disabled={isSubmittingStep}
                         >
-                          Ekle
+                          Özellik Ekle
                         </button>
                       </div>
                     </div>
@@ -2987,7 +3036,7 @@ export default function SellerProductUploadPage() {
                 <div>
                   <h4 className='text-sm font-bold text-blue-900'>Profesyonel İpucu</h4>
                   <p className='mt-1 text-xs leading-relaxed text-blue-800'>
-                    Öne çıkan özellikleri kısa ve net etiketler halinde eklemek, alıcıların ürününüzü daha hızlı değerlendirmesine yardımcı olur.
+                    Öne çıkan özelliklerde başlığı net yazıp açıklamayı kısa tutmak, alıcıların ürünü daha hızlı anlamasına yardımcı olur.
                   </p>
                 </div>
               </div>
