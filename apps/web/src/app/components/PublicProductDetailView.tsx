@@ -2,9 +2,14 @@
 
 import { type MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { MainFooter } from '@/app/components/MainFooter';
 import { MainHeader } from '@/app/components/MainHeader';
+import { ProductChatDrawer } from '@/components/chat/ProductChatDrawer';
+import { createConversation } from '@/features/chat/api/chat.api';
+import { getCurrentUserIdFromToken } from '@/features/chat/utils/auth';
+import { getUserRoleFromToken, hasAccessToken } from '@/lib/auth-token';
 import {
   FAVORITES_UPDATED_EVENT,
   isFavoriteProduct,
@@ -92,11 +97,17 @@ function buildListingPriceLabel(listing: ProductListingRecord): string {
 }
 
 export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
+  const router = useRouter();
   const [selectedMediaId, setSelectedMediaId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [variantSelections, setVariantSelections] = useState<Record<string, string>>({});
   const [activeDetailSection, setActiveDetailSection] = useState<'description' | 'reviews' | 'company'>('description');
   const [isFavorited, setIsFavorited] = useState(false);
+  const [isStartingConversation, setIsStartingConversation] = useState(false);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [isChatDrawerOpen, setIsChatDrawerOpen] = useState(false);
+  const [canSendQuote, setCanSendQuote] = useState(false);
+  const [chatActionError, setChatActionError] = useState<string | null>(null);
   const [isPrimaryPanelVisible, setIsPrimaryPanelVisible] = useState(true);
   const [primaryPanelHeight, setPrimaryPanelHeight] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
@@ -351,6 +362,47 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
     ? resolveProductListingMediaUrl(imageMedia[0].id)
     : null;
   const favoritePriceLabel = listing ? buildListingPriceLabel(listing) : 'Fiyat sorunuz';
+  useEffect(() => {
+    setCanSendQuote(getUserRoleFromToken() === 'SUPPLIER');
+  }, []);
+
+  const handleStartConversation = async () => {
+    if (!listing || isStartingConversation) {
+      return;
+    }
+
+    setChatActionError(null);
+
+    if (!hasAccessToken()) {
+      router.push(`/login?next=${encodeURIComponent(`/urun/${listing.id}`)}`);
+      return;
+    }
+
+    const currentUserId = getCurrentUserIdFromToken();
+    if (currentUserId && currentUserId === listing.supplierId) {
+      setChatActionError('Kendi ürününüz için sohbet başlatamazsınız.');
+      return;
+    }
+
+    setIsStartingConversation(true);
+
+    try {
+      const conversation = await createConversation({
+        participantId: listing.supplierId,
+        productListingId: listing.id,
+      });
+
+      setActiveConversationId(conversation.id);
+      setIsChatDrawerOpen(true);
+    } catch (error) {
+      const message = error instanceof Error && error.message.trim().length > 0
+        ? error.message
+        : 'Sohbet başlatılamadı. Lütfen tekrar deneyin.';
+      setChatActionError(message);
+    } finally {
+      setIsStartingConversation(false);
+    }
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined' || !listing) {
@@ -623,12 +675,19 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
         </button>
         <button
           className='flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1A56DB] bg-white py-3 font-bold text-[#1A56DB] transition-all hover:bg-surface-container-low active:scale-[0.98]'
+          disabled={isStartingConversation}
+          onClick={handleStartConversation}
           type='button'
         >
           <span className='material-symbols-outlined'>chat</span>
-          Sohbet Et
+          {isStartingConversation ? 'Açılıyor...' : 'Sohbet Et'}
         </button>
       </div>
+      {chatActionError ? (
+        <p className='mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700'>
+          {chatActionError}
+        </p>
+      ) : null}
     </div>
   );
 
@@ -1113,6 +1172,13 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
       </main>
 
       <MainFooter />
+
+      <ProductChatDrawer
+        canSendQuote={canSendQuote}
+        conversationId={activeConversationId}
+        open={isChatDrawerOpen}
+        onClose={() => setIsChatDrawerOpen(false)}
+      />
     </div>
   );
 }

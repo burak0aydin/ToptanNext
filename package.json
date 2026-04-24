@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "packageManager": "pnpm@8.15.8",
   "scripts": {
-    "dev": "turbo run dev --parallel",
-    "dev:fresh": "pnpm --filter web run clean && turbo run dev --parallel",
+    "dev": "node ./scripts/check-dev-ports.mjs && turbo run dev --parallel",
+    "dev:fresh": "pnpm --filter web run clean && node ./scripts/check-dev-ports.mjs && turbo run dev --parallel",
     "build": "turbo run build",
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",

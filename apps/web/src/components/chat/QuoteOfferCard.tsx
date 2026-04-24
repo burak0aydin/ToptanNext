@@ -50,10 +50,12 @@ export function QuoteOfferCard({
   onReject,
   onCounter,
 }: QuoteOfferCardProps) {
-  const [remaining, setRemaining] = useState(() => formatRemaining(quote.expiresAt));
+  const [remaining, setRemaining] = useState('Hesaplanıyor...');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    setRemaining(formatRemaining(quote.expiresAt));
+
     const timer = window.setInterval(() => {
       setRemaining(formatRemaining(quote.expiresAt));
     }, 1_000);
@@ -66,19 +68,23 @@ export function QuoteOfferCard({
   const statusMeta = useMemo(() => getStatusMeta(quote.status), [quote.status]);
 
   return (
-    <div className='rounded-2xl border border-primary/20 bg-white p-4 shadow-sm'>
-      <div className='mb-3 flex items-center justify-center text-primary'>
-        <span className='material-symbols-outlined text-[28px]'>verified</span>
+    <div className='w-full overflow-hidden rounded-2xl border border-primary/20 bg-white p-4 shadow-sm'>
+      <div className='mb-2 flex items-center justify-center text-primary'>
+        <span className='material-symbols-outlined text-[26px]'>verified</span>
       </div>
 
-      <h4 className='text-center text-xl font-bold text-slate-800'>Resmi Teklif Gönderildi</h4>
+      <h4 className='text-center text-base font-bold leading-tight text-slate-800 sm:text-lg'>
+        Resmi Teklif Gönderildi
+      </h4>
       <p className='mt-2 text-center text-sm text-slate-500'>Satıcı size özel bir teklif gönderdi:</p>
 
       <div className='mt-3 rounded-xl bg-slate-50 px-4 py-3 text-center'>
-        <div className='text-4xl font-extrabold tracking-tight text-primary'>
+        <div className='text-3xl font-extrabold tracking-normal text-primary sm:text-4xl'>
           ₺{quote.unitPrice.toFixed(2)}
         </div>
-        <div className='text-sm font-semibold text-slate-500'>/ Birim ({quote.quantity} Adet için)</div>
+        <div className='mt-1 text-xs font-semibold text-slate-500 sm:text-sm'>
+          / Birim ({quote.quantity} Adet için)
+        </div>
       </div>
 
       <div className='mt-3 text-center text-xs font-medium text-slate-500'>Kalan Süre: {remaining}</div>
@@ -106,7 +112,7 @@ export function QuoteOfferCard({
             Teklifi Kabul Et ve Onayla
           </button>
 
-          <div className='flex gap-2'>
+          <div className='grid grid-cols-1 gap-2 sm:grid-cols-2'>
             <button
               type='button'
               disabled={isSubmitting}
@@ -118,7 +124,7 @@ export function QuoteOfferCard({
                   setIsSubmitting(false);
                 }
               }}
-              className='flex-1 rounded-lg border border-red-200 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60'
+              className='rounded-lg border border-red-200 px-3 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60'
             >
               Teklifi Reddet
             </button>
@@ -127,7 +133,7 @@ export function QuoteOfferCard({
               type='button'
               disabled={isSubmitting}
               onClick={onCounter}
-              className='flex-1 rounded-lg border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60'
+              className='rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60'
             >
               Karşı Teklif Gönder
             </button>

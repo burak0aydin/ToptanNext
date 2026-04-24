@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { MessageInput } from '@/components/chat/MessageInput';
 import { MessageThread } from '@/components/chat/MessageThread';
@@ -17,9 +17,12 @@ type ConversationPageProps = {
 
 export default function ConversationPage({ params }: ConversationPageProps) {
   const { socket } = useSocket();
-  const role = getUserRoleFromToken();
-  const isSupplier = role === 'SUPPLIER';
+  const [isSupplier, setIsSupplier] = useState(false);
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+
+  useEffect(() => {
+    setIsSupplier(getUserRoleFromToken() === 'SUPPLIER');
+  }, []);
 
   const conversationQuery = useQuery({
     queryKey: ['chat', 'conversation', params.conversationId],
@@ -34,11 +37,8 @@ export default function ConversationPage({ params }: ConversationPageProps) {
 
       <MessageInput
         conversationId={params.conversationId}
+        canSendQuote={isSupplier}
         onOpenQuoteModal={() => {
-          if (!isSupplier) {
-            return;
-          }
-
           setIsQuoteModalOpen(true);
         }}
       />

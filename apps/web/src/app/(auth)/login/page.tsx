@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginDtoSchema, type LoginDto } from "@toptannext/types";
 import { useForm } from "react-hook-form";
@@ -10,6 +10,7 @@ import { setAccessToken } from "@/lib/auth-token";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const loginMutation = useLoginMutation();
 
   const {
@@ -30,6 +31,12 @@ export default function LoginPage() {
         setAccessToken(result.accessToken);
         if (result.user.role === "ADMIN") {
           router.push("/admin");
+          return;
+        }
+
+        const nextPath = searchParams.get("next");
+        if (nextPath && nextPath.startsWith("/")) {
+          router.push(nextPath);
           return;
         }
 

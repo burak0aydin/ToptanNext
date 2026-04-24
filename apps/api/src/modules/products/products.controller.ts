@@ -27,7 +27,7 @@ import { Role } from '@prisma/client';
 import { Request, Response } from 'express';
 import { MulterError } from 'multer';
 import { diskStorage } from 'multer';
-import { extname, join } from 'path';
+import { extname, isAbsolute, join } from 'path';
 import { createReadStream, existsSync, mkdirSync } from 'fs';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
@@ -352,8 +352,9 @@ export class ProductsController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<StreamableFile> {
     const media = await this.productsService.getListingMediaById(mediaId);
+    const absolutePath = this.resolveMediaAbsolutePath(media.filePath);
 
-    if (!existsSync(media.filePath)) {
+    if (!existsSync(absolutePath)) {
       throw new NotFoundException('Medya dosyası bulunamadı.');
     }
 
@@ -363,7 +364,7 @@ export class ProductsController {
       `inline; filename="${encodeURIComponent(media.originalName)}"`,
     );
 
-    return new StreamableFile(createReadStream(media.filePath));
+    return new StreamableFile(createReadStream(absolutePath));
   }
 
   @Post()
@@ -652,6 +653,43 @@ export class ProductsController {
       fileSize: file.size,
       filePath: file.path,
     }));
+  }
+
+  private resolveMediaAbsolutePath(filePath: string): string {
+    if (typeof filePath !== 'string' || filePath.trim().length === 0) {
+      return '';
+    }
+
+    const normalizedInputPath = filePath.trim();
+
+    if (!isAbsolute(normalizedInputPath)) {
+      return join(process.cwd(), normalizedInputPath);
+    }
+
+    if (existsSync(normalizedInputPath)) {
+      return normalizedInputPath;
+    }
+
+    const normalized = normalizedInputPath.replace(/\\/g, '/');
+    const marker = '/uploads/product-listings/';
+    const markerIndex = normalized.lastIndexOf(marker);
+
+    if (markerIndex === -1) {
+      return normalizedInputPath;
+    }
+
+    const relativeTail = normalized.slice(markerIndex + marker.length);
+    const candidates = [
+      join(process.cwd(), 'uploads', 'product-listings', relativeTail),
+      join(process.cwd(), 'apps', 'api', 'uploads', 'product-listings', relativeTail),
+      join(process.cwd(), '..', 'apps', 'api', 'uploads', 'product-listings', relativeTail),
+    ];
+
+    const foundCandidate = candidates.find((candidatePath) =>
+      existsSync(candidatePath),
+    );
+
+    return foundCandidate ?? candidates[0];
   }
 
   private ensureAdmin(role: Role): void {

@@ -144,7 +144,11 @@ export class ConversationsService {
       this.prisma.user.findUnique({ where: { id: dto.participantId } }),
     ]);
 
-    if (!requesterUser || !participantUser) {
+    if (!requesterUser) {
+      throw new NotFoundException('Oturum sahibi kullanıcı bulunamadı.');
+    }
+
+    if (!participantUser) {
       throw new NotFoundException('Katılımcı kullanıcı bulunamadı.');
     }
 

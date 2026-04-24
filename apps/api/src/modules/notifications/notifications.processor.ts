@@ -2,7 +2,8 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Job } from 'bullmq';
-import nodemailer, { type Transporter } from 'nodemailer';
+import * as nodemailer from 'nodemailer';
+import type { Transporter } from 'nodemailer';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NOTIFICATION_JOB, NOTIFICATIONS_QUEUE } from './notifications.constants';
 import {

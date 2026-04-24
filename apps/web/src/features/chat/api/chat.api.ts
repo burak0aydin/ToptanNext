@@ -238,3 +238,24 @@ export async function getPresignedUploadUrl(input: {
     },
   );
 }
+
+export async function uploadChatAttachment(file: File): Promise<{
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  mimeType: string;
+}> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return requestJson<{
+    fileName: string;
+    fileUrl: string;
+    fileSize: number;
+    mimeType: string;
+  }, FormData>('/uploads/chat-attachments', {
+    method: 'POST',
+    auth: true,
+    body: formData,
+  });
+}

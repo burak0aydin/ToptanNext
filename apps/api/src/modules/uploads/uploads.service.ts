@@ -1,6 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  CreateBucketCommand,
+  HeadBucketCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
 import { GetPresignedUrlDto } from './dto/get-presigned-url.dto';
@@ -38,6 +43,10 @@ export class UploadsService {
     const objectKey = this.buildObjectKey(dto.fileName);
     const s3Client = this.createS3Client(provider);
 
+    if (provider === 'minio') {
+      await this.ensureBucketExists(s3Client, bucket);
+    }
+
     const command = new PutObjectCommand({
       Bucket: bucket,
       Key: objectKey,
@@ -53,6 +62,48 @@ export class UploadsService {
       fileUrl,
       objectKey,
       expiresIn,
+    };
+  }
+
+  async uploadChatAttachment(file: Express.Multer.File): Promise<{
+    fileName: string;
+    fileUrl: string;
+    fileSize: number;
+    mimeType: string;
+  }> {
+    this.validateInput({
+      fileName: file.originalname,
+      mimeType: file.mimetype,
+      fileSize: file.size,
+    });
+
+    const provider = this.configService.get<string>('UPLOAD_PROVIDER', 'minio').toLowerCase();
+    const bucket = this.configService.get<string>(
+      'UPLOAD_BUCKET',
+      provider === 'minio' ? 'toptannext-uploads' : 'toptannext-uploads-prod',
+    );
+    const objectKey = this.buildObjectKey(file.originalname);
+    const s3Client = this.createS3Client(provider);
+
+    if (provider === 'minio') {
+      await this.ensureBucketExists(s3Client, bucket);
+    }
+
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: objectKey,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        ContentLength: file.size,
+      }),
+    );
+
+    return {
+      fileName: file.originalname,
+      fileUrl: this.resolvePublicFileUrl(provider, bucket, objectKey),
+      fileSize: file.size,
+      mimeType: file.mimetype,
     };
   }
 
@@ -109,6 +160,14 @@ export class UploadsService {
         secretAccessKey,
       },
     });
+  }
+
+  private async ensureBucketExists(s3Client: S3Client, bucket: string): Promise<void> {
+    try {
+      await s3Client.send(new HeadBucketCommand({ Bucket: bucket }));
+    } catch {
+      await s3Client.send(new CreateBucketCommand({ Bucket: bucket }));
+    }
   }
 
   private resolvePublicFileUrl(

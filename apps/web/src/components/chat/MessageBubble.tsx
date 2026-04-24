@@ -42,8 +42,15 @@ export function MessageBubble({
     message.quote !== null && QUOTE_MESSAGE_TYPES.has(message.type as 'QUOTE_OFFER' | 'COUNTER_OFFER');
 
   return (
-    <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
-      <div className='max-w-[85%] sm:max-w-[75%]'>
+    <div className={`flex min-w-0 ${isOwn ? 'justify-end' : 'justify-start'}`}>
+      <div
+        className={[
+          'min-w-0',
+          shouldRenderQuote
+            ? 'w-full max-w-[420px] sm:max-w-[520px]'
+            : 'max-w-[88%] sm:max-w-[75%]',
+        ].join(' ')}
+      >
         <div className={`mb-1 flex items-center gap-2 ${isOwn ? 'justify-end' : 'justify-start'}`}>
           {!isOwn && showAvatar ? (
             <div className='h-8 w-8 overflow-hidden rounded-full bg-slate-100'>
@@ -61,7 +68,7 @@ export function MessageBubble({
         {sanitizedBody ? (
           <div
             className={[
-              'rounded-2xl px-4 py-3 text-sm leading-relaxed',
+              'break-words rounded-2xl px-4 py-3 text-sm leading-relaxed',
               isOwn
                 ? 'rounded-br-md bg-primary text-white'
                 : 'rounded-bl-md bg-slate-100 text-slate-800',

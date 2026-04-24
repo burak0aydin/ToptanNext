@@ -29,6 +29,7 @@ import { CounterOfferModal } from './CounterOfferModal';
 
 type MessageThreadProps = {
   conversationId: string;
+  showHeader?: boolean;
 };
 
 type ThreadItem =
@@ -47,11 +48,10 @@ function formatDateSeparator(date: Date): string {
   return format(date, 'dd MMMM yyyy', { locale: tr }).toUpperCase();
 }
 
-export function MessageThread({ conversationId }: MessageThreadProps) {
+export function MessageThread({ conversationId, showHeader = true }: MessageThreadProps) {
   const { socket } = useSocket();
   const currentUserId = useMemo(() => getCurrentUserIdFromToken(), []);
-  const currentRole = getUserRoleFromToken();
-  const isBuyer = currentRole === 'BUYER';
+  const [isBuyer, setIsBuyer] = useState(false);
 
   const setMessages = useChatStore((state) => state.setMessages);
   const messagesMap = useChatStore((state) => state.messages);
@@ -63,6 +63,10 @@ export function MessageThread({ conversationId }: MessageThreadProps) {
 
   const parentRef = useRef<HTMLDivElement | null>(null);
   const hasInitialScrollRef = useRef(false);
+
+  useEffect(() => {
+    setIsBuyer(getUserRoleFromToken() === 'BUYER');
+  }, []);
 
   const conversationQuery = useQuery({
     queryKey: ['chat', 'conversation', conversationId],
@@ -192,7 +196,8 @@ export function MessageThread({ conversationId }: MessageThreadProps) {
     count: threadItems.length,
     getScrollElement: () => parentRef.current,
     estimateSize: (index) =>
-      threadItems[index]?.type === 'separator' ? 44 : 140,
+      threadItems[index]?.type === 'separator' ? 44 : 180,
+    getItemKey: (index) => threadItems[index]?.key ?? index,
     overscan: 10,
   });
 
@@ -252,11 +257,13 @@ export function MessageThread({ conversationId }: MessageThreadProps) {
 
   return (
     <div className='flex h-full min-h-0 flex-col'>
-      <div className='border-b border-slate-200 px-4 py-3'>
+      {showHeader ? (
+        <div className='border-b border-slate-200 px-4 py-3'>
           <h3 className='text-lg font-bold text-slate-800'>
-          {conversationQuery.data?.productName ?? 'Konuşma'}
-        </h3>
-      </div>
+            {conversationQuery.data?.productName ?? 'Konuşma'}
+          </h3>
+        </div>
+      ) : null}
 
       <div ref={parentRef} className='min-h-0 flex-1 overflow-y-auto bg-slate-50 px-4 py-4'>
         <div
@@ -276,6 +283,8 @@ export function MessageThread({ conversationId }: MessageThreadProps) {
               return (
                 <div
                   key={item.key}
+                  data-index={virtualRow.index}
+                  ref={rowVirtualizer.measureElement}
                   style={{
                     position: 'absolute',
                     top: 0,
@@ -303,6 +312,8 @@ export function MessageThread({ conversationId }: MessageThreadProps) {
             return (
               <div
                 key={item.key}
+                data-index={virtualRow.index}
+                ref={rowVirtualizer.measureElement}
                 style={{
                   position: 'absolute',
                   top: 0,
