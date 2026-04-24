@@ -46,7 +46,81 @@ services:
     volumes:
       - meilisearch_data:/meili_data
 
+  minio:
+    image: minio/minio:latest
+    container_name: toptannext-minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: toptannext-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: toptannext-api
+    working_dir: /app
+    command: pnpm --filter api run start:dev
+    depends_on:
+      - postgres
+      - redis
+      - minio
+      - mailpit
+    environment:
+      DATABASE_URL: postgresql://toptannext:password@postgres:5432/toptannext?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: local-dev-secret
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      CORS_ORIGINS: http://localhost:3000
+      API_PORT: 3001
+      UPLOAD_PROVIDER: minio
+      UPLOAD_BUCKET: toptannext-uploads
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_PUBLIC_BASE_URL: http://localhost:9000
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_FROM_EMAIL: no-reply@toptannext.local
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./:/app
+      - /app/node_modules
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: toptannext-web
+    working_dir: /app
+    command: pnpm --filter web run dev
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
+      NEXT_PUBLIC_WS_URL: http://localhost:3001
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./:/app
+      - /app/node_modules
+
 volumes:
   postgres_data:
   redis_data:
   meilisearch_data:
+  minio_data:

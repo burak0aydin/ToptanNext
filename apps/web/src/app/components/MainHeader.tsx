@@ -119,13 +119,13 @@ export function MainHeader() {
             <span className='material-symbols-outlined text-[28px] leading-none'>menu</span>
           </button>
 
-          <button
+          <Link
             aria-label='Mesajlar'
             className='flex items-center justify-center text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'
-            type='button'
+            href='/messages'
           >
             <span className='material-symbols-outlined text-[28px] leading-none'>forum</span>
-          </button>
+          </Link>
 
           <Link
             aria-label='Siparişlerim'
