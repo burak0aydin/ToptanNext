@@ -1,9 +1,15 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { type MouseEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
+import { MainFooter } from '@/app/components/MainFooter';
 import { MainHeader } from '@/app/components/MainHeader';
+import {
+  FAVORITES_UPDATED_EVENT,
+  listFavoriteProducts,
+  toggleFavoriteProduct,
+} from '@/lib/favorites';
 import {
   fetchCategoriesTree,
   fetchPublicProductListings,
@@ -45,6 +51,24 @@ function findCategoryBySlug(
   }
 
   return null;
+}
+
+function findCategoryTrailBySlug(
+  nodes: CategoryTreeNode[],
+  slug: string,
+): CategoryTreeNode[] {
+  for (const node of nodes) {
+    if (node.slug === slug) {
+      return [node];
+    }
+
+    const nested = findCategoryTrailBySlug(node.children, slug);
+    if (nested.length > 0) {
+      return [node, ...nested];
+    }
+  }
+
+  return [];
 }
 
 function getCoverImageUrl(listing: ProductListingRecord): string | null {
@@ -101,6 +125,19 @@ function buildPaginationPages(currentPage: number, totalPages: number): Array<nu
   return [1, 'ellipsis', currentPage - 1, currentPage, currentPage + 1, 'ellipsis', totalPages];
 }
 
+function formatBreadcrumbLabel(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return value;
+  }
+
+  return trimmed
+    .toLocaleLowerCase('tr-TR')
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toLocaleUpperCase('tr-TR') + word.slice(1))
+    .join(' ');
+}
+
 export function PublicListingView({ mode, slug }: PublicListingViewProps) {
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<PublicProductListingSort>('LATEST');
@@ -108,6 +145,7 @@ export function PublicListingView({ mode, slug }: PublicListingViewProps) {
   const [minPriceInput, setMinPriceInput] = useState('');
   const [maxPriceInput, setMaxPriceInput] = useState('');
   const [msmRange, setMsmRange] = useState<PublicProductListingMsmRange>('ANY');
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
   const categoriesQuery = useQuery({
     queryKey: ['public', 'categories'],
@@ -127,6 +165,14 @@ export function PublicListingView({ mode, slug }: PublicListingViewProps) {
     }
 
     return findCategoryBySlug(categoriesQuery.data ?? [], slug);
+  }, [categoriesQuery.data, mode, slug]);
+
+  const categoryTrail = useMemo(() => {
+    if (mode !== 'category') {
+      return [];
+    }
+
+    return findCategoryTrailBySlug(categoriesQuery.data ?? [], slug);
   }, [categoriesQuery.data, mode, slug]);
 
   const categoryIds = useMemo(() => {
@@ -196,6 +242,53 @@ export function PublicListingView({ mode, slug }: PublicListingViewProps) {
   const totalPages = listQuery.data?.totalPages ?? 1;
   const pageItems = buildPaginationPages(page, totalPages);
   const filterPanelId = 'public-listing-filters-panel';
+  const syncFavorites = () => {
+    setFavoriteIds(new Set(listFavoriteProducts().map((item) => item.id)));
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    syncFavorites();
+    window.addEventListener(FAVORITES_UPDATED_EVENT, syncFavorites);
+    window.addEventListener('storage', syncFavorites);
+
+    return () => {
+      window.removeEventListener(FAVORITES_UPDATED_EVENT, syncFavorites);
+      window.removeEventListener('storage', syncFavorites);
+    };
+  }, []);
+
+  const handleFavoriteToggle = (
+    event: MouseEvent<HTMLButtonElement>,
+    item: ProductListingRecord,
+    imageUrl: string | null,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const nextIsFavorited = toggleFavoriteProduct({
+      id: item.id,
+      name: item.name,
+      imageUrl,
+      priceLabel: buildPriceRange(item),
+      minOrderQuantity: item.minOrderQuantity,
+      categoryName: item.categoryName ?? null,
+      categorySlug: null,
+    });
+
+    setFavoriteIds((current) => {
+      const next = new Set(current);
+      if (nextIsFavorited) {
+        next.add(item.id);
+      } else {
+        next.delete(item.id);
+      }
+      return next;
+    });
+  };
 
   return (
     <div className='bg-surface text-on-surface'>
@@ -209,10 +302,31 @@ export function PublicListingView({ mode, slug }: PublicListingViewProps) {
       >
         <main className='flex-1 bg-surface p-6 lg:p-10'>
           <div className='mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center'>
-            <nav className='mb-2 flex text-xs text-outline'>
-              <Link href='/' className='hover:text-primary'>Anasayfa</Link>
-              <span className='mx-2'>/</span>
-              <span className='font-medium text-primary'>{title}</span>
+            <nav className='mb-2 flex items-center gap-2 text-xs font-medium text-outline'>
+              <Link className='hover:text-primary' href='/'>Ana Sayfa</Link>
+              {mode === 'category' && categoryTrail.length > 0 ? (
+                categoryTrail.map((category, index) => {
+                  const isLast = index === categoryTrail.length - 1;
+
+                  return (
+                    <span key={category.id} className='flex items-center gap-2'>
+                      <span className='material-symbols-outlined text-sm'>chevron_right</span>
+                      {isLast ? (
+                        <span className='text-on-surface'>{formatBreadcrumbLabel(category.name)}</span>
+                      ) : (
+                        <Link className='hover:text-primary' href={`/kategori/${category.slug}`}>
+                          {formatBreadcrumbLabel(category.name)}
+                        </Link>
+                      )}
+                    </span>
+                  );
+                })
+              ) : (
+                <>
+                  <span className='material-symbols-outlined text-sm'>chevron_right</span>
+                  <span className='text-on-surface'>{title}</span>
+                </>
+              )}
             </nav>
 
             <div className='flex items-center gap-4'>
@@ -272,6 +386,29 @@ export function PublicListingView({ mode, slug }: PublicListingViewProps) {
                     className='group flex flex-col overflow-hidden rounded-2xl bg-surface-container-lowest shadow-sm transition-all duration-300 hover:shadow-xl'
                   >
                     <div className='relative aspect-square overflow-hidden bg-surface-container'>
+                      <button
+                        aria-label={favoriteIds.has(item.id) ? 'Favorilerden çıkar' : 'Favorilere ekle'}
+                        className={[
+                          'absolute right-3 top-3 z-10 flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md transition-colors',
+                          favoriteIds.has(item.id)
+                            ? 'text-[#FF5A1F]'
+                            : 'text-[#111111] hover:text-[#FF5A1F]',
+                        ].join(' ')}
+                        onClick={(event) => handleFavoriteToggle(event, item, imageUrl)}
+                        type='button'
+                      >
+                        <span
+                          className='material-symbols-outlined text-[26px]'
+                          style={{
+                            fontVariationSettings: favoriteIds.has(item.id)
+                              ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
+                              : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24",
+                          }}
+                        >
+                          favorite
+                        </span>
+                      </button>
+
                       {imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -426,6 +563,7 @@ export function PublicListingView({ mode, slug }: PublicListingViewProps) {
           </div>
         </div>
       </aside>
+      <MainFooter />
     </div>
   );
 }

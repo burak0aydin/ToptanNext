@@ -3,13 +3,20 @@
 import { type MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
+import { MainFooter } from '@/app/components/MainFooter';
 import { MainHeader } from '@/app/components/MainHeader';
+import {
+  FAVORITES_UPDATED_EVENT,
+  isFavoriteProduct,
+  toggleFavoriteProduct,
+} from '@/lib/favorites';
 import {
   fetchCategoriesTree,
   fetchPublicProductListingById,
   resolveProductListingAssetUrl,
   resolveProductListingMediaUrl,
   type CategoryTreeNode,
+  type ProductListingRecord,
 } from '@/features/product-listing/api/product-listing.api';
 
 type PublicProductDetailViewProps = {
@@ -52,15 +59,50 @@ function findCategoryTrailById(
   return [];
 }
 
+function formatBreadcrumbLabel(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return value;
+  }
+
+  return trimmed
+    .toLocaleLowerCase('tr-TR')
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toLocaleUpperCase('tr-TR') + word.slice(1))
+    .join(' ');
+}
+
+function buildListingPriceLabel(listing: ProductListingRecord): string {
+  const tierPrices = listing.pricingTiers
+    .map((tier) => Number(tier.unitPrice))
+    .filter((price) => Number.isFinite(price) && price > 0);
+
+  if (tierPrices.length > 0) {
+    const min = Math.min(...tierPrices);
+    const max = Math.max(...tierPrices);
+    return min === max ? formatTryAmount(min) : `${formatTryAmount(min)} - ${formatTryAmount(max)}`;
+  }
+
+  const basePrice = Number(listing.basePrice);
+  if (Number.isFinite(basePrice) && basePrice > 0) {
+    return formatTryAmount(basePrice);
+  }
+
+  return 'Fiyat sorunuz';
+}
+
 export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
   const [selectedMediaId, setSelectedMediaId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [variantSelections, setVariantSelections] = useState<Record<string, string>>({});
   const [activeDetailSection, setActiveDetailSection] = useState<'description' | 'reviews' | 'company'>('description');
+  const [isFavorited, setIsFavorited] = useState(false);
   const [isPrimaryPanelVisible, setIsPrimaryPanelVisible] = useState(true);
   const [primaryPanelHeight, setPrimaryPanelHeight] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
   const primaryPanelRef = useRef<HTMLDivElement | null>(null);
+  const scrollLockedSectionRef = useRef<'description' | 'reviews' | 'company' | null>(null);
+  const scrollLockTimeoutRef = useRef<number | null>(null);
 
   const listingQuery = useQuery({
     queryKey: ['public', 'listing-detail', id],
@@ -166,8 +208,34 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
 
     const orderedSectionIds: Array<'description' | 'reviews' | 'company'> = ['description', 'reviews', 'company'];
     const activationOffset = 210;
+    const releaseScrollLock = () => {
+      if (scrollLockTimeoutRef.current !== null) {
+        window.clearTimeout(scrollLockTimeoutRef.current);
+        scrollLockTimeoutRef.current = null;
+      }
+      scrollLockedSectionRef.current = null;
+    };
 
     const updateActiveSection = () => {
+      if (scrollLockedSectionRef.current) {
+        const lockedSectionId = scrollLockedSectionRef.current;
+        const target = document.getElementById(lockedSectionId);
+
+        if (!target) {
+          releaseScrollLock();
+        } else {
+          const targetLine = Math.max(0, target.offsetTop - activationOffset);
+          if (Math.abs(window.scrollY - targetLine) <= 20) {
+            releaseScrollLock();
+            setActiveDetailSection(lockedSectionId);
+            return;
+          }
+
+          setActiveDetailSection(lockedSectionId);
+          return;
+        }
+      }
+
       const currentLine = window.scrollY + activationOffset;
       let nextActiveSection: 'description' | 'reviews' | 'company' = 'description';
 
@@ -190,6 +258,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
     window.addEventListener('resize', updateActiveSection);
 
     return () => {
+      releaseScrollLock();
       window.removeEventListener('scroll', updateActiveSection);
       window.removeEventListener('resize', updateActiveSection);
     };
@@ -277,6 +346,30 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
     listing?.supplierCompanyName
     ?? listing?.supplierName
     ?? 'Onaylı Tedarikçi';
+  const favoriteCategory = categoryTrail[categoryTrail.length - 1] ?? null;
+  const favoriteImageUrl = imageMedia.length > 0
+    ? resolveProductListingMediaUrl(imageMedia[0].id)
+    : null;
+  const favoritePriceLabel = listing ? buildListingPriceLabel(listing) : 'Fiyat sorunuz';
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !listing) {
+      return;
+    }
+
+    const syncFavoriteState = () => {
+      setIsFavorited(isFavoriteProduct(listing.id));
+    };
+
+    syncFavoriteState();
+    window.addEventListener(FAVORITES_UPDATED_EVENT, syncFavoriteState);
+    window.addEventListener('storage', syncFavoriteState);
+
+    return () => {
+      window.removeEventListener(FAVORITES_UPDATED_EVENT, syncFavoriteState);
+      window.removeEventListener('storage', syncFavoriteState);
+    };
+  }, [listing]);
 
   const findMediaForVariantImage = (rawImageUrl: string | null | undefined) => {
     if (!rawImageUrl || !listing) {
@@ -553,6 +646,16 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
     const topOffset = 160;
     const nextTop = target.getBoundingClientRect().top + window.scrollY - topOffset;
 
+    if (scrollLockTimeoutRef.current !== null) {
+      window.clearTimeout(scrollLockTimeoutRef.current);
+    }
+
+    scrollLockedSectionRef.current = sectionId;
+    scrollLockTimeoutRef.current = window.setTimeout(() => {
+      scrollLockedSectionRef.current = null;
+      scrollLockTimeoutRef.current = null;
+    }, 1200);
+
     setActiveDetailSection(sectionId);
     window.history.replaceState(null, '', `#${sectionId}`);
     window.scrollTo({
@@ -599,24 +702,17 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
           <span className='material-symbols-outlined text-sm'>chevron_right</span>
           {categoryTrail.map((item, index) => (
             <span key={item.id} className='flex items-center gap-2'>
-              {index < categoryTrail.length - 1 ? (
-                <Link className='hover:text-primary' href={`/kategori/${item.slug}`}>
-                  {item.name}
-                </Link>
-              ) : (
-                <span className='text-on-surface'>{item.name}</span>
-              )}
-              {index < categoryTrail.length - 1 ? (
-                <span className='material-symbols-outlined text-sm'>chevron_right</span>
-              ) : null}
+              <Link className='hover:text-primary' href={`/kategori/${item.slug}`}>
+                {formatBreadcrumbLabel(item.name)}
+              </Link>
+              <span className='material-symbols-outlined text-sm'>chevron_right</span>
             </span>
           ))}
-          <span className='material-symbols-outlined text-sm'>chevron_right</span>
-          <span className='text-on-surface'>{listing.name}</span>
+          <span className='text-on-surface'>{formatBreadcrumbLabel(listing.name)}</span>
         </nav>
 
         <div className='mb-12 grid grid-cols-1 gap-8 lg:grid-cols-12'>
-          <div className='space-y-8 lg:col-span-7'>
+          <div className='flex flex-col gap-8 lg:col-span-7'>
             <h1 className='text-[1.35rem] font-medium leading-tight tracking-normal text-on-surface'>
               {listing.name}
             </h1>
@@ -674,10 +770,41 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                 )}
 
                 <button
-                  className='absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-outline shadow-sm'
+                  aria-label={isFavorited ? 'Favorilerden çıkar' : 'Favorilere ekle'}
+                  className={[
+                    'absolute right-4 top-4 flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md transition-colors',
+                    isFavorited
+                      ? 'text-[#FF5A1F]'
+                      : 'text-[#111111] hover:text-[#FF5A1F]',
+                  ].join(' ')}
+                  onClick={() => {
+                    if (!listing) {
+                      return;
+                    }
+
+                    const nextIsFavorited = toggleFavoriteProduct({
+                      id: listing.id,
+                      name: listing.name,
+                      imageUrl: favoriteImageUrl,
+                      priceLabel: favoritePriceLabel,
+                      minOrderQuantity: listing.minOrderQuantity,
+                      categoryName: favoriteCategory?.name ?? listing.categoryName ?? null,
+                      categorySlug: favoriteCategory?.slug ?? null,
+                    });
+                    setIsFavorited(nextIsFavorited);
+                  }}
                   type='button'
                 >
-                  <span className='material-symbols-outlined'>favorite</span>
+                  <span
+                    className='material-symbols-outlined text-[26px]'
+                    style={{
+                      fontVariationSettings: isFavorited
+                        ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
+                        : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24",
+                    }}
+                  >
+                    favorite
+                  </span>
                 </button>
 
                 <button
@@ -800,7 +927,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
               </div>
             </div>
 
-            <div className='space-y-8'>
+            <div className='flex flex-1 flex-col gap-8'>
               <section id='description' className='scroll-mt-48 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white'>
                 <div className='border-b border-outline-variant/30 bg-surface-container-lowest px-8 py-5'>
                   <h2 className='text-lg font-bold text-on-surface'>Ürün Açıklaması</h2>
@@ -868,11 +995,11 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                 </div>
               </section>
 
-              <section id='company' className='scroll-mt-48 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white'>
+              <section id='company' className='scroll-mt-48 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white lg:flex lg:flex-1 lg:flex-col'>
                 <div className='border-b border-outline-variant/30 bg-surface-container-lowest px-8 py-5'>
                   <h2 className='text-lg font-bold text-on-surface'>Şirket Profili</h2>
                 </div>
-                <div className='p-8'>
+                <div className='p-8 lg:flex lg:flex-1 lg:flex-col'>
                   <div className='mb-10 flex flex-col gap-6 md:flex-row md:items-center'>
                     <div className='flex h-24 w-24 shrink-0 items-center justify-center rounded-xl border border-outline-variant/20 bg-surface-container'>
                       <span className='material-symbols-outlined text-5xl text-primary'>factory</span>
@@ -985,48 +1112,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
         </div>
       </main>
 
-      <footer className='mt-16 border-t border-outline-variant/20 bg-surface-container-low py-12'>
-        <div className='mx-auto grid max-w-[1440px] grid-cols-1 gap-10 px-6 md:grid-cols-4'>
-          <div className='space-y-4'>
-            <span className='text-xl font-bold tracking-tighter text-primary'>ToptanNext</span>
-            <p className='text-xs leading-relaxed text-outline'>
-              Dünyanın dört bir yanındaki güvenilir tedarikçileri kurumsal alıcılarla buluşturan yeni nesil B2B platformu.
-            </p>
-          </div>
-          <div className='space-y-4'>
-            <h5 className='text-sm font-bold text-on-surface'>Platform</h5>
-            <ul className='space-y-2 text-xs font-medium text-outline'>
-              <li>Nasıl Çalışır?</li>
-              <li>Güvenlik ve Koruma</li>
-              <li>Lojistik Çözümleri</li>
-            </ul>
-          </div>
-          <div className='space-y-4'>
-            <h5 className='text-sm font-bold text-on-surface'>Destek</h5>
-            <ul className='space-y-2 text-xs font-medium text-outline'>
-              <li>Yardım Merkezi</li>
-              <li>Satıcı Olun</li>
-              <li>Bize Ulaşın</li>
-            </ul>
-          </div>
-          <div className='space-y-4'>
-            <h5 className='text-sm font-bold text-on-surface'>Bülten</h5>
-            <div className='flex gap-2'>
-              <input
-                className='flex-1 rounded-lg border border-outline-variant bg-white px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-primary'
-                placeholder='E-posta adresi'
-                type='email'
-              />
-              <button className='rounded-lg bg-primary p-2 text-white transition-colors hover:bg-primary-container' type='button'>
-                <span className='material-symbols-outlined text-sm'>send</span>
-              </button>
-            </div>
-          </div>
-        </div>
-        <div className='mx-auto mt-12 max-w-[1440px] border-t border-outline-variant/10 px-6 pt-8 text-center text-[10px] font-medium text-outline'>
-          © 2024 ToptanNext Technology Inc. Tüm Hakları Saklıdır.
-        </div>
-      </footer>
+      <MainFooter />
     </div>
   );
 }
