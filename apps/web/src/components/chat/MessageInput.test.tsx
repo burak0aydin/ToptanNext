@@ -27,7 +27,7 @@ describe('MessageInput', () => {
       />,
     );
 
-    const textarea = screen.getByPlaceholderText('Mesajınızı yazın...');
+    const textarea = screen.getByPlaceholderText('Lütfen mesajınızı buraya girin');
 
     fireEvent.change(textarea, { target: { value: 'Merhaba dünya' } });
     fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter', shiftKey: false });
@@ -60,7 +60,7 @@ describe('MessageInput', () => {
       />,
     );
 
-    const textarea = screen.getByPlaceholderText('Mesajınızı yazın...');
+    const textarea = screen.getByPlaceholderText('Lütfen mesajınızı buraya girin');
 
     fireEvent.change(textarea, { target: { value: 'a' } });
 

@@ -6,6 +6,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { CategoriesModule } from './modules/categories/categories.module';
+import { CartModule } from './modules/cart/cart.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ProductsModule } from './modules/products/products.module';
@@ -32,6 +33,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     PrismaModule,
     UsersModule,
     AuthModule,
+    CartModule,
     CategoriesModule,
     SectorsModule,
     ProductsModule,

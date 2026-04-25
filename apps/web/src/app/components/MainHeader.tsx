@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { requestJson } from '@/lib/api';
 import { hasAccessToken } from '@/lib/auth-token';
+import { fetchCart } from '@/features/cart/api/cart.api';
+import { useCartStore } from '@/features/cart/store/useCartStore';
 import { fetchMySupplierApplication } from '@/features/supplier-application/api/supplier-application.api';
 import { AccountNavLink } from './AccountNavLink';
 import {
@@ -40,6 +42,10 @@ export function MainHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileCategoryOpen, setMobileCategoryOpen] = useState(false);
   const [mobileSectorOpen, setMobileSectorOpen] = useState(false);
+  const totalItems = useCartStore((state) => state.totalItems);
+  const setTotalItems = useCartStore((state) => state.setTotalItems);
+  const toast = useCartStore((state) => state.toast);
+  const clearToast = useCartStore((state) => state.clearToast);
 
   const {
     data: categories = [],
@@ -67,6 +73,38 @@ export function MainHeader() {
     enabled: hasAccessToken(),
     retry: false,
   });
+
+  const cartQuery = useQuery({
+    queryKey: ['cart'],
+    queryFn: fetchCart,
+    enabled: hasAccessToken(),
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (cartQuery.data) {
+      setTotalItems(cartQuery.data.totalItems);
+      return;
+    }
+
+    if (!hasAccessToken()) {
+      setTotalItems(0);
+    }
+  }, [cartQuery.data, setTotalItems]);
+
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      clearToast();
+    }, 2600);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [clearToast, toast]);
 
   const supplierApplyHref = mySupplierApplication
     ? '/satici-ol/basvuru-sonucu'
@@ -127,13 +165,26 @@ export function MainHeader() {
             <span className='material-symbols-outlined text-[28px] leading-none'>forum</span>
           </Link>
 
-          <Link
-            aria-label='Siparişlerim'
-            className='flex items-center justify-center text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'
-            href='/siparislerim'
-          >
-            <span className='material-symbols-outlined text-[28px] leading-none'>package_2</span>
-          </Link>
+          <div className='relative'>
+            <Link
+              aria-label='Sepetim'
+              className='relative flex items-center justify-center text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'
+              href='/sepet'
+            >
+              <span className='material-symbols-outlined text-[28px] leading-none'>shopping_cart</span>
+              {totalItems > 0 ? (
+                <span className='absolute -right-2 -top-2 min-w-[18px] rounded-full bg-[#1A56DB] px-1.5 py-0.5 text-center text-[10px] font-bold leading-none text-white'>
+                  {totalItems > 99 ? '99+' : totalItems}
+                </span>
+              ) : null}
+            </Link>
+
+            {toast ? (
+              <div className='absolute right-0 top-[calc(100%+10px)] w-[220px] rounded-xl border border-[#D7E4FF] bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-lg'>
+                {toast.message}
+              </div>
+            ) : null}
+          </div>
 
           <AccountNavLink />
         </div>
@@ -168,9 +219,12 @@ export function MainHeader() {
             >
               Satıcı Ol
             </Link>
-            <a className='py-2 text-sm font-semibold text-on-surface-variant transition-colors hover:text-primary' href='#'>
+            <Link
+              className='py-2 text-sm font-semibold text-on-surface-variant transition-colors hover:text-primary'
+              href='/lojistik'
+            >
               Lojistik
-            </a>
+            </Link>
           </div>
 
           <div className='hidden items-center gap-4 lg:flex'>
@@ -304,6 +358,12 @@ export function MainHeader() {
                 href={supplierApplyHref}
               >
                 Satıcı Ol
+              </Link>
+              <Link
+                className='block rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 transition-colors hover:bg-[#EEF4FF] hover:text-primary'
+                href='/lojistik'
+              >
+                Lojistik
               </Link>
             </div>
           </div>

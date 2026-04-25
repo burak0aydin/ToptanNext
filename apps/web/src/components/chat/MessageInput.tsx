@@ -26,7 +26,18 @@ export function MessageInput({
   const [value, setValue] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const canSendMessage = value.trim().length > 0 || attachments.length > 0;
+  const inputPanelHeight = isExpanded
+    ? 'min-h-[156px]'
+    : canSendQuote
+      ? compact
+        ? 'min-h-[112px]'
+        : 'min-h-[118px]'
+      : compact
+        ? 'min-h-[92px]'
+        : 'min-h-[100px]';
 
   const stopTyping = () => {
     if (!socket || !isTypingRef.current) {
@@ -125,7 +136,7 @@ export function MessageInput({
   };
 
   return (
-    <div className='shrink-0 space-y-3 border-t border-slate-200 bg-white p-3 sm:p-4'>
+    <div className='shrink-0 space-y-2 border-t border-slate-100 bg-white p-2 sm:p-2.5'>
       <AttachmentPreview
         files={attachments}
         onRemove={(index) => {
@@ -139,7 +150,23 @@ export function MessageInput({
         </p>
       ) : null}
 
-      <div className='rounded-2xl border border-slate-200 bg-slate-50 p-3'>
+      <div
+        className={[
+          'relative rounded-xl bg-[#F7F8FA] px-3 py-3 sm:px-3.5',
+          inputPanelHeight,
+        ].join(' ')}
+      >
+        <button
+          type='button'
+          aria-label={isExpanded ? 'Mesaj alanını küçült' : 'Mesaj alanını büyüt'}
+          className='absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center text-slate-500 transition-colors hover:text-slate-800'
+          onClick={() => setIsExpanded((current) => !current)}
+        >
+          <span className='material-symbols-outlined text-[19px]'>
+            {isExpanded ? 'close_fullscreen' : 'open_in_full'}
+          </span>
+        </button>
+
         <textarea
           value={value}
           onChange={(event) => handleTyping(event.target.value)}
@@ -149,37 +176,60 @@ export function MessageInput({
               void handleSend();
             }
           }}
-          placeholder='Mesajınızı yazın...'
+          placeholder='Lütfen mesajınızı buraya girin'
           className={[
-            'w-full resize-none border-none bg-transparent text-sm text-slate-700 outline-none',
-            compact ? 'h-16' : 'h-16 sm:h-20 lg:h-24',
+            'w-full resize-none border-none bg-transparent pr-8 text-[13px] font-medium leading-relaxed text-slate-700 outline-none placeholder:text-slate-400 sm:text-sm',
+            isExpanded ? 'h-[94px]' : compact ? 'h-[34px]' : 'h-[40px]',
           ].join(' ')}
         />
 
-        <div className='mt-2 flex min-w-0 items-center gap-2'>
+        <div className='absolute bottom-2.5 left-3 flex min-w-0 items-center gap-1'>
           <button
             type='button'
             aria-label='Dosya ekle'
-            className='flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-white hover:text-primary'
+            className='flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition hover:bg-white hover:text-primary'
             onClick={() => fileInputRef.current?.click()}
           >
-            <span className='material-symbols-outlined'>attach_file</span>
+            <span className='material-symbols-outlined text-[19px]'>attach_file</span>
           </button>
 
           <button
             type='button'
             aria-label='Emoji ekle'
-            className='flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-white hover:text-primary'
+            className='flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition hover:bg-white hover:text-primary'
             onClick={() => {
               setValue((current) => `${current}🙂`);
             }}
           >
-            <span className='material-symbols-outlined'>mood</span>
+            <span className='material-symbols-outlined text-[19px]'>mood</span>
           </button>
+        </div>
 
-          <span className='ml-auto hidden truncate text-[11px] font-semibold text-slate-300 sm:block'>
-            SHIFT + ENTER ile yeni satır
-          </span>
+        <div className='absolute bottom-2.5 right-3 flex w-[108px] flex-col items-stretch gap-1.5 sm:w-[120px]'>
+          {canSendQuote ? (
+            <button
+              type='button'
+              onClick={onOpenQuoteModal}
+              className='min-h-7 cursor-pointer rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-[#FF5A1F] shadow-sm ring-1 ring-[#FF5A1F]/20 transition-colors hover:bg-[#FF5A1F] hover:text-white focus:outline-none focus:ring-2 focus:ring-[#FF5A1F]/30'
+            >
+              Teklif Gönder
+            </button>
+          ) : null}
+          <button
+            type='button'
+            disabled={isSending || !canSendMessage}
+            onClick={() => {
+              void handleSend();
+            }}
+            className={[
+              'min-h-7 rounded-full px-2.5 py-1 text-[11px] font-bold text-white transition-colors disabled:cursor-not-allowed',
+              canSendMessage
+                ? 'bg-primary hover:bg-primary-container disabled:bg-primary/60'
+                : 'bg-[#C8C8C8]',
+            ].join(' ')}
+          >
+            Gönder
+          </button>
         </div>
       </div>
 
@@ -197,28 +247,6 @@ export function MessageInput({
           event.target.value = '';
         }}
       />
-
-      <div className={canSendQuote ? 'grid grid-cols-1 gap-3 sm:grid-cols-2' : 'grid grid-cols-1'}>
-        {canSendQuote ? (
-          <button
-            type='button'
-            onClick={onOpenQuoteModal}
-            className='min-h-11 rounded-xl bg-[#FF5A1F] px-4 py-3 text-sm font-bold text-white transition-opacity hover:opacity-90'
-          >
-            Özel Teklif Gönder
-          </button>
-        ) : null}
-        <button
-          type='button'
-          disabled={isSending}
-          onClick={() => {
-            void handleSend();
-          }}
-          className='min-h-11 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60'
-        >
-          Gönder
-        </button>
-      </div>
     </div>
   );
 }

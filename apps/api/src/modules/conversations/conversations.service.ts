@@ -35,7 +35,10 @@ export type QuoteRecord = {
   productListingId: string;
   quantity: number;
   unitPrice: number;
+  logisticsFee: number | null;
   currency: string;
+  productName: string | null;
+  productImageMediaId: string | null;
   notes: string | null;
   status: QuoteStatus;
   expiresAt: Date;
@@ -69,6 +72,7 @@ export type ConversationListItem = {
   id: string;
   productListingId: string | null;
   productName: string | null;
+  productImageMediaId: string | null;
   status: ConversationStatus;
   lastMessageAt: Date;
   createdAt: Date;
@@ -94,6 +98,18 @@ type ConversationWithRelations = Prisma.ConversationGetPayload<{
       select: {
         id: true;
         name: true;
+        media: {
+          where: {
+            mediaType: 'IMAGE';
+          };
+          orderBy: {
+            displayOrder: 'asc';
+          };
+          take: 1;
+          select: {
+            id: true;
+          };
+        };
       };
     };
     participants: {
@@ -117,7 +133,27 @@ type ConversationWithRelations = Prisma.ConversationGetPayload<{
       };
       include: {
         attachments: true;
-        quote: true;
+        quote: {
+          include: {
+            productListing: {
+              select: {
+                name: true;
+                media: {
+                  where: {
+                    mediaType: 'IMAGE';
+                  };
+                  orderBy: {
+                    displayOrder: 'asc';
+                  };
+                  take: 1;
+                  select: {
+                    id: true;
+                  };
+                };
+              };
+            };
+          };
+        };
       };
     };
   };
@@ -286,6 +322,18 @@ export class ConversationsService {
           select: {
             id: true,
             name: true,
+            media: {
+              where: {
+                mediaType: 'IMAGE',
+              },
+              orderBy: {
+                displayOrder: 'asc',
+              },
+              take: 1,
+              select: {
+                id: true,
+              },
+            },
           },
         },
         participants: {
@@ -309,7 +357,27 @@ export class ConversationsService {
           },
           include: {
             attachments: true,
-            quote: true,
+            quote: {
+              include: {
+                productListing: {
+                  select: {
+                    name: true,
+                    media: {
+                      where: {
+                        mediaType: 'IMAGE',
+                      },
+                      orderBy: {
+                        displayOrder: 'asc',
+                      },
+                      take: 1,
+                      select: {
+                        id: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -414,7 +482,27 @@ export class ConversationsService {
         : {}),
       include: {
         attachments: true,
-        quote: true,
+        quote: {
+          include: {
+            productListing: {
+              select: {
+                name: true,
+                media: {
+                  where: {
+                    mediaType: 'IMAGE',
+                  },
+                  orderBy: {
+                    displayOrder: 'asc',
+                  },
+                  take: 1,
+                  select: {
+                    id: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -483,7 +571,27 @@ export class ConversationsService {
         },
         include: {
           attachments: true,
-          quote: true,
+          quote: {
+            include: {
+              productListing: {
+                select: {
+                  name: true,
+                  media: {
+                    where: {
+                      mediaType: 'IMAGE',
+                    },
+                    orderBy: {
+                      displayOrder: 'asc',
+                    },
+                    take: 1,
+                    select: {
+                      id: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       });
 
@@ -688,6 +796,18 @@ export class ConversationsService {
           select: {
             id: true,
             name: true,
+            media: {
+              where: {
+                mediaType: 'IMAGE',
+              },
+              orderBy: {
+                displayOrder: 'asc',
+              },
+              take: 1,
+              select: {
+                id: true,
+              },
+            },
           },
         },
         participants: {
@@ -711,7 +831,27 @@ export class ConversationsService {
           },
           include: {
             attachments: true,
-            quote: true,
+            quote: {
+              include: {
+                productListing: {
+                  select: {
+                    name: true,
+                    media: {
+                      where: {
+                        mediaType: 'IMAGE',
+                      },
+                      orderBy: {
+                        displayOrder: 'asc',
+                      },
+                      take: 1,
+                      select: {
+                        id: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -745,6 +885,7 @@ export class ConversationsService {
       id: conversation.id,
       productListingId: conversation.productListingId,
       productName: conversation.productListing?.name ?? null,
+      productImageMediaId: conversation.productListing?.media[0]?.id ?? null,
       status: conversation.status,
       lastMessageAt: conversation.lastMessageAt,
       createdAt: conversation.createdAt,
@@ -788,7 +929,12 @@ export class ConversationsService {
         productListingId: string;
         quantity: number;
         unitPrice: Prisma.Decimal;
+        logisticsFee: Prisma.Decimal | null;
         currency: string;
+        productListing?: {
+          name: string;
+          media: Array<{ id: string }>;
+        };
         notes: string | null;
         status: QuoteStatus;
         expiresAt: Date;
@@ -820,7 +966,10 @@ export class ConversationsService {
             productListingId: message.quote.productListingId,
             quantity: message.quote.quantity,
             unitPrice: Number(message.quote.unitPrice),
+            logisticsFee: message.quote.logisticsFee ? Number(message.quote.logisticsFee) : null,
             currency: message.quote.currency,
+            productName: message.quote.productListing?.name ?? null,
+            productImageMediaId: message.quote.productListing?.media[0]?.id ?? null,
             notes: message.quote.notes,
             status: message.quote.status,
             expiresAt: message.quote.expiresAt,

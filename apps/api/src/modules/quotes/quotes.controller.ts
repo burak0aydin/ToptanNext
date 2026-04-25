@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -10,7 +9,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { Role } from '@prisma/client';
 import { Request } from 'express';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { CreateCounterOfferDto } from './dto/create-counter-offer.dto';
@@ -44,8 +42,6 @@ export class QuotesController {
     @Param('id') id: string,
     @Req() req: AuthenticatedRequest,
   ) {
-    this.ensureBuyer(req.user.role);
-
     const data = await this.quotesService.acceptQuote(id, req.user.sub);
 
     return {
@@ -60,8 +56,6 @@ export class QuotesController {
     @Param('id') id: string,
     @Req() req: AuthenticatedRequest,
   ) {
-    this.ensureBuyer(req.user.role);
-
     const data = await this.quotesService.rejectQuote(id, req.user.sub);
 
     return {
@@ -84,11 +78,5 @@ export class QuotesController {
       data,
       message: 'Karşı teklif gönderildi.',
     };
-  }
-
-  private ensureBuyer(role: Role): void {
-    if (role !== Role.BUYER) {
-      throw new ForbiddenException('Bu işlem için alıcı yetkisi gereklidir.');
-    }
   }
 }

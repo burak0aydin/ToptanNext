@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { MessageInput } from '@/components/chat/MessageInput';
 import { MessageThread } from '@/components/chat/MessageThread';
@@ -8,6 +9,7 @@ import { QuoteOfferModal } from '@/components/chat/QuoteOfferModal';
 import { fetchConversationById, fetchConversations } from '@/features/chat/api/chat.api';
 import { useSocket } from '@/features/chat/hooks/useSocket';
 import { getCurrentUserIdFromToken } from '@/features/chat/utils/auth';
+import { resolveProductListingMediaUrl } from '@/features/product-listing/api/product-listing.api';
 
 type ProductChatDrawerProps = {
   conversationId: string | null;
@@ -47,6 +49,13 @@ export function ProductChatDrawer({
     enabled: open,
   });
 
+  const productHref = conversationQuery.data?.productListingId
+    ? `/urun/${conversationQuery.data.productListingId}`
+    : null;
+  const productImageUrl = conversationQuery.data?.productImageMediaId
+    ? resolveProductListingMediaUrl(conversationQuery.data.productImageMediaId)
+    : null;
+
   if (!open || !activeConversationId) {
     return null;
   }
@@ -57,16 +66,37 @@ export function ProductChatDrawer({
     <div className='fixed inset-x-0 bottom-0 z-[110] lg:inset-y-6 lg:left-auto lg:right-6'>
       <div className='flex h-[min(84dvh,760px)] w-full overflow-hidden rounded-t-2xl border border-slate-200 bg-white shadow-2xl lg:h-full lg:w-[min(96vw,980px)] lg:rounded-2xl'>
         <div className='flex min-w-0 flex-1 flex-col'>
-          <div className='flex shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 py-3'>
-            <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary'>
-              <span className='material-symbols-outlined'>chat</span>
-            </div>
-            <div className='min-w-0 flex-1'>
-              <p className='truncate text-sm font-bold text-slate-900'>
-                {conversationQuery.data?.productName ?? 'Ürün sohbeti'}
-              </p>
-              <p className='text-xs font-medium text-slate-500'>Tedarikçi ile mesajlaşma</p>
-            </div>
+          <div className='flex shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 py-2'>
+            {productHref ? (
+              <Link
+                href={productHref}
+                className='flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 transition hover:bg-slate-50'
+              >
+                <span className='flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 text-slate-400'>
+                  {productImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      alt={conversationQuery.data?.productName ?? 'Ürün'}
+                      className='h-full w-full object-cover'
+                      src={productImageUrl}
+                    />
+                  ) : (
+                    <span className='material-symbols-outlined text-[19px]'>inventory_2</span>
+                  )}
+                </span>
+                <span className='min-w-0'>
+                  <span className='block truncate text-sm font-bold leading-tight text-slate-900'>
+                    {conversationQuery.data?.productName ?? 'Ürün'}
+                  </span>
+                  <span className='block text-[11px] font-medium text-slate-400'>Ürünü görüntüle</span>
+                </span>
+              </Link>
+            ) : (
+              <div className='min-w-0 flex-1'>
+                <p className='truncate text-sm font-bold text-slate-900'>Ürün sohbeti</p>
+                <p className='text-[11px] font-medium text-slate-400'>Tedarikçi ile mesajlaşma</p>
+              </div>
+            )}
             <button
               aria-label='Sohbeti kapat'
               className='flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900'

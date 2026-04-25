@@ -3,10 +3,12 @@
 import { type MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MainFooter } from '@/app/components/MainFooter';
 import { MainHeader } from '@/app/components/MainHeader';
 import { ProductChatDrawer } from '@/components/chat/ProductChatDrawer';
+import { addCartItem } from '@/features/cart/api/cart.api';
+import { useCartStore } from '@/features/cart/store/useCartStore';
 import { createConversation } from '@/features/chat/api/chat.api';
 import { getCurrentUserIdFromToken } from '@/features/chat/utils/auth';
 import { getUserRoleFromToken, hasAccessToken } from '@/lib/auth-token';
@@ -98,6 +100,7 @@ function buildListingPriceLabel(listing: ProductListingRecord): string {
 
 export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [selectedMediaId, setSelectedMediaId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [variantSelections, setVariantSelections] = useState<Record<string, string>>({});
@@ -108,12 +111,15 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
   const [isChatDrawerOpen, setIsChatDrawerOpen] = useState(false);
   const [canSendQuote, setCanSendQuote] = useState(false);
   const [chatActionError, setChatActionError] = useState<string | null>(null);
+  const [cartActionError, setCartActionError] = useState<string | null>(null);
   const [isPrimaryPanelVisible, setIsPrimaryPanelVisible] = useState(true);
   const [primaryPanelHeight, setPrimaryPanelHeight] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
   const primaryPanelRef = useRef<HTMLDivElement | null>(null);
   const scrollLockedSectionRef = useRef<'description' | 'reviews' | 'company' | null>(null);
   const scrollLockTimeoutRef = useRef<number | null>(null);
+  const setCartTotalItems = useCartStore((state) => state.setTotalItems);
+  const showCartToast = useCartStore((state) => state.showToast);
 
   const listingQuery = useQuery({
     queryKey: ['public', 'listing-detail', id],
@@ -128,6 +134,8 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
   });
 
   const listing = listingQuery.data;
+  const currentUserId = getCurrentUserIdFromToken();
+  const isOwnListing = Boolean(listing && currentUserId === listing.supplierId);
 
   const imageMedia = useMemo(
     () => (listing?.media ?? []).filter((item) => item.mediaType === 'IMAGE'),
@@ -366,6 +374,25 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
     setCanSendQuote(getUserRoleFromToken() === 'SUPPLIER');
   }, []);
 
+  const addToCartMutation = useMutation({
+    mutationFn: async () => {
+      if (!listing) {
+        throw new Error('Ürün bulunamadı.');
+      }
+
+      return addCartItem({
+        productListingId: listing.id,
+        quantity,
+      });
+    },
+    onSuccess: async (cart) => {
+      setCartActionError(null);
+      setCartTotalItems(cart.totalItems);
+      showCartToast(`${listing?.name ?? 'Ürün'} sepete eklendi.`);
+      await queryClient.invalidateQueries({ queryKey: ['cart'] });
+    },
+  });
+
   const handleStartConversation = async () => {
     if (!listing || isStartingConversation) {
       return;
@@ -401,6 +428,33 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
       setChatActionError(message);
     } finally {
       setIsStartingConversation(false);
+    }
+  };
+
+  const handleAddToCart = async () => {
+    if (!listing || addToCartMutation.isPending) {
+      return;
+    }
+
+    setCartActionError(null);
+
+    if (!hasAccessToken()) {
+      router.push(`/login?next=${encodeURIComponent(`/urun/${listing.id}`)}`);
+      return;
+    }
+
+    if (currentUserId && currentUserId === listing.supplierId) {
+      setCartActionError('Kendi ürününüzü sepete ekleyemezsiniz.');
+      return;
+    }
+
+    try {
+      await addToCartMutation.mutateAsync();
+    } catch (error) {
+      const message = error instanceof Error && error.message.trim().length > 0
+        ? error.message
+        : 'Ürün sepete eklenemedi. Lütfen tekrar deneyin.';
+      setCartActionError(message);
     }
   };
 
@@ -668,10 +722,16 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
       <div className='grid grid-cols-2 gap-3'>
         <button
           className='flex w-full items-center justify-center gap-2 rounded-xl bg-[#1A56DB] py-3 font-bold text-white shadow-md transition-all hover:opacity-90 active:scale-[0.98]'
+          disabled={addToCartMutation.isPending || isOwnListing}
+          onClick={handleAddToCart}
           type='button'
         >
           <span className='material-symbols-outlined'>shopping_cart</span>
-          Sepete Ekle
+          {isOwnListing
+            ? 'Kendi Ürünün'
+            : addToCartMutation.isPending
+              ? 'Ekleniyor...'
+              : 'Sepete Ekle'}
         </button>
         <button
           className='flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1A56DB] bg-white py-3 font-bold text-[#1A56DB] transition-all hover:bg-surface-container-low active:scale-[0.98]'
@@ -686,6 +746,11 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
       {chatActionError ? (
         <p className='mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700'>
           {chatActionError}
+        </p>
+      ) : null}
+      {cartActionError ? (
+        <p className='mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700'>
+          {cartActionError}
         </p>
       ) : null}
     </div>

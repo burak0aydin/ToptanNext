@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import {
   useInfiniteQuery,
   useMutation,
@@ -16,16 +17,17 @@ import {
   fetchConversationById,
   fetchConversationMessages,
   rejectQuote,
+  type ChatQuote,
   type ChatMessage,
   type ConversationMessagesResponse,
 } from '@/features/chat/api/chat.api';
-import { getUserRoleFromToken } from '@/lib/auth-token';
 import { getCurrentUserIdFromToken } from '@/features/chat/utils/auth';
 import { useChatStore } from '@/features/chat/store/useChatStore';
 import { useSocket } from '@/features/chat/hooks/useSocket';
+import { resolveProductListingMediaUrl } from '@/features/product-listing/api/product-listing.api';
 import { MessageBubble } from './MessageBubble';
 import { TypingIndicator } from './TypingIndicator';
-import { CounterOfferModal } from './CounterOfferModal';
+import { QuoteOfferModal } from './QuoteOfferModal';
 
 type MessageThreadProps = {
   conversationId: string;
@@ -51,7 +53,6 @@ function formatDateSeparator(date: Date): string {
 export function MessageThread({ conversationId, showHeader = true }: MessageThreadProps) {
   const { socket } = useSocket();
   const currentUserId = useMemo(() => getCurrentUserIdFromToken(), []);
-  const [isBuyer, setIsBuyer] = useState(false);
 
   const setMessages = useChatStore((state) => state.setMessages);
   const messagesMap = useChatStore((state) => state.messages);
@@ -59,14 +60,13 @@ export function MessageThread({ conversationId, showHeader = true }: MessageThre
   const markConversationRead = useChatStore((state) => state.markConversationRead);
   const typingUsersMap = useChatStore((state) => state.typingUsers);
 
-  const [counterQuoteId, setCounterQuoteId] = useState<string | null>(null);
+  const [counterQuote, setCounterQuote] = useState<ChatQuote | null>(null);
+  const [newMessageCount, setNewMessageCount] = useState(0);
 
   const parentRef = useRef<HTMLDivElement | null>(null);
   const hasInitialScrollRef = useRef(false);
-
-  useEffect(() => {
-    setIsBuyer(getUserRoleFromToken() === 'BUYER');
-  }, []);
+  const lastAutoScrolledMessageIdRef = useRef<string | null>(null);
+  const isNearBottomRef = useRef(true);
 
   const conversationQuery = useQuery({
     queryKey: ['chat', 'conversation', conversationId],
@@ -104,6 +104,7 @@ export function MessageThread({ conversationId, showHeader = true }: MessageThre
       payload: {
         quantity: number;
         unitPrice: number;
+        logisticsFee?: number;
         currency: string;
         notes?: string;
         expiresInHours: number;
@@ -113,6 +114,10 @@ export function MessageThread({ conversationId, showHeader = true }: MessageThre
 
   useEffect(() => {
     setActiveConversation(conversationId);
+    hasInitialScrollRef.current = false;
+    lastAutoScrolledMessageIdRef.current = null;
+    isNearBottomRef.current = true;
+    setNewMessageCount(0);
 
     return () => {
       setActiveConversation(null);
@@ -201,17 +206,55 @@ export function MessageThread({ conversationId, showHeader = true }: MessageThre
     overscan: 10,
   });
 
+  const scrollToLatestMessage = useCallback(() => {
+    if (threadItems.length === 0) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      rowVirtualizer.scrollToIndex(threadItems.length - 1, {
+        align: 'end',
+      });
+
+      window.requestAnimationFrame(() => {
+        rowVirtualizer.scrollToIndex(threadItems.length - 1, {
+          align: 'end',
+        });
+      });
+    });
+  }, [rowVirtualizer, threadItems.length]);
+
   useEffect(() => {
     if (hasInitialScrollRef.current || threadItems.length === 0) {
       return;
     }
 
-    rowVirtualizer.scrollToIndex(threadItems.length - 1, {
-      align: 'end',
-    });
-
+    scrollToLatestMessage();
+    lastAutoScrolledMessageIdRef.current = messages[messages.length - 1]?.id ?? null;
     hasInitialScrollRef.current = true;
-  }, [rowVirtualizer, threadItems.length]);
+  }, [messages, scrollToLatestMessage, threadItems.length]);
+
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+
+    if (!lastMessage || threadItems.length === 0) {
+      return;
+    }
+
+    if (lastAutoScrolledMessageIdRef.current === lastMessage.id) {
+      return;
+    }
+
+    lastAutoScrolledMessageIdRef.current = lastMessage.id;
+
+    if (isNearBottomRef.current || lastMessage.senderId === currentUserId) {
+      setNewMessageCount(0);
+      scrollToLatestMessage();
+      return;
+    }
+
+    setNewMessageCount((current) => current + 1);
+  }, [currentUserId, messages, scrollToLatestMessage, threadItems.length]);
 
   useEffect(() => {
     const element = parentRef.current;
@@ -220,7 +263,19 @@ export function MessageThread({ conversationId, showHeader = true }: MessageThre
       return;
     }
 
+    const updateNearBottom = () => {
+      const distanceFromBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
+      const isNearBottom = distanceFromBottom < 120;
+      isNearBottomRef.current = isNearBottom;
+
+      if (isNearBottom) {
+        setNewMessageCount(0);
+      }
+    };
+
     const onScroll = () => {
+      updateNearBottom();
+
       if (
         element.scrollTop < 120
         && messagesQuery.hasNextPage
@@ -230,6 +285,7 @@ export function MessageThread({ conversationId, showHeader = true }: MessageThre
       }
     };
 
+    updateNearBottom();
     element.addEventListener('scroll', onScroll);
 
     return () => {
@@ -255,31 +311,92 @@ export function MessageThread({ conversationId, showHeader = true }: MessageThre
     return Array.from(set).filter((userId) => userId !== currentUserId).length;
   })();
 
+  const productHref = conversationQuery.data?.productListingId
+    ? `/urun/${conversationQuery.data.productListingId}`
+    : null;
+  const productImageUrl = conversationQuery.data?.productImageMediaId
+    ? resolveProductListingMediaUrl(conversationQuery.data.productImageMediaId)
+    : null;
+
   return (
     <div className='flex h-full min-h-0 flex-col'>
       {showHeader ? (
-        <div className='border-b border-slate-200 px-4 py-3'>
-          <h3 className='text-lg font-bold text-slate-800'>
-            {conversationQuery.data?.productName ?? 'Konuşma'}
-          </h3>
+        <div className='border-b border-slate-200 px-4 py-2'>
+          {productHref ? (
+            <Link
+              href={productHref}
+              className='inline-flex max-w-full items-center gap-2 rounded-lg px-1 py-1 transition hover:bg-slate-50'
+            >
+              <span className='flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 text-slate-400'>
+                {productImageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    alt={conversationQuery.data?.productName ?? 'Ürün'}
+                    className='h-full w-full object-cover'
+                    src={productImageUrl}
+                  />
+                ) : (
+                  <span className='material-symbols-outlined text-[19px]'>inventory_2</span>
+                )}
+              </span>
+              <span className='min-w-0'>
+                <span className='block truncate text-sm font-bold leading-tight text-slate-800'>
+                  {conversationQuery.data?.productName ?? 'Ürün'}
+                </span>
+                <span className='block text-[11px] font-medium text-slate-400'>Ürünü görüntüle</span>
+              </span>
+            </Link>
+          ) : (
+            <h3 className='text-sm font-bold text-slate-800'>Konuşma</h3>
+          )}
         </div>
       ) : null}
 
-      <div ref={parentRef} className='min-h-0 flex-1 overflow-y-auto bg-slate-50 px-4 py-4'>
-        <div
-          style={{
-            height: `${rowVirtualizer.getTotalSize()}px`,
-            width: '100%',
-            position: 'relative',
-          }}
-        >
-          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-            const item = threadItems[virtualRow.index];
-            if (!item) {
-              return null;
-            }
+      <div className='relative min-h-0 flex-1'>
+        <div ref={parentRef} className='h-full overflow-y-auto bg-slate-50 px-4 py-4'>
+          <div
+            style={{
+              height: `${rowVirtualizer.getTotalSize()}px`,
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const item = threadItems[virtualRow.index];
+              if (!item) {
+                return null;
+              }
 
-            if (item.type === 'separator') {
+              if (item.type === 'separator') {
+                return (
+                  <div
+                    key={item.key}
+                    data-index={virtualRow.index}
+                    ref={rowVirtualizer.measureElement}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                    className='flex justify-center py-2'
+                  >
+                    <span className='rounded-full bg-white px-3 py-1 text-[11px] font-bold text-slate-400 shadow-sm'>
+                      {item.label}
+                    </span>
+                  </div>
+                );
+              }
+
+              const message = item.message;
+              const previousItem = threadItems[virtualRow.index - 1];
+              const previousMessage = previousItem?.type === 'message' ? previousItem.message : null;
+              const showAvatar =
+                !previousMessage || previousMessage.senderId !== message.senderId;
+
+              const sender = partnerById.get(message.senderId);
+
               return (
                 <div
                   key={item.key}
@@ -292,81 +409,78 @@ export function MessageThread({ conversationId, showHeader = true }: MessageThre
                     width: '100%',
                     transform: `translateY(${virtualRow.start}px)`,
                   }}
-                  className='flex justify-center py-2'
+                  className='py-1.5'
                 >
-                  <span className='rounded-full bg-white px-3 py-1 text-[11px] font-bold text-slate-400 shadow-sm'>
-                    {item.label}
-                  </span>
+                  <MessageBubble
+                    message={message}
+                    isOwn={message.senderId === currentUserId}
+                    showAvatar={showAvatar}
+                    avatarUrl={sender?.avatarUrl}
+                    senderName={sender?.companyName || sender?.fullName}
+                    onAcceptQuote={async (quoteId) => {
+                      await acceptMutation.mutateAsync(quoteId);
+                    }}
+                    onRejectQuote={async (quoteId) => {
+                      await rejectMutation.mutateAsync(quoteId);
+                    }}
+                  onCounterQuote={(quoteId) => {
+                      setCounterQuote(quoteId);
+                    }}
+                  />
                 </div>
               );
-            }
-
-            const message = item.message;
-            const previousItem = threadItems[virtualRow.index - 1];
-            const previousMessage = previousItem?.type === 'message' ? previousItem.message : null;
-            const showAvatar =
-              !previousMessage || previousMessage.senderId !== message.senderId;
-
-            const sender = partnerById.get(message.senderId);
-
-            return (
-              <div
-                key={item.key}
-                data-index={virtualRow.index}
-                ref={rowVirtualizer.measureElement}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  transform: `translateY(${virtualRow.start}px)`,
-                }}
-                className='py-1.5'
-              >
-                <MessageBubble
-                  message={message}
-                  isOwn={message.senderId === currentUserId}
-                  showAvatar={showAvatar}
-                  avatarUrl={sender?.avatarUrl}
-                  senderName={sender?.companyName || sender?.fullName}
-                  isBuyer={isBuyer}
-                  onAcceptQuote={async (quoteId) => {
-                    await acceptMutation.mutateAsync(quoteId);
-                  }}
-                  onRejectQuote={async (quoteId) => {
-                    await rejectMutation.mutateAsync(quoteId);
-                  }}
-                  onCounterQuote={(quoteId) => {
-                    setCounterQuoteId(quoteId);
-                  }}
-                />
-              </div>
-            );
-          })}
+            })}
+          </div>
         </div>
+
+        {newMessageCount > 0 ? (
+          <button
+            type='button'
+            className='absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center justify-center rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-primary/20 transition hover:bg-primary-container'
+            onClick={() => {
+              setNewMessageCount(0);
+              isNearBottomRef.current = true;
+              scrollToLatestMessage();
+            }}
+          >
+            {newMessageCount} yeni mesajınız var
+          </button>
+        ) : null}
       </div>
 
       <TypingIndicator count={typingCount} />
 
-      <CounterOfferModal
-        open={Boolean(counterQuoteId)}
-        onClose={() => setCounterQuoteId(null)}
+      <QuoteOfferModal
+        open={Boolean(counterQuote)}
+        title='Karşı Teklif Gönder'
+        submitLabel='Karşı Teklif Gönder'
+        defaultProductListingId={counterQuote?.productListingId ?? null}
+        initialValues={counterQuote ? {
+          quantity: counterQuote.quantity,
+          unitPrice: counterQuote.unitPrice,
+          logisticsFee: counterQuote.logisticsFee ?? undefined,
+          currency: counterQuote.currency,
+          notes: counterQuote.notes ?? '',
+          expiresInHours: 24,
+        } : undefined}
+        onClose={() => setCounterQuote(null)}
         onSubmit={async (payload) => {
-          if (!counterQuoteId) {
+          if (!counterQuote) {
             return;
           }
 
           await counterMutation.mutateAsync({
-            quoteId: counterQuoteId,
+            quoteId: counterQuote.id,
             payload: {
               quantity: payload.quantity,
               unitPrice: payload.unitPrice,
+              logisticsFee: payload.logisticsFee,
               currency: payload.currency ?? 'TRY',
               notes: payload.notes,
               expiresInHours: payload.expiresInHours ?? 24,
             },
           });
-          setCounterQuoteId(null);
+          setCounterQuote(null);
         }}
       />
     </div>

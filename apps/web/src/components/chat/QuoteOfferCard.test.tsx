@@ -7,8 +7,11 @@ function buildQuote(status: QuoteStatus): ChatQuote {
   return {
     id: 'quote-1',
     productListingId: 'prd-1',
+    productName: 'Test Ürün',
+    productImageMediaId: null,
     quantity: 50,
     unitPrice: 950,
+    logisticsFee: null,
     currency: 'TRY',
     notes: 'Test teklif',
     status,
@@ -29,7 +32,7 @@ describe('QuoteOfferCard', () => {
     render(
       <QuoteOfferCard
         quote={buildQuote('PENDING')}
-        isBuyer
+        isOwn={false}
         onAccept={onAccept}
         onReject={jest.fn().mockResolvedValue(undefined)}
         onCounter={jest.fn()}
@@ -54,7 +57,7 @@ describe('QuoteOfferCard', () => {
     render(
       <QuoteOfferCard
         quote={buildQuote(status)}
-        isBuyer
+        isOwn={false}
         onAccept={jest.fn().mockResolvedValue(undefined)}
         onReject={jest.fn().mockResolvedValue(undefined)}
         onCounter={jest.fn()}
@@ -63,5 +66,21 @@ describe('QuoteOfferCard', () => {
 
     expect(screen.getByText(expectedLabel)).toBeInTheDocument();
     expect(screen.queryByText('Teklifi Kabul Et ve Onayla')).not.toBeInTheDocument();
+  });
+
+  it('does not render response actions for own pending quote', () => {
+    render(
+      <QuoteOfferCard
+        quote={buildQuote('PENDING')}
+        isOwn
+        onAccept={jest.fn().mockResolvedValue(undefined)}
+        onReject={jest.fn().mockResolvedValue(undefined)}
+        onCounter={jest.fn()}
+      />,
+    );
+
+    expect(screen.queryByText('Teklifi Kabul Et ve Onayla')).not.toBeInTheDocument();
+    expect(screen.queryByText('Karşı Teklif Gönder')).not.toBeInTheDocument();
+    expect(screen.getByText('Beklemede')).toBeInTheDocument();
   });
 });

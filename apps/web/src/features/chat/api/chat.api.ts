@@ -16,7 +16,8 @@ export type QuoteStatus =
   | 'ACCEPTED'
   | 'REJECTED'
   | 'COUNTERED'
-  | 'EXPIRED';
+  | 'EXPIRED'
+  | 'CANCELED';
 
 export type ChatAttachment = {
   id: string;
@@ -29,8 +30,11 @@ export type ChatAttachment = {
 export type ChatQuote = {
   id: string;
   productListingId: string;
+  productName: string | null;
+  productImageMediaId: string | null;
   quantity: number;
   unitPrice: number;
+  logisticsFee: number | null;
   currency: string;
   notes: string | null;
   status: QuoteStatus;
@@ -68,6 +72,7 @@ export type ConversationSummary = {
   id: string;
   productListingId: string | null;
   productName: string | null;
+  productImageMediaId: string | null;
   status: ConversationStatus;
   lastMessageAt: string;
   createdAt: string;
@@ -98,6 +103,7 @@ export type CreateQuotePayload = {
   productListingId?: string;
   quantity: number;
   unitPrice: number;
+  logisticsFee?: number;
   currency?: string;
   notes?: string;
   expiresInHours?: number;

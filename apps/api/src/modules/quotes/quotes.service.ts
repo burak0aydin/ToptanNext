@@ -40,7 +40,10 @@ export type QuoteMessageRecord = {
     productListingId: string;
     quantity: number;
     unitPrice: number;
+    logisticsFee: number | null;
     currency: string;
+    productName: string | null;
+    productImageMediaId: string | null;
     notes: string | null;
     status: QuoteStatus;
     expiresAt: Date;
@@ -72,6 +75,23 @@ export class QuotesService {
             },
           },
         },
+        productListing: {
+          select: {
+            name: true,
+            media: {
+              where: {
+                mediaType: 'IMAGE',
+              },
+              orderBy: {
+                displayOrder: 'asc',
+              },
+              take: 1,
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -93,7 +113,10 @@ export class QuotesService {
       productListingId: quote.productListingId,
       quantity: quote.quantity,
       unitPrice: Number(quote.unitPrice),
+      logisticsFee: quote.logisticsFee ? Number(quote.logisticsFee) : null,
       currency: quote.currency,
+      productName: quote.productListing.name,
+      productImageMediaId: quote.productListing.media[0]?.id ?? null,
       notes: quote.notes,
       status: quote.status,
       expiresAt: quote.expiresAt,
@@ -112,6 +135,7 @@ export class QuotesService {
     message: QuoteMessageRecord;
     unreadByUser: Array<{ userId: string; count: number }>;
     recipientUserIds: string[];
+    canceledQuoteIds: string[];
   }> {
     const sender = await this.prisma.user.findUnique({
       where: { id: senderId },
@@ -136,6 +160,14 @@ export class QuotesService {
     );
 
     this.realtimeService.emitToConversation(conversationId, 'new_message', payload.message);
+    payload.canceledQuoteIds.forEach((quoteId) => {
+      this.realtimeService.emitToConversation(conversationId, 'quote_status_updated', {
+        conversationId,
+        quoteId,
+        status: QuoteStatus.CANCELED,
+        updatedAt: new Date().toISOString(),
+      });
+    });
     payload.unreadByUser.forEach((item) => {
       this.realtimeService.emitToUser(item.userId, 'unread_count_updated', {
         conversationId,
@@ -229,6 +261,7 @@ export class QuotesService {
               productListingId: quotePayload.productListingId,
               quantity: quotePayload.quantity,
               unitPrice: quotePayload.unitPrice,
+              logisticsFee: quotePayload.logisticsFee,
               currency: quotePayload.currency,
               notes: quotePayload.notes,
               expiresAt: quotePayload.expiresAt,
@@ -238,7 +271,27 @@ export class QuotesService {
         },
         include: {
           attachments: true,
-          quote: true,
+          quote: {
+            include: {
+              productListing: {
+                select: {
+                  name: true,
+                  media: {
+                    where: {
+                      mediaType: 'IMAGE',
+                    },
+                    orderBy: {
+                      displayOrder: 'asc',
+                    },
+                    take: 1,
+                    select: {
+                      id: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       });
 
@@ -306,6 +359,7 @@ export class QuotesService {
       originalQuote.message.conversationId,
       'quote_status_updated',
       {
+        conversationId: originalQuote.message.conversationId,
         quoteId: originalQuote.id,
         status: QuoteStatus.COUNTERED,
         updatedAt: new Date().toISOString(),
@@ -343,19 +397,15 @@ export class QuotesService {
 
   async acceptQuote(
     quoteId: string,
-    buyerId: string,
+    actorUserId: string,
   ): Promise<{ quoteId: string; status: QuoteStatus; updatedAt: Date; conversationId: string }> {
     const requester = await this.prisma.user.findUnique({
-      where: { id: buyerId },
-      select: { role: true },
+      where: { id: actorUserId },
+      select: { id: true },
     });
 
     if (!requester) {
       throw new NotFoundException('Kullanıcı bulunamadı.');
-    }
-
-    if (requester.role !== Role.BUYER) {
-      throw new ForbiddenException('Teklifi sadece alıcı kabul edebilir.');
     }
 
     const quote = await this.prisma.quote.findUnique({
@@ -377,12 +427,16 @@ export class QuotesService {
       throw new NotFoundException('Teklif bulunamadı.');
     }
 
-    const hasBuyerMembership = quote.message.conversation.participants.some(
-      (participant) => participant.userId === buyerId,
+    const isParticipant = quote.message.conversation.participants.some(
+      (participant) => participant.userId === actorUserId,
     );
 
-    if (!hasBuyerMembership) {
+    if (!isParticipant) {
       throw new ForbiddenException('Bu teklif için erişim yetkiniz yok.');
+    }
+
+    if (quote.message.senderId === actorUserId) {
+      throw new ForbiddenException('Kendi gönderdiğiniz teklifi kabul edemezsiniz.');
     }
 
     if (quote.status !== QuoteStatus.PENDING) {
@@ -435,7 +489,7 @@ export class QuotesService {
       const statusMessage = await tx.message.create({
         data: {
           conversationId: quote.message.conversationId,
-          senderId: buyerId,
+          senderId: actorUserId,
           type: MessageType.QUOTE_ACCEPTED,
           body: `Teklif #${quote.id} kabul edildi.`,
         },
@@ -457,7 +511,7 @@ export class QuotesService {
         where: {
           conversationId: quote.message.conversationId,
           userId: {
-            not: buyerId,
+            not: actorUserId,
           },
         },
         data: {
@@ -490,6 +544,7 @@ export class QuotesService {
     );
 
     this.realtimeService.emitToConversation(quote.message.conversationId, 'quote_status_updated', {
+      conversationId: quote.message.conversationId,
       quoteId: payload.acceptedQuote.id,
       status: payload.acceptedQuote.status,
       updatedAt: payload.acceptedQuote.updatedAt,
@@ -504,12 +559,12 @@ export class QuotesService {
 
     const recipientUserIds = quote.message.conversation.participants
       .map((participant) => participant.userId)
-      .filter((userId) => userId !== buyerId);
+      .filter((userId) => userId !== actorUserId);
 
     await this.notificationsService.queueQuoteAccepted({
       quoteId,
       conversationId: quote.message.conversationId,
-      initiatorUserId: buyerId,
+      initiatorUserId: actorUserId,
       recipientUserIds,
     });
 
@@ -523,19 +578,15 @@ export class QuotesService {
 
   async rejectQuote(
     quoteId: string,
-    buyerId: string,
+    actorUserId: string,
   ): Promise<{ quoteId: string; status: QuoteStatus; updatedAt: Date; conversationId: string }> {
     const requester = await this.prisma.user.findUnique({
-      where: { id: buyerId },
-      select: { role: true },
+      where: { id: actorUserId },
+      select: { id: true },
     });
 
     if (!requester) {
       throw new NotFoundException('Kullanıcı bulunamadı.');
-    }
-
-    if (requester.role !== Role.BUYER) {
-      throw new ForbiddenException('Teklifi sadece alıcı reddedebilir.');
     }
 
     const quote = await this.prisma.quote.findUnique({
@@ -558,11 +609,15 @@ export class QuotesService {
     }
 
     const isParticipant = quote.message.conversation.participants.some(
-      (participant) => participant.userId === buyerId,
+      (participant) => participant.userId === actorUserId,
     );
 
     if (!isParticipant) {
       throw new ForbiddenException('Bu teklif için erişim yetkiniz yok.');
+    }
+
+    if (quote.message.senderId === actorUserId) {
+      throw new ForbiddenException('Kendi gönderdiğiniz teklifi reddedemezsiniz.');
     }
 
     if (quote.status !== QuoteStatus.PENDING) {
@@ -583,7 +638,7 @@ export class QuotesService {
       const statusMessage = await tx.message.create({
         data: {
           conversationId: quote.message.conversationId,
-          senderId: buyerId,
+          senderId: actorUserId,
           type: MessageType.QUOTE_REJECTED,
           body: `Teklif #${quote.id} reddedildi.`,
         },
@@ -600,7 +655,7 @@ export class QuotesService {
       await tx.conversationParticipant.updateMany({
         where: {
           conversationId: quote.message.conversationId,
-          userId: { not: buyerId },
+          userId: { not: actorUserId },
         },
         data: {
           unreadCount: { increment: 1 },
@@ -622,6 +677,7 @@ export class QuotesService {
     );
 
     this.realtimeService.emitToConversation(quote.message.conversationId, 'quote_status_updated', {
+      conversationId: quote.message.conversationId,
       quoteId: payload.updatedQuote.id,
       status: payload.updatedQuote.status,
       updatedAt: payload.updatedQuote.updatedAt,
@@ -709,6 +765,7 @@ export class QuotesService {
     message: QuoteMessageRecord;
     unreadByUser: Array<{ userId: string; count: number }>;
     recipientUserIds: string[];
+    canceledQuoteIds: string[];
   }> {
     const payload = await this.prisma.$transaction(async (tx) => {
       const conversation = await tx.conversation.findUnique({
@@ -731,6 +788,40 @@ export class QuotesService {
         throw new ForbiddenException('Bu konuşma için erişim yetkiniz yok.');
       }
 
+      let canceledQuoteIds: string[] = [];
+
+      if (type === MessageType.QUOTE_OFFER) {
+        const activePendingQuotes = await tx.quote.findMany({
+          where: {
+            status: QuoteStatus.PENDING,
+            expiresAt: {
+              gt: new Date(),
+            },
+            message: {
+              conversationId,
+            },
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        canceledQuoteIds = activePendingQuotes.map((quote) => quote.id);
+
+        if (canceledQuoteIds.length > 0) {
+          await tx.quote.updateMany({
+            where: {
+              id: {
+                in: canceledQuoteIds,
+              },
+            },
+            data: {
+              status: QuoteStatus.CANCELED,
+            },
+          });
+        }
+      }
+
       const quotePayload = this.normalizeQuotePayload(
         data,
         conversation.productListingId ?? null,
@@ -747,6 +838,7 @@ export class QuotesService {
               productListingId: quotePayload.productListingId,
               quantity: quotePayload.quantity,
               unitPrice: quotePayload.unitPrice,
+              logisticsFee: quotePayload.logisticsFee,
               currency: quotePayload.currency,
               notes: quotePayload.notes,
               expiresAt: quotePayload.expiresAt,
@@ -755,7 +847,27 @@ export class QuotesService {
         },
         include: {
           attachments: true,
-          quote: true,
+          quote: {
+            include: {
+              productListing: {
+                select: {
+                  name: true,
+                  media: {
+                    where: {
+                      mediaType: 'IMAGE',
+                    },
+                    orderBy: {
+                      displayOrder: 'asc',
+                    },
+                    take: 1,
+                    select: {
+                      id: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       });
 
@@ -812,6 +924,7 @@ export class QuotesService {
         message: this.toMessageRecord(createdMessage),
         participantStates,
         recipientUserIds,
+        canceledQuoteIds,
       };
     });
 
@@ -828,6 +941,7 @@ export class QuotesService {
         count: item.unreadCount,
       })),
       recipientUserIds: payload.recipientUserIds,
+      canceledQuoteIds: payload.canceledQuoteIds,
     };
   }
 
@@ -838,6 +952,7 @@ export class QuotesService {
     productListingId: string;
     quantity: number;
     unitPrice: Prisma.Decimal;
+    logisticsFee: Prisma.Decimal | null;
     currency: string;
     notes: string | null;
     expiresAt: Date;
@@ -855,6 +970,13 @@ export class QuotesService {
       throw new BadRequestException('Teklif birim fiyatı geçersiz.');
     }
 
+    if (
+      data.logisticsFee !== undefined
+      && (!Number.isFinite(data.logisticsFee) || data.logisticsFee < 0)
+    ) {
+      throw new BadRequestException('Lojistik ücreti geçersiz.');
+    }
+
     const expiresInHours = data.expiresInHours ?? 24;
     const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000);
 
@@ -862,6 +984,9 @@ export class QuotesService {
       productListingId,
       quantity: data.quantity,
       unitPrice: new Prisma.Decimal(data.unitPrice),
+      logisticsFee: data.logisticsFee !== undefined
+        ? new Prisma.Decimal(data.logisticsFee)
+        : null,
       currency: data.currency?.trim() || 'TRY',
       notes: data.notes?.trim() || null,
       expiresAt,
@@ -889,7 +1014,12 @@ export class QuotesService {
       productListingId: string;
       quantity: number;
       unitPrice: Prisma.Decimal;
+      logisticsFee: Prisma.Decimal | null;
       currency: string;
+      productListing?: {
+        name: string;
+        media: Array<{ id: string }>;
+      };
       notes: string | null;
       status: QuoteStatus;
       expiresAt: Date;
@@ -920,7 +1050,10 @@ export class QuotesService {
             productListingId: message.quote.productListingId,
             quantity: message.quote.quantity,
             unitPrice: Number(message.quote.unitPrice),
+            logisticsFee: message.quote.logisticsFee ? Number(message.quote.logisticsFee) : null,
             currency: message.quote.currency,
+            productName: message.quote.productListing?.name ?? null,
+            productImageMediaId: message.quote.productListing?.media[0]?.id ?? null,
             notes: message.quote.notes,
             status: message.quote.status,
             expiresAt: message.quote.expiresAt,

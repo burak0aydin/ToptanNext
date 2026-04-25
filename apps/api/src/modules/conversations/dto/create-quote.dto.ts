@@ -25,6 +25,12 @@ export class CreateQuoteDto {
   unitPrice!: number;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  logisticsFee?: number;
+
+  @IsOptional()
   @IsString()
   currency?: string;
 

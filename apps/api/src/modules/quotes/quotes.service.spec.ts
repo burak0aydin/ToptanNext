@@ -106,6 +106,7 @@ describe('QuotesService', () => {
       'conv-1',
       'quote_status_updated',
       expect.objectContaining({
+        conversationId: 'conv-1',
         quoteId: 'quote-1',
         status: QuoteStatus.ACCEPTED,
       }),
@@ -115,6 +116,62 @@ describe('QuotesService', () => {
       conversationId: 'conv-1',
       initiatorUserId: 'buyer-1',
       recipientUserIds: ['supplier-1'],
+    });
+    expect(result.status).toBe(QuoteStatus.ACCEPTED);
+  });
+
+  it('acceptQuote should allow supplier to accept buyer counter offer', async () => {
+    const counterQuote = {
+      ...createBaseQuote(),
+      id: 'quote-counter-1',
+      message: {
+        ...createBaseQuote().message,
+        senderId: 'buyer-1',
+      },
+    };
+
+    prismaMock.user.findUnique.mockResolvedValue({ id: 'supplier-1' });
+    prismaMock.quote.findUnique.mockResolvedValue(counterQuote);
+
+    const tx = {
+      quote: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        update: jest.fn().mockResolvedValue({
+          id: counterQuote.id,
+          status: QuoteStatus.ACCEPTED,
+          updatedAt: new Date('2026-04-24T10:05:00.000Z'),
+        }),
+      },
+      message: {
+        create: jest.fn().mockResolvedValue({ createdAt: new Date('2026-04-24T10:05:00.000Z') }),
+      },
+      conversation: {
+        update: jest.fn().mockResolvedValue({}),
+      },
+      conversationParticipant: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findMany: jest.fn().mockResolvedValue([
+          { userId: 'buyer-1', unreadCount: 1 },
+          { userId: 'supplier-1', unreadCount: 0 },
+        ]),
+      },
+    };
+
+    prismaMock.$transaction.mockImplementation(async (callback: (arg: typeof tx) => unknown) => callback(tx));
+
+    const result = await service.acceptQuote('quote-counter-1', 'supplier-1');
+
+    expect(tx.message.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        senderId: 'supplier-1',
+        type: MessageType.QUOTE_ACCEPTED,
+      }),
+    }));
+    expect(notificationsMock.queueQuoteAccepted).toHaveBeenCalledWith({
+      quoteId: 'quote-counter-1',
+      conversationId: 'conv-1',
+      initiatorUserId: 'supplier-1',
+      recipientUserIds: ['buyer-1'],
     });
     expect(result.status).toBe(QuoteStatus.ACCEPTED);
   });
@@ -173,8 +230,60 @@ describe('QuotesService', () => {
     expect(realtimeMock.emitToConversation).toHaveBeenCalledWith(
       'conv-1',
       'quote_status_updated',
-      expect.objectContaining({ status: QuoteStatus.REJECTED }),
+      expect.objectContaining({
+        conversationId: 'conv-1',
+        status: QuoteStatus.REJECTED,
+      }),
     );
+  });
+
+  it('rejectQuote should allow supplier to reject buyer counter offer', async () => {
+    const counterQuote = {
+      ...createBaseQuote(),
+      id: 'quote-counter-1',
+      message: {
+        ...createBaseQuote().message,
+        senderId: 'buyer-1',
+      },
+    };
+
+    prismaMock.user.findUnique.mockResolvedValue({ id: 'supplier-1' });
+    prismaMock.quote.findUnique.mockResolvedValue(counterQuote);
+
+    const tx = {
+      quote: {
+        update: jest.fn().mockResolvedValue({
+          id: counterQuote.id,
+          status: QuoteStatus.REJECTED,
+          updatedAt: new Date('2026-04-24T10:15:00.000Z'),
+        }),
+      },
+      message: {
+        create: jest.fn().mockResolvedValue({ createdAt: new Date('2026-04-24T10:15:00.000Z') }),
+      },
+      conversation: {
+        update: jest.fn().mockResolvedValue({}),
+      },
+      conversationParticipant: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findMany: jest.fn().mockResolvedValue([
+          { userId: 'buyer-1', unreadCount: 1 },
+          { userId: 'supplier-1', unreadCount: 0 },
+        ]),
+      },
+    };
+
+    prismaMock.$transaction.mockImplementation(async (callback: (arg: typeof tx) => unknown) => callback(tx));
+
+    const result = await service.rejectQuote('quote-counter-1', 'supplier-1');
+
+    expect(tx.message.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        senderId: 'supplier-1',
+        type: MessageType.QUOTE_REJECTED,
+      }),
+    }));
+    expect(result.status).toBe(QuoteStatus.REJECTED);
   });
 
   it('createCounterOffer should mark original as countered and create counter message', async () => {
@@ -242,6 +351,94 @@ describe('QuotesService', () => {
     expect(result.originalQuoteId).toBe('quote-1');
     expect(result.message.type).toBe(MessageType.COUNTER_OFFER);
     expect(notificationsMock.queueQuoteReceived).toHaveBeenCalled();
+  });
+
+  it('createQuoteOffer should cancel pending quotes before creating replacement offer', async () => {
+    prismaMock.user.findUnique.mockResolvedValue({ role: Role.SUPPLIER });
+
+    const tx = {
+      conversation: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'conv-1',
+          productListingId: 'prd-1',
+          participants: [{ userId: 'buyer-1' }, { userId: 'supplier-1' }],
+        }),
+        update: jest.fn().mockResolvedValue({}),
+      },
+      quote: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'quote-old-1' },
+          { id: 'quote-counter-1' },
+        ]),
+        updateMany: jest.fn().mockResolvedValue({ count: 2 }),
+      },
+      message: {
+        create: jest.fn().mockResolvedValue({
+          id: 'msg-new-offer',
+          conversationId: 'conv-1',
+          senderId: 'supplier-1',
+          type: MessageType.QUOTE_OFFER,
+          body: null,
+          isEdited: false,
+          deletedAt: null,
+          createdAt: new Date('2026-04-24T11:00:00.000Z'),
+          attachments: [],
+          quote: {
+            id: 'quote-new-1',
+            productListingId: 'prd-1',
+            quantity: 10,
+            unitPrice: new Prisma.Decimal(100),
+            logisticsFee: null,
+            currency: 'TRY',
+            notes: null,
+            status: QuoteStatus.PENDING,
+            expiresAt: new Date('2026-04-25T11:00:00.000Z'),
+            counterQuoteId: null,
+            createdAt: new Date('2026-04-24T11:00:00.000Z'),
+            updatedAt: new Date('2026-04-24T11:00:00.000Z'),
+          },
+        }),
+      },
+      conversationParticipant: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        update: jest.fn().mockResolvedValue({}),
+        findMany: jest.fn().mockResolvedValue([
+          { userId: 'buyer-1', unreadCount: 1 },
+          { userId: 'supplier-1', unreadCount: 0 },
+        ]),
+      },
+    };
+
+    prismaMock.$transaction.mockImplementation(async (callback: (arg: typeof tx) => unknown) => callback(tx));
+
+    const result = await service.createQuoteOffer('conv-1', 'supplier-1', {
+      productListingId: 'prd-1',
+      quantity: 10,
+      unitPrice: 100,
+      currency: 'TRY',
+      expiresInHours: 24,
+    });
+
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: {
+          in: ['quote-old-1', 'quote-counter-1'],
+        },
+      },
+      data: {
+        status: QuoteStatus.CANCELED,
+      },
+    });
+    expect(result.canceledQuoteIds).toEqual(['quote-old-1', 'quote-counter-1']);
+    expect(result.message.quote?.id).toBe('quote-new-1');
+    expect(realtimeMock.emitToConversation).toHaveBeenCalledWith(
+      'conv-1',
+      'quote_status_updated',
+      expect.objectContaining({
+        quoteId: 'quote-old-1',
+        status: QuoteStatus.CANCELED,
+      }),
+    );
   });
 
   it('expirePendingQuotes should expire due quotes and enqueue notifications', async () => {

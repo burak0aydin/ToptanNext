@@ -50,6 +50,7 @@ function createConversation(overrides?: Partial<ConversationSummary>): Conversat
     id: 'conv-1',
     productListingId: 'prd-1',
     productName: 'Ürün',
+    productImageMediaId: null,
     status: 'ACTIVE',
     lastMessageAt: new Date('2026-04-24T10:00:00.000Z').toISOString(),
     createdAt: new Date('2026-04-24T09:00:00.000Z').toISOString(),

@@ -52,14 +52,14 @@ function bindListeners(socket: Socket): void {
       updatedAt: string;
       conversationId?: string;
     }) => {
-      const activeConversationId = useChatStore.getState().activeConversationId;
-      if (!activeConversationId) {
+      const conversationId = payload.conversationId ?? useChatStore.getState().activeConversationId;
+      if (!conversationId) {
         return;
       }
 
       useChatStore
         .getState()
-        .updateQuoteStatus(activeConversationId, payload.quoteId, payload.status, payload.updatedAt);
+        .updateQuoteStatus(conversationId, payload.quoteId, payload.status, payload.updatedAt);
     },
   );
 
