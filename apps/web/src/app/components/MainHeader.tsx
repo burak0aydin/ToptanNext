@@ -106,9 +106,9 @@ export function MainHeader() {
     };
   }, [clearToast, toast]);
 
-  const supplierApplyHref = mySupplierApplication
-    ? '/satici-ol/basvuru-sonucu'
-    : '/satici-ol';
+  const supplierApplyHref = '/satici-ol';
+  const supplierDiscoveryHref = '/uretici-toptancilar';
+  const logisticsApplyHref = '/lojistik/basvuru';
 
   const categoryMenuData = useMemo<CategoryMegaMenuCategory[]>(() => {
     return categories.map((root) => ({
@@ -147,36 +147,40 @@ export function MainHeader() {
           />
         </div>
 
-        <div className='flex items-center gap-6'>
+        <div className='flex items-center gap-5'>
           <button
             aria-label='Menü'
             className='flex items-center justify-center text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95 lg:hidden'
             onClick={() => setMobileMenuOpen((prev) => !prev)}
             type='button'
           >
-            <span className='material-symbols-outlined text-[28px] leading-none'>menu</span>
+            <span className='material-symbols-outlined text-[22px] leading-none'>menu</span>
           </button>
 
           <Link
             aria-label='Mesajlar'
-            className='flex items-center justify-center text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'
+            className='flex items-center gap-1.5 text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'
             href='/messages'
           >
-            <span className='material-symbols-outlined text-[28px] leading-none'>forum</span>
+            <span className='material-symbols-outlined text-[25px] leading-none'>forum</span>
+            <span className='text-[14px] font-medium'>Mesajlar</span>
           </Link>
 
           <div className='relative'>
             <Link
               aria-label='Sepetim'
-              className='relative flex items-center justify-center text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'
+              className='relative flex items-center gap-1.5 text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'
               href='/sepet'
             >
-              <span className='material-symbols-outlined text-[28px] leading-none'>shopping_cart</span>
-              {totalItems > 0 ? (
-                <span className='absolute -right-2 -top-2 min-w-[18px] rounded-full bg-[#1A56DB] px-1.5 py-0.5 text-center text-[10px] font-bold leading-none text-white'>
-                  {totalItems > 99 ? '99+' : totalItems}
-                </span>
-              ) : null}
+              <span className='relative inline-flex items-center justify-center'>
+                <span className='material-symbols-outlined text-[25px] leading-none'>shopping_cart</span>
+                {totalItems > 0 ? (
+                  <span className='absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border border-white bg-[#1A56DB] px-1 text-center text-[10px] font-semibold leading-none text-white shadow-sm'>
+                    {totalItems > 99 ? '99+' : totalItems}
+                  </span>
+                ) : null}
+              </span>
+              <span className='text-[14px] font-medium'>Sepetim</span>
             </Link>
 
             {toast ? (
@@ -197,16 +201,16 @@ export function MainHeader() {
         >
           <div className='hidden items-center gap-8 lg:flex'>
             <button
-              className='flex items-center gap-2 py-2 text-sm font-semibold text-on-surface transition-colors hover:text-primary'
+              className='flex items-center gap-2 py-2 text-[13px] font-medium text-on-surface transition-colors hover:text-primary'
               onMouseEnter={() => setDesktopMenu('categories')}
               type='button'
             >
-              <span className='material-symbols-outlined text-[20px]'>menu</span>
+              <span className='material-symbols-outlined text-[18px] leading-none'>menu</span>
               Kategoriler
             </button>
 
             <button
-              className='py-2 text-sm font-semibold text-on-surface-variant transition-colors hover:text-primary'
+              className='py-2 text-[13px] font-medium text-on-surface-variant transition-colors hover:text-primary'
               onMouseEnter={() => setDesktopMenu('sectors')}
               type='button'
             >
@@ -214,25 +218,28 @@ export function MainHeader() {
             </button>
 
             <Link
-              className='py-2 text-sm font-semibold text-on-surface-variant transition-colors hover:text-primary'
-              href={supplierApplyHref}
+              className='py-2 text-[13px] font-medium text-on-surface-variant transition-colors hover:text-primary'
+              href={supplierDiscoveryHref}
             >
-              Satıcı Ol
+              Üretici & Toptancılar
             </Link>
             <Link
-              className='py-2 text-sm font-semibold text-on-surface-variant transition-colors hover:text-primary'
+              className='py-2 text-[13px] font-medium text-on-surface-variant transition-colors hover:text-primary'
               href='/lojistik'
             >
-              Lojistik
+              Lojistik Partnerler
             </Link>
           </div>
 
           <div className='hidden items-center gap-4 lg:flex'>
-            <a className='text-[10px] font-bold text-on-surface-variant transition-colors hover:text-primary' href='#'>
-              App Store
-            </a>
-            <a className='text-[10px] font-bold text-on-surface-variant transition-colors hover:text-primary' href='#'>
-              Play Store
+            <Link className='text-[10px] font-medium text-on-surface-variant transition-colors hover:text-primary' href={supplierApplyHref}>
+              ToptanNext'te Satış Yap
+            </Link>
+            <Link className='text-[10px] font-medium text-on-surface-variant transition-colors hover:text-primary' href={logisticsApplyHref}>
+              Lojistik Partnerimiz Ol
+            </Link>
+            <a className='text-[10px] font-medium text-on-surface-variant transition-colors hover:text-primary' href='#'>
+              Mobil Uygulama
             </a>
           </div>
         </div>
@@ -353,17 +360,30 @@ export function MainHeader() {
                 </div>
               ) : null}
 
-              <Link
-                className='block rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 transition-colors hover:bg-[#EEF4FF] hover:text-primary'
-                href={supplierApplyHref}
-              >
-                Satıcı Ol
-              </Link>
+              <div className='rounded-lg border border-slate-100 bg-white p-3'>
+                <p className='mb-3 text-sm font-semibold text-slate-800'>ToptanNext&apos;te Tedarikçi Ol</p>
+                <div className='space-y-2'>
+                  <Link
+                    className='block rounded-md bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 transition-colors hover:bg-[#EEF4FF] hover:text-primary'
+                    href={supplierDiscoveryHref}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Üretici & Toptancılar
+                  </Link>
+                  <Link
+                    className='block rounded-md bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 transition-colors hover:bg-[#EEF4FF] hover:text-primary'
+                    href={logisticsApplyHref}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Lojistik Partnerler
+                  </Link>
+                </div>
+              </div>
               <Link
                 className='block rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 transition-colors hover:bg-[#EEF4FF] hover:text-primary'
                 href='/lojistik'
               >
-                Lojistik
+                Lojistik Partnerler
               </Link>
             </div>
           </div>

@@ -14,6 +14,10 @@ import {
   fetchMySupplierApplication,
   upsertMySupplierContactFinance,
 } from "@/features/supplier-application/api/supplier-application.api";
+import {
+  isStepOneCompleted,
+  shouldRedirectSupplierApplicationToResult,
+} from "@/features/supplier-application/api/supplier-application-progress";
 import { MainFooter } from "../../components/MainFooter";
 import { MainHeader } from "../../components/MainHeader";
 
@@ -86,7 +90,15 @@ export default function SaticiOlIletisimVeFinansPage() {
           return;
         }
 
-        if (existingApplication.reviewStatus !== "REJECTED") {
+        if (!isStepOneCompleted(existingApplication)) {
+          setSubmitErrorMessage(
+            "Önce şirket kimlik bilgileri adımını tamamlamalısınız.",
+          );
+          setIsLoadingInitialData(false);
+          return;
+        }
+
+        if (shouldRedirectSupplierApplicationToResult(existingApplication)) {
           router.replace(RESULT_PAGE_PATH);
           return;
         }

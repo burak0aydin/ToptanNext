@@ -14,6 +14,9 @@ import {
   fetchMySupplierApplication,
   upsertMySupplierApplication,
 } from '@/features/supplier-application/api/supplier-application.api';
+import {
+  shouldRedirectSupplierApplicationToResult,
+} from '@/features/supplier-application/api/supplier-application-progress';
 import { MainFooter } from '../components/MainFooter';
 import { MainHeader } from '../components/MainHeader';
 
@@ -72,7 +75,7 @@ export default function SaticiOlPage() {
           return;
         }
 
-        if (existingApplication.reviewStatus !== 'REJECTED') {
+        if (shouldRedirectSupplierApplicationToResult(existingApplication)) {
           router.replace(RESULT_PAGE_PATH);
           return;
         }

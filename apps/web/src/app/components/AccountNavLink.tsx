@@ -82,11 +82,11 @@ export function AccountNavLink() {
   if (!isLoggedIn) {
     return (
       <Link
-        className='flex items-center gap-2 text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'
+        className='flex items-center gap-1.5 text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'
         href='/login'
       >
-        <span className='material-symbols-outlined text-[28px] leading-none'>account_circle</span>
-        <span className='text-xs font-bold'>Giriş Yap</span>
+        <span className='material-symbols-outlined text-[25px] leading-none'>account_circle</span>
+        <span className='text-[14px] font-medium'>Giriş Yap</span>
       </Link>
     );
   }
@@ -99,14 +99,14 @@ export function AccountNavLink() {
     >
       <button
         type='button'
-        className='flex items-center gap-2 text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'
+        className='flex items-center gap-1.5 text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'
         onClick={() => {
           setIsMenuOpen(false);
           router.push('/siparislerim');
         }}
       >
-        <span className='material-symbols-outlined text-[28px] leading-none'>account_circle</span>
-        <span className='text-xs font-bold'>Hesabım</span>
+        <span className='material-symbols-outlined text-[25px] leading-none'>account_circle</span>
+        <span className='text-[14px] font-medium'>Hesabım</span>
       </button>
 
       {isMenuOpen ? (

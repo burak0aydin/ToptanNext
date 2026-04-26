@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { MainFooter } from '../components/MainFooter';
 import { MainHeader } from '../components/MainHeader';
 
@@ -202,12 +203,12 @@ export default function LogisticsPage() {
                 ToptanNext ekosistemine lojistik partneri olarak katılın, binlerce işletmenin sevkiyat taleplerine
                 doğrudan ulaşın.
               </p>
-              <button
-                className='w-full rounded-xl bg-white py-3.5 font-bold text-primary transition-all hover:bg-slate-50 active:scale-95'
-                type='button'
+              <Link
+                className='block w-full rounded-xl bg-white py-3.5 text-center font-bold text-primary transition-all hover:bg-slate-50 active:scale-95'
+                href='/lojistik/basvuru'
               >
                 Hemen Başvur
-              </button>
+              </Link>
             </div>
           </div>
         </section>
