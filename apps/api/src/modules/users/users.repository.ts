@@ -26,6 +26,7 @@ export type UserProfile = {
   lastName: string | null;
   email: string;
   phoneNumber: string | null;
+  isLogisticsPartner: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -162,6 +163,7 @@ export class UsersRepository {
         lastName: true,
         email: true,
         phoneNumber: true,
+        isLogisticsPartner: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -190,6 +192,7 @@ export class UsersRepository {
         lastName: true,
         email: true,
         phoneNumber: true,
+        isLogisticsPartner: true,
         createdAt: true,
         updatedAt: true,
       },

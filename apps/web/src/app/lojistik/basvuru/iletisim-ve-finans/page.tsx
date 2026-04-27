@@ -2,19 +2,24 @@
 
 import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
+import { hasAccessToken } from '@/lib/auth-token';
+import {
+  fetchMyLogisticsApplication,
+  upsertMyLogisticsContactFinance,
+} from '@/features/logistics-application/api/logistics-application.api';
+import {
+  isStepOneCompleted,
+  shouldRedirectLogisticsApplicationToResult,
+} from '@/features/logistics-application/api/logistics-application-progress';
 import {
   logisticsApplicationStepTwoSchema,
   logisticsFleetCapacityValues,
   logisticsServiceRegionValues,
   type LogisticsApplicationStepTwoDto,
 } from '@/features/logistics-application/logistics-application.schema';
-import {
-  getStoredLogisticsApplication,
-  hasStoredStepOne,
-  saveLogisticsApplicationStepTwo,
-} from '@/features/logistics-application/logistics-application.store';
 import { LogisticsApplicationSidebar } from '@/features/logistics-application/components/LogisticsApplicationSidebar';
 import { LogisticsMultiSelectField } from '@/features/logistics-application/components/LogisticsMultiSelectField';
 import { MainFooter } from '../../../components/MainFooter';
@@ -81,21 +86,74 @@ export default function LogisticsApplicationStepTwoPage() {
   });
 
   useEffect(() => {
-    const stored = getStoredLogisticsApplication();
+    let isMounted = true;
 
-    if (!hasStoredStepOne(stored) || !stored.stepOne) {
-      setSubmitErrorMessage('Önce şirket kimlik bilgileri adımını tamamlamalısınız.');
-      router.replace('/lojistik/basvuru');
-      setIsLoadingInitialData(false);
-      return;
-    }
+    const loadApplication = async () => {
+      if (!hasAccessToken()) {
+        setIsLoadingInitialData(false);
+        return;
+      }
 
-    if (stored.stepTwo) {
-      reset(stored.stepTwo);
-    }
+      try {
+        const existingApplication = await fetchMyLogisticsApplication();
+        if (!isMounted) {
+          return;
+        }
 
-    setIsLoadingInitialData(false);
-  }, [reset]);
+        if (!existingApplication) {
+          setSubmitErrorMessage('Önce şirket kimlik bilgileri adımını tamamlamalısınız.');
+          router.replace('/lojistik/basvuru');
+          setIsLoadingInitialData(false);
+          return;
+        }
+
+        if (!isStepOneCompleted(existingApplication)) {
+          setSubmitErrorMessage('Önce şirket kimlik bilgileri adımını tamamlamalısınız.');
+          router.replace('/lojistik/basvuru');
+          setIsLoadingInitialData(false);
+          return;
+        }
+
+        if (shouldRedirectLogisticsApplicationToResult(existingApplication)) {
+          router.replace('/lojistik/basvuru/basvuru-sonucu');
+          return;
+        }
+
+        reset({
+          companyIban: existingApplication.companyIban ?? '',
+          kepAddress: existingApplication.kepAddress ?? '',
+          isEInvoiceTaxpayer: existingApplication.isEInvoiceTaxpayer ?? false,
+          businessPhone: existingApplication.businessPhone ?? '',
+          headquartersAddress: existingApplication.headquartersAddress ?? '',
+          serviceRegions: existingApplication.serviceRegions,
+          fleetCapacity: existingApplication.fleetCapacity ?? '',
+          contactFirstName: existingApplication.contactFirstName ?? '',
+          contactLastName: existingApplication.contactLastName ?? '',
+          contactRole: existingApplication.contactRole ?? '',
+          contactPhone: existingApplication.contactPhone ?? '',
+          contactEmail: existingApplication.contactEmail ?? '',
+        });
+      } catch {
+        setSubmitErrorMessage('Başvuru bilgileri alınırken bir sorun oluştu.');
+      } finally {
+        if (isMounted) {
+          setIsLoadingInitialData(false);
+        }
+      }
+    };
+
+    loadApplication();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [reset, router]);
+
+  const upsertMutation = useMutation({
+    mutationKey: ['logistics-application', 'upsert-contact-finance'],
+    mutationFn: (payload: LogisticsApplicationStepTwoDto) =>
+      upsertMyLogisticsContactFinance(payload),
+  });
 
   const watchedValues = watch([
     'companyIban',
@@ -119,7 +177,23 @@ export default function LogisticsApplicationStepTwoPage() {
     setSubmitSuccessMessage(null);
 
     try {
-      saveLogisticsApplicationStepTwo(payload);
+      const saved = await upsertMutation.mutateAsync(payload);
+
+      reset({
+        companyIban: saved.companyIban ?? '',
+        kepAddress: saved.kepAddress ?? '',
+        isEInvoiceTaxpayer: saved.isEInvoiceTaxpayer ?? false,
+        businessPhone: saved.businessPhone ?? '',
+        headquartersAddress: saved.headquartersAddress ?? '',
+        serviceRegions: saved.serviceRegions,
+        fleetCapacity: saved.fleetCapacity ?? '',
+        contactFirstName: saved.contactFirstName ?? '',
+        contactLastName: saved.contactLastName ?? '',
+        contactRole: saved.contactRole ?? '',
+        contactPhone: saved.contactPhone ?? '',
+        contactEmail: saved.contactEmail ?? '',
+      });
+
       setSubmitSuccessMessage('İletişim ve finans bilgileri başarıyla kaydedildi.');
       router.push('/lojistik/basvuru/belge-yukleme-ve-onay');
     } catch (error) {

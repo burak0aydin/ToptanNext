@@ -6,6 +6,7 @@ export type UserProfile = {
   lastName: string | null;
   email: string;
   phoneNumber: string | null;
+  isLogisticsPartner: boolean;
   createdAt: string;
   updatedAt: string;
 };

@@ -2,15 +2,23 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { hasAccessToken } from '@/lib/auth-token';
 import {
-  getStoredLogisticsApplication,
-  isLogisticsApplicationComplete,
+  fetchMyLogisticsApplication,
+  type LogisticsApplicationRecord,
+} from '@/features/logistics-application/api/logistics-application.api';
+import {
+  isStepOneCompleted,
+  isStepThreeCompleted,
+  isStepTwoCompleted,
+} from '@/features/logistics-application/api/logistics-application-progress';
+import {
   logisticsAuthorizationDocumentTypeLabels,
   logisticsFleetCapacityLabels,
   logisticsMainServiceTypeLabels,
   logisticsServiceRegionLabels,
-  type LogisticsApplicationStoredData,
 } from '@/features/logistics-application/logistics-application.store';
+import { LogisticsApplicationSidebar } from '@/features/logistics-application/components/LogisticsApplicationSidebar';
 import { MainFooter } from '../../../components/MainFooter';
 import { MainHeader } from '../../../components/MainHeader';
 
@@ -33,15 +41,90 @@ function formatDate(value: string | null | undefined): string {
   }).format(parsed);
 }
 
+function resolveStatusPresentation(status: LogisticsApplicationRecord['reviewStatus']): {
+  label: string;
+  icon: string;
+  className: string;
+} {
+  if (status === 'APPROVED') {
+    return {
+      label: 'Onaylandı',
+      icon: 'verified',
+      className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    };
+  }
+
+  if (status === 'REJECTED') {
+    return {
+      label: 'Reddedildi',
+      icon: 'cancel',
+      className: 'border-rose-200 bg-rose-50 text-rose-700',
+    };
+  }
+
+  return {
+    label: 'İnceleniyor',
+    icon: 'schedule',
+    className: 'border-amber-200 bg-amber-50 text-amber-700',
+  };
+}
+
+function resolveContinuePath(application: LogisticsApplicationRecord): string {
+  if (!isStepOneCompleted(application)) {
+    return '/lojistik/basvuru';
+  }
+
+  if (!isStepTwoCompleted(application)) {
+    return '/lojistik/basvuru/iletisim-ve-finans';
+  }
+
+  if (!isStepThreeCompleted(application)) {
+    return '/lojistik/basvuru/belge-yukleme-ve-onay';
+  }
+
+  return '/lojistik/basvuru/basvuru-sonucu';
+}
+
 export default function LogisticsApplicationResultPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
-  const [application, setApplication] = useState<LogisticsApplicationStoredData | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [application, setApplication] = useState<LogisticsApplicationRecord | null>(null);
 
   useEffect(() => {
-    const stored = getStoredLogisticsApplication();
-    setApplication(stored);
-    setIsLoading(false);
+    let isMounted = true;
+
+    const loadApplication = async () => {
+      if (!hasAccessToken()) {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const data = await fetchMyLogisticsApplication();
+        if (!isMounted) {
+          return;
+        }
+
+        setApplication(data);
+      } catch {
+        if (isMounted) {
+          setErrorMessage('Başvuru sonucu alınırken bir sorun oluştu.');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadApplication();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const isComplete = useMemo(() => {
@@ -49,79 +132,28 @@ export default function LogisticsApplicationResultPage() {
       return false;
     }
 
-    return isLogisticsApplicationComplete(application);
+    return (
+      isStepOneCompleted(application)
+      && isStepTwoCompleted(application)
+      && isStepThreeCompleted(application)
+    );
   }, [application]);
 
-  const stepOne = application?.stepOne;
-  const stepTwo = application?.stepTwo;
-
-  const selectedMainServices = stepOne?.mainServiceTypes?.map((value) => logisticsMainServiceTypeLabels[value as keyof typeof logisticsMainServiceTypeLabels]) ?? [];
-  const selectedRegions = stepTwo?.serviceRegions?.map((value) => logisticsServiceRegionLabels[value as keyof typeof logisticsServiceRegionLabels]) ?? [];
-  const selectedDocumentNames = application?.uploadedDocumentNames ? Object.values(application.uploadedDocumentNames).filter(Boolean) : [];
+  const selectedMainServices =
+    application?.mainServiceTypes?.map((value) => logisticsMainServiceTypeLabels[value]) ?? [];
+  const selectedRegions =
+    application?.serviceRegions?.map((value) => logisticsServiceRegionLabels[value]) ?? [];
+  const continuePath = application ? resolveContinuePath(application) : '/lojistik/basvuru';
+  const statusPresentation = application
+    ? resolveStatusPresentation(application.reviewStatus)
+    : resolveStatusPresentation('PENDING');
 
   return (
     <div className='flex min-h-screen flex-col bg-background text-on-surface antialiased'>
       <MainHeader />
 
       <main className='max-w-7xl mx-auto w-full px-4 py-8 md:py-12 flex flex-col gap-8 md:grid md:grid-cols-[18rem_minmax(0,1fr)] md:items-start'>
-        <aside className='w-full md:w-[18rem] md:min-w-[18rem] md:max-w-[18rem]'>
-          <div className='h-auto flex flex-col gap-4 p-6 bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-sm'>
-            <div className='mb-4'>
-              <h2 className='text-lg font-bold text-blue-900'>Lojistik Partner Başvuru Formu</h2>
-              <p className='text-slate-500 text-xs font-medium'>ToptanNext Pazaryeri</p>
-            </div>
-
-            <nav className='flex flex-col gap-2'>
-              <button className='flex w-full items-center gap-3 rounded-lg p-3.5 text-left text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-100' type='button' onClick={() => router.push('/lojistik/basvuru')}>
-                <span className='material-symbols-outlined'>business</span>
-                <span className='whitespace-nowrap'>Şirket Bilgileri</span>
-              </button>
-
-              <button className='flex w-full items-center gap-3 rounded-lg p-3.5 text-left text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-100' type='button' onClick={() => router.push('/lojistik/basvuru/iletisim-ve-finans')}>
-                <span className='material-symbols-outlined'>description</span>
-                <span className='whitespace-nowrap'>İletişim ve Finans</span>
-              </button>
-
-              <button className='flex w-full items-center gap-3 rounded-lg p-3.5 text-left text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-100' type='button' onClick={() => router.push('/lojistik/basvuru/belge-yukleme-ve-onay')}>
-                <span className='material-symbols-outlined'>inventory_2</span>
-                <span className='whitespace-nowrap'>Belge Yükleme ve Onay</span>
-              </button>
-
-              <div className='flex w-full items-center gap-3 rounded-lg border border-primary/20 bg-primary/10 p-3.5 text-sm font-bold text-primary shadow-sm'>
-                <span className='material-symbols-outlined' style={{ fontVariationSettings: '"FILL" 1' }}>
-                  task_alt
-                </span>
-                <span className='whitespace-nowrap'>Lojistik Başvuru Sonucu</span>
-              </div>
-            </nav>
-
-            <div className='mt-8 pt-6 border-t border-slate-200'>
-              <h3 className='text-xs font-bold text-slate-900 uppercase tracking-widest mb-4'>
-                Bilgilendirme
-              </h3>
-
-              <div className='space-y-4'>
-                <div className='flex items-start gap-3'>
-                  <span className='material-symbols-outlined text-primary text-lg'>
-                    notification_important
-                  </span>
-                  <p className='text-xs text-slate-600 leading-relaxed'>
-                    Başvurunuzun sonucu bu sayfadan canlı takip edilir.
-                  </p>
-                </div>
-
-                <div className='flex items-start gap-3'>
-                  <span className='material-symbols-outlined text-primary text-lg'>
-                    schedule
-                  </span>
-                  <p className='text-xs text-slate-600 leading-relaxed'>
-                    Sonuç bilgilendirmesi ortalama 24 saat içerisinde yapılır.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </aside>
+        <LogisticsApplicationSidebar activeStep='result' />
 
         <section className='min-w-0 flex-1'>
           <div className='mb-10'>
@@ -143,10 +175,16 @@ export default function LogisticsApplicationResultPage() {
             </div>
           ) : null}
 
-          {!isLoading && !application ? (
+          {!isLoading && errorMessage ? (
+            <div className='rounded-xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700'>
+              {errorMessage}
+            </div>
+          ) : null}
+
+          {!isLoading && !errorMessage && !application ? (
             <div className='space-y-4 rounded-xl border border-slate-200 bg-white p-6'>
               <h2 className='text-lg font-bold text-slate-900'>
-                Henüz tamamlanmış bir lojistik başvurunuz bulunmuyor.
+                Henüz bir lojistik başvurunuz bulunmuyor.
               </h2>
               <p className='text-sm text-slate-600'>
                 Başvuru adımlarını tamamladıktan sonra sonuç bu ekranda görüntülenir.
@@ -162,7 +200,7 @@ export default function LogisticsApplicationResultPage() {
             </div>
           ) : null}
 
-          {!isLoading && application && !isComplete ? (
+          {!isLoading && !errorMessage && application && !isComplete ? (
             <div className='space-y-4 rounded-xl border border-amber-200 bg-amber-50 p-6'>
               <h2 className='text-lg font-bold text-amber-900'>
                 Başvurunuz henüz tamamlanmadı.
@@ -172,7 +210,7 @@ export default function LogisticsApplicationResultPage() {
               </p>
               <button
                 className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white'
-                onClick={() => router.push(stepOne ? '/lojistik/basvuru/iletisim-ve-finans' : '/lojistik/basvuru')}
+                onClick={() => router.push(continuePath)}
                 type='button'
               >
                 Başvuruya Devam Et
@@ -181,16 +219,20 @@ export default function LogisticsApplicationResultPage() {
             </div>
           ) : null}
 
-          {!isLoading && application ? (
+          {!isLoading && !errorMessage && application ? (
             <div className='space-y-6'>
               <div className='rounded-xl border border-slate-200 bg-white p-6 shadow-sm'>
                 <div className='flex flex-wrap items-center gap-3'>
-                  <span className='inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700'>
-                    <span className='material-symbols-outlined text-base'>schedule</span>
-                    İnceleniyor
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-bold ${statusPresentation.className}`}
+                  >
+                    <span className='material-symbols-outlined text-base'>
+                      {statusPresentation.icon}
+                    </span>
+                    {statusPresentation.label}
                   </span>
                   <span className='text-xs text-slate-500'>
-                    Son güncelleme: {formatDate(application.submittedAt)}
+                    Son güncelleme: {formatDate(application.updatedAt)}
                   </span>
                 </div>
 
@@ -201,9 +243,15 @@ export default function LogisticsApplicationResultPage() {
                   Başvurunuz lojistik ekibi tarafından incelenecek ve uygun görülmesi halinde sizinle iletişime geçilecektir.
                 </p>
 
-                {isComplete ? (
+                {application.reviewStatus === 'REJECTED' && application.reviewNote ? (
+                  <div className='mt-5 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800'>
+                    Red Notu: {application.reviewNote}
+                  </div>
+                ) : null}
+
+                {application.reviewStatus === 'APPROVED' ? (
                   <div className='mt-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800'>
-                    Tüm adımlar tamamlandı ve başvurunuz değerlendirme kuyruğuna alındı.
+                    Başvurunuz onaylandı. Hesabım menüsünden Lojistik Yönetim Paneli alanını kullanabilirsiniz.
                   </div>
                 ) : null}
               </div>
@@ -216,16 +264,12 @@ export default function LogisticsApplicationResultPage() {
                   <dl className='mt-4 space-y-3 text-sm'>
                     <div className='flex justify-between gap-4'>
                       <dt className='text-slate-500'>Firma</dt>
-                      <dd className='font-semibold text-slate-800 text-right'>{stepOne?.companyName ?? '-'}</dd>
+                      <dd className='font-semibold text-slate-800 text-right'>{application.companyName}</dd>
                     </div>
                     <div className='flex justify-between gap-4'>
                       <dt className='text-slate-500'>Lojistik Yetki Belgesi</dt>
                       <dd className='font-semibold text-slate-800 text-right'>
-                        {stepOne?.logisticsAuthorizationDocumentType ? (
-                          stepOne.logisticsAuthorizationDocumentType === 'DIGER'
-                            ? 'Diğer'
-                            : stepOne.logisticsAuthorizationDocumentType
-                        ) : '-'}
+                        {logisticsAuthorizationDocumentTypeLabels[application.logisticsAuthorizationDocumentType]}
                       </dd>
                     </div>
                     <div className='flex justify-between gap-4'>
@@ -243,13 +287,15 @@ export default function LogisticsApplicationResultPage() {
                     <div className='flex justify-between gap-4'>
                       <dt className='text-slate-500'>Filo Kapasitesi</dt>
                       <dd className='font-semibold text-slate-800 text-right'>
-                        {stepTwo?.fleetCapacity ? logisticsFleetCapacityLabels[stepTwo.fleetCapacity] : '-'}
+                        {application.fleetCapacity
+                          ? logisticsFleetCapacityLabels[application.fleetCapacity]
+                          : '-'}
                       </dd>
                     </div>
                     <div className='flex justify-between gap-4'>
                       <dt className='text-slate-500'>Yüklenen Belge Sayısı</dt>
                       <dd className='font-semibold text-slate-800 text-right'>
-                        {selectedDocumentNames.length}
+                        {application.documents.length}
                       </dd>
                     </div>
                   </dl>
@@ -257,17 +303,17 @@ export default function LogisticsApplicationResultPage() {
 
                 <div className='rounded-xl border border-slate-200 bg-white p-5 shadow-sm'>
                   <h3 className='text-sm font-bold text-slate-900 uppercase tracking-wider'>
-                    Sonraki Adım
+                    Süreç Bilgisi
                   </h3>
                   <div className='mt-4 space-y-3 text-sm text-slate-600'>
                     <p>
-                      Lojistik partner başvurunuz ortalama 24 saat içinde değerlendirilecektir.
+                      Başvurunun gönderildiği tarih: {formatDate(application.createdAt)}
                     </p>
                     <p>
-                      Belgeleriniz ve operasyon bilginiz incelendikten sonra tarafınıza dönüş yapılır.
+                      Son güncelleme tarihi: {formatDate(application.updatedAt)}
                     </p>
                     <p>
-                      Başvurunun gönderildiği tarih: {formatDate(application.submittedAt)}
+                      İnceleme tamamlandığında bu ekran otomatik olarak güncel durumu gösterecektir.
                     </p>
                   </div>
                 </div>

@@ -2,18 +2,23 @@
 
 import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
+import { hasAccessToken } from '@/lib/auth-token';
+import {
+  fetchMyLogisticsApplication,
+  upsertMyLogisticsApplication,
+} from '@/features/logistics-application/api/logistics-application.api';
+import {
+  shouldRedirectLogisticsApplicationToResult,
+} from '@/features/logistics-application/api/logistics-application-progress';
 import {
   logisticsApplicationStepOneSchema,
   logisticsAuthorizationDocumentTypeValues,
   logisticsMainServiceTypeValues,
   type LogisticsApplicationStepOneDto,
 } from '@/features/logistics-application/logistics-application.schema';
-import {
-  getStoredLogisticsApplication,
-  saveLogisticsApplicationStepOne,
-} from '@/features/logistics-application/logistics-application.store';
 import { LogisticsApplicationSidebar } from '@/features/logistics-application/components/LogisticsApplicationSidebar';
 import { LogisticsMultiSelectField } from '@/features/logistics-application/components/LogisticsMultiSelectField';
 import { MainFooter } from '../../components/MainFooter';
@@ -35,6 +40,7 @@ const EMPTY_FORM: LogisticsApplicationStepOneDto = {
 
 const FIELD_CLASS =
   'w-full px-4 py-3 rounded-lg border border-slate-300 bg-white shadow-sm focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all outline-none';
+const RESULT_PAGE_PATH = '/lojistik/basvuru/basvuru-sonucu';
 
 const COMPANY_TYPE_OPTIONS = [
   { value: 'SAHIS', label: 'Şahıs' },
@@ -75,13 +81,60 @@ export default function LogisticsApplicationStepOnePage() {
   });
 
   useEffect(() => {
-    const stored = getStoredLogisticsApplication();
-    if (stored.stepOne) {
-      reset(stored.stepOne);
-    }
+    let isMounted = true;
 
-    setIsLoadingInitialData(false);
-  }, [reset]);
+    const loadApplication = async () => {
+      if (!hasAccessToken()) {
+        setIsLoadingInitialData(false);
+        return;
+      }
+
+      try {
+        const existingApplication = await fetchMyLogisticsApplication();
+        if (!isMounted || !existingApplication) {
+          return;
+        }
+
+        if (shouldRedirectLogisticsApplicationToResult(existingApplication)) {
+          router.replace(RESULT_PAGE_PATH);
+          return;
+        }
+
+        reset({
+          companyName: existingApplication.companyName,
+          companyType: existingApplication.companyType,
+          vknOrTckn: existingApplication.vknOrTckn,
+          taxOffice: existingApplication.taxOffice,
+          mersisNo: existingApplication.mersisNo,
+          tradeRegistryNo: existingApplication.tradeRegistryNo ?? '',
+          city: existingApplication.city,
+          district: existingApplication.district,
+          referenceCode: existingApplication.referenceCode ?? '',
+          logisticsAuthorizationDocumentType:
+            existingApplication.logisticsAuthorizationDocumentType,
+          mainServiceTypes: existingApplication.mainServiceTypes,
+        });
+      } catch {
+        // Do not print unauthorized or load errors inside the form canvas.
+      } finally {
+        if (isMounted) {
+          setIsLoadingInitialData(false);
+        }
+      }
+    };
+
+    loadApplication();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [reset, router]);
+
+  const upsertMutation = useMutation({
+    mutationKey: ['logistics-application', 'upsert'],
+    mutationFn: (payload: LogisticsApplicationStepOneDto) =>
+      upsertMyLogisticsApplication(payload),
+  });
 
   const watchedValues = watch([
     'companyName',
@@ -104,7 +157,23 @@ export default function LogisticsApplicationStepOnePage() {
     setSubmitSuccessMessage(null);
 
     try {
-      saveLogisticsApplicationStepOne(payload);
+      const saved = await upsertMutation.mutateAsync(payload);
+
+      reset({
+        companyName: saved.companyName,
+        companyType: saved.companyType,
+        vknOrTckn: saved.vknOrTckn,
+        taxOffice: saved.taxOffice,
+        mersisNo: saved.mersisNo,
+        tradeRegistryNo: saved.tradeRegistryNo ?? '',
+        city: saved.city,
+        district: saved.district,
+        referenceCode: saved.referenceCode ?? '',
+        logisticsAuthorizationDocumentType:
+          saved.logisticsAuthorizationDocumentType,
+        mainServiceTypes: saved.mainServiceTypes,
+      });
+
       setSubmitSuccessMessage('Şirket kimlik bilgileri başarıyla kaydedildi.');
       router.push('/lojistik/basvuru/iletisim-ve-finans');
     } catch (error) {

@@ -2,62 +2,79 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
+import { hasAccessToken } from '@/lib/auth-token';
+import {
+  fetchMyLogisticsApplication,
+  upsertMyLogisticsDocuments,
+  type LogisticsApplicationDocumentRecord,
+  type LogisticsApplicationDocumentType,
+} from '@/features/logistics-application/api/logistics-application.api';
+import {
+  isStepOneCompleted,
+  isStepTwoCompleted,
+  shouldRedirectLogisticsApplicationToResult,
+} from '@/features/logistics-application/api/logistics-application-progress';
 import {
   logisticsApplicationStepThreeSchema,
   type LogisticsApplicationStepThreeDto,
 } from '@/features/logistics-application/logistics-application.schema';
-import {
-  getStoredLogisticsApplication,
-  hasStoredStepOne,
-  hasStoredStepTwo,
-  saveLogisticsApplicationStepThree,
-  type LogisticsApplicationDocumentFieldKey,
-} from '@/features/logistics-application/logistics-application.store';
 import { LogisticsApplicationSidebar } from '@/features/logistics-application/components/LogisticsApplicationSidebar';
 import { MainFooter } from '../../../components/MainFooter';
 import { MainHeader } from '../../../components/MainHeader';
 
 type DocumentFieldConfig = {
-  field: LogisticsApplicationDocumentFieldKey;
+  field:
+    | 'taxCertificate'
+    | 'signatureCircular'
+    | 'tradeRegistryGazette'
+    | 'activityCertificate'
+    | 'transportLicense';
+  documentType: LogisticsApplicationDocumentType;
   title: string;
   description: string;
   icon: string;
-  required?: boolean;
 };
+
+type LogisticsDocumentFieldKey = DocumentFieldConfig['field'];
 
 const DOCUMENT_CARDS: DocumentFieldConfig[] = [
   {
     field: 'taxCertificate',
+    documentType: 'TAX_CERTIFICATE',
     title: 'Güncel Vergi Levhası',
     description: 'PDF, PNG veya JPEG (Maks. 15MB)',
     icon: 'description',
   },
   {
     field: 'signatureCircular',
+    documentType: 'SIGNATURE_CIRCULAR',
     title: 'İmza Sirküleri',
     description: 'Noter onaylı güncel sirküler',
     icon: 'edit_document',
   },
   {
     field: 'tradeRegistryGazette',
+    documentType: 'TRADE_REGISTRY_GAZETTE',
     title: 'Ticaret Sicil Gazetesi',
     description: 'Kuruluş ve en son değişiklik gazetesi',
     icon: 'newspaper',
   },
   {
     field: 'activityCertificate',
+    documentType: 'ACTIVITY_CERTIFICATE',
     title: 'Faaliyet Belgesi',
     description: 'Son 6 ay içerisinde alınmış belge',
     icon: 'badge',
   },
   {
     field: 'transportLicense',
+    documentType: 'TRANSPORT_LICENSE',
     title: 'Ulaştırma / Lojistik Yetki Belgesi',
     description: 'Yetki belgenizin güncel kopyası',
     icon: 'license',
-    required: true,
   },
 ];
 
@@ -74,8 +91,21 @@ export default function LogisticsApplicationStepThreePage() {
   const [isLoadingInitialData, setIsLoadingInitialData] = useState(true);
   const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(null);
   const [submitSuccessMessage, setSubmitSuccessMessage] = useState<string | null>(null);
-  const [selectedFiles, setSelectedFiles] = useState<Partial<Record<LogisticsApplicationDocumentFieldKey, File>>>({});
-  const [uploadedDocumentNames, setUploadedDocumentNames] = useState<Partial<Record<LogisticsApplicationDocumentFieldKey, string>>>({});
+  const [selectedFiles, setSelectedFiles] = useState<
+    Partial<
+      Record<
+        | 'taxCertificate'
+        | 'signatureCircular'
+        | 'tradeRegistryGazette'
+        | 'activityCertificate'
+        | 'transportLicense',
+        File
+      >
+    >
+  >({});
+  const [uploadedDocuments, setUploadedDocuments] = useState<
+    LogisticsApplicationDocumentRecord[]
+  >([]);
 
   const {
     handleSubmit,
@@ -89,39 +119,96 @@ export default function LogisticsApplicationStepThreePage() {
   });
 
   useEffect(() => {
-    const stored = getStoredLogisticsApplication();
+    let isMounted = true;
 
-    if (!hasStoredStepOne(stored) || !hasStoredStepTwo(stored)) {
-      setSubmitErrorMessage('Önce şirket ve iletişim-finans adımlarını tamamlamalısınız.');
-      if (!hasStoredStepOne(stored)) {
-        router.replace('/lojistik/basvuru');
-      } else {
-        router.replace('/lojistik/basvuru/iletisim-ve-finans');
+    const loadApplication = async () => {
+      if (!hasAccessToken()) {
+        setIsLoadingInitialData(false);
+        return;
       }
-      setIsLoadingInitialData(false);
-      return;
-    }
 
-    if (stored.stepThree) {
-      reset(stored.stepThree);
-    }
+      try {
+        const existingApplication = await fetchMyLogisticsApplication();
+        if (!isMounted) {
+          return;
+        }
 
-    if (stored.uploadedDocumentNames) {
-      setUploadedDocumentNames(stored.uploadedDocumentNames);
-    }
+        if (!existingApplication || !isStepOneCompleted(existingApplication)) {
+          setSubmitErrorMessage('Önce şirket kimlik bilgileri adımını tamamlamalısınız.');
+          router.replace('/lojistik/basvuru');
+          return;
+        }
 
-    setIsLoadingInitialData(false);
-  }, [reset]);
+        if (!isStepTwoCompleted(existingApplication)) {
+          setSubmitErrorMessage('Önce iletişim ve finans adımını tamamlamalısınız.');
+          router.replace('/lojistik/basvuru/iletisim-ve-finans');
+          return;
+        }
+
+        if (shouldRedirectLogisticsApplicationToResult(existingApplication)) {
+          router.replace('/lojistik/basvuru/basvuru-sonucu');
+          return;
+        }
+
+        reset({
+          approvedSupplierAgreement: existingApplication.approvedSupplierAgreement ?? false,
+          approvedKvkkAgreement: existingApplication.approvedKvkkAgreement ?? false,
+          approvedCommercialMessage: existingApplication.approvedCommercialMessage ?? false,
+        });
+        setUploadedDocuments(existingApplication.documents);
+      } catch {
+        setSubmitErrorMessage('Başvuru bilgileri alınırken bir sorun oluştu.');
+      } finally {
+        if (isMounted) {
+          setIsLoadingInitialData(false);
+        }
+      }
+    };
+
+    loadApplication();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [reset, router]);
+
+  const upsertMutation = useMutation({
+    mutationKey: ['logistics-application', 'upsert-documents'],
+    mutationFn: (payload: {
+      values: LogisticsApplicationStepThreeDto;
+      files: {
+        taxCertificate?: File;
+        signatureCircular?: File;
+        tradeRegistryGazette?: File;
+        activityCertificate?: File;
+        transportLicense?: File;
+      };
+    }) =>
+      upsertMyLogisticsDocuments({
+        ...payload.values,
+        ...payload.files,
+      }),
+  });
 
   const approvedSupplierAgreement = watch('approvedSupplierAgreement');
   const approvedKvkkAgreement = watch('approvedKvkkAgreement');
   const approvedCommercialMessage = watch('approvedCommercialMessage');
 
+  const uploadedDocumentByType = useMemo(() => {
+    return uploadedDocuments.reduce(
+      (accumulator, document) => {
+        accumulator[document.documentType] = document;
+        return accumulator;
+      },
+      {} as Partial<Record<LogisticsApplicationDocumentType, LogisticsApplicationDocumentRecord>>,
+    );
+  }, [uploadedDocuments]);
+
   const hasAllRequiredDocuments = useMemo(() => {
     return DOCUMENT_CARDS.every((card) => {
-      return Boolean(selectedFiles[card.field]) || Boolean(uploadedDocumentNames[card.field]);
+      return Boolean(selectedFiles[card.field]) || Boolean(uploadedDocumentByType[card.documentType]);
     });
-  }, [selectedFiles, uploadedDocumentNames]);
+  }, [selectedFiles, uploadedDocumentByType]);
 
   const onSubmit = async (payload: LogisticsApplicationStepThreeDto) => {
     setSubmitErrorMessage(null);
@@ -133,22 +220,24 @@ export default function LogisticsApplicationStepThreePage() {
     }
 
     try {
-      const fileNameMap: Partial<Record<LogisticsApplicationDocumentFieldKey, string>> = {};
-
-      DOCUMENT_CARDS.forEach((card) => {
-        const selectedFile = selectedFiles[card.field];
-        if (selectedFile) {
-          fileNameMap[card.field] = selectedFile.name;
-          return;
-        }
-
-        const storedFileName = uploadedDocumentNames[card.field];
-        if (storedFileName) {
-          fileNameMap[card.field] = storedFileName;
-        }
+      const saved = await upsertMutation.mutateAsync({
+        values: payload,
+        files: {
+          taxCertificate: selectedFiles.taxCertificate,
+          signatureCircular: selectedFiles.signatureCircular,
+          tradeRegistryGazette: selectedFiles.tradeRegistryGazette,
+          activityCertificate: selectedFiles.activityCertificate,
+          transportLicense: selectedFiles.transportLicense,
+        },
       });
 
-      saveLogisticsApplicationStepThree(payload, fileNameMap);
+      reset({
+        approvedSupplierAgreement: saved.approvedSupplierAgreement ?? false,
+        approvedKvkkAgreement: saved.approvedKvkkAgreement ?? false,
+        approvedCommercialMessage: saved.approvedCommercialMessage ?? false,
+      });
+      setUploadedDocuments(saved.documents);
+      setSelectedFiles({});
       setSubmitSuccessMessage('Belge yükleme ve onay bilgileri başarıyla kaydedildi.');
       router.push('/lojistik/basvuru/basvuru-sonucu');
     } catch (error) {
@@ -157,7 +246,7 @@ export default function LogisticsApplicationStepThreePage() {
     }
   };
 
-  const handleFileChange = (field: LogisticsApplicationDocumentFieldKey, file: File | null) => {
+  const handleFileChange = (field: LogisticsDocumentFieldKey, file: File | null) => {
     if (file && file.size > MAX_FILE_SIZE_BYTES) {
       setSubmitErrorMessage('Yüklediğiniz dosya 15 MB sınırını aşıyor. Lütfen daha küçük bir dosya seçiniz.');
       return;
@@ -211,7 +300,8 @@ export default function LogisticsApplicationStepThreePage() {
             <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
               {DOCUMENT_CARDS.map((card) => {
                 const selectedFile = selectedFiles[card.field];
-                const uploadedName = uploadedDocumentNames[card.field];
+                const uploadedDocument = uploadedDocumentByType[card.documentType];
+                const uploadedName = uploadedDocument?.originalName;
 
                 return (
                   <div key={card.field} className='rounded-xl border border-dashed border-sky-200 bg-white p-6'>
@@ -245,12 +335,6 @@ export default function LogisticsApplicationStepThreePage() {
                       ) : (
                         <p className='text-xs text-slate-400'>Henüz dosya seçilmedi.</p>
                       )}
-
-                      {card.required ? (
-                        <span className='rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-700'>
-                          Zorunlu
-                        </span>
-                      ) : null}
                     </div>
                   </div>
                 );

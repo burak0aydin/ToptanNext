@@ -8,6 +8,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { CartModule } from './modules/cart/cart.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
+import { LogisticsApplicationsModule } from './modules/logistics-applications/logistics-applications.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ProductsModule } from './modules/products/products.module';
 import { QuotesModule } from './modules/quotes/quotes.module';
@@ -38,6 +39,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     SectorsModule,
     ProductsModule,
     SupplierApplicationsModule,
+    LogisticsApplicationsModule,
     ConversationsModule,
     QuotesModule,
     NotificationsModule,

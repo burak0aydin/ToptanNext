@@ -12,6 +12,7 @@ model User {
   email               String               @unique
   passwordHash        String
   role                Role                 @default(BUYER)
+  isLogisticsPartner  Boolean              @default(false) @map("is_logistics_partner")
   companyName         String?              @map("company_name")
   avatarUrl           String?              @map("avatar_url")
   isVerified          Boolean              @default(false)
@@ -24,6 +25,7 @@ model User {
   lastName            String?
   phoneNumber         String?
   supplierApplication SupplierApplication?
+  logisticsApplication LogisticsApplication?
   productListings     ProductListing[]
   conversationParticipants ConversationParticipant[]
   sentMessages        Message[]            @relation("UserSentMessages")
@@ -91,6 +93,66 @@ model SupplierApplicationDocument {
   @@unique([supplierApplicationId, documentType])
   @@index([documentType])
   @@map("supplier_application_documents")
+}
+
+model LogisticsApplication {
+  id                                  String                           @id @default(cuid())
+  userId                              String                           @unique @map("user_id")
+  companyName                         String                           @map("company_name")
+  companyType                         SupplierCompanyType              @map("company_type")
+  vknOrTckn                           String                           @map("vkn_or_tckn")
+  taxOffice                           String                           @map("tax_office")
+  mersisNo                            String                           @map("mersis_no")
+  tradeRegistryNo                     String?                          @map("trade_registry_no")
+  city                                String                           @map("city")
+  district                            String                           @map("district")
+  referenceCode                       String?                          @map("reference_code")
+  logisticsAuthorizationDocumentType  LogisticsAuthorizationDocumentType @map("logistics_authorization_document_type")
+  mainServiceTypes                    LogisticsMainServiceType[]       @default([]) @map("main_service_types")
+  companyIban                         String?                          @map("company_iban")
+  kepAddress                          String?                          @map("kep_address")
+  isEInvoiceTaxpayer                  Boolean?                         @map("is_e_invoice_taxpayer")
+  businessPhone                       String?                          @map("business_phone")
+  headquartersAddress                 String?                          @map("headquarters_address")
+  serviceRegions                      LogisticsServiceRegion[]         @default([]) @map("service_regions")
+  fleetCapacity                       LogisticsFleetCapacity?          @map("fleet_capacity")
+  contactFirstName                    String?                          @map("contact_first_name")
+  contactLastName                     String?                          @map("contact_last_name")
+  contactRole                         String?                          @map("contact_role")
+  contactPhone                        String?                          @map("contact_phone")
+  contactEmail                        String?                          @map("contact_email")
+  reviewStatus                        LogisticsApplicationReviewStatus @default(PENDING) @map("review_status")
+  reviewNote                          String?                          @map("review_note")
+  reviewedAt                          DateTime?                        @map("reviewed_at")
+  approvedCommercialMessage           Boolean                          @default(false) @map("approved_commercial_message")
+  approvedKvkkAgreement               Boolean                          @default(false) @map("approved_kvkk_agreement")
+  approvedSupplierAgreement           Boolean                          @default(false) @map("approved_supplier_agreement")
+  createdAt                           DateTime                         @default(now()) @map("created_at")
+  updatedAt                           DateTime                         @updatedAt @map("updated_at")
+  documents                           LogisticsApplicationDocument[]
+  user                                User                             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyType])
+  @@index([reviewStatus])
+  @@index([logisticsAuthorizationDocumentType])
+  @@map("logistics_applications")
+}
+
+model LogisticsApplicationDocument {
+  id                    String                            @id @default(cuid())
+  logisticsApplicationId String                           @map("logistics_application_id")
+  documentType          LogisticsApplicationDocumentType  @map("document_type")
+  originalName          String                            @map("original_name")
+  filePath              String                            @map("file_path")
+  mimeType              String                            @map("mime_type")
+  fileSize              Int                               @map("file_size")
+  uploadedAt            DateTime                          @default(now()) @map("uploaded_at")
+  updatedAt             DateTime                          @updatedAt @map("updated_at")
+  logisticsApplication  LogisticsApplication              @relation(fields: [logisticsApplicationId], references: [id], onDelete: Cascade)
+
+  @@unique([logisticsApplicationId, documentType])
+  @@index([documentType])
+  @@map("logistics_application_documents")
 }
 
 model Category {
@@ -360,6 +422,51 @@ enum SupplierApplicationDocumentType {
   SIGNATURE_CIRCULAR
   TRADE_REGISTRY_GAZETTE
   ACTIVITY_CERTIFICATE
+}
+
+enum LogisticsAuthorizationDocumentType {
+  K1
+  K3
+  R1
+  R2
+  L1
+  DIGER
+}
+
+enum LogisticsMainServiceType {
+  PARSIYEL_TASIMA
+  KOMPLE_ARAC_FTL
+  SOGUK_ZINCIR
+  KONTEYNER_GUMRUK
+  AGIR_YUK
+  DEPOLAMA
+}
+
+enum LogisticsServiceRegion {
+  TUM_TURKIYE
+  BELIRLI_BOLGELER_SEHIRLER
+  ULUSLARARASI
+}
+
+enum LogisticsFleetCapacity {
+  ONE_TO_FIVE
+  SIX_TO_TWENTY
+  TWENTY_ONE_TO_FIFTY
+  FIFTY_PLUS
+}
+
+enum LogisticsApplicationReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum LogisticsApplicationDocumentType {
+  TAX_CERTIFICATE
+  SIGNATURE_CIRCULAR
+  TRADE_REGISTRY_GAZETTE
+  ACTIVITY_CERTIFICATE
+  TRANSPORT_LICENSE
 }
 
 enum ProductListingStatus {

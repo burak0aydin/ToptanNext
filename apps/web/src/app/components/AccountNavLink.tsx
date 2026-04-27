@@ -10,28 +10,62 @@ import {
   type AppUserRole,
 } from '@/lib/auth-token';
 import { requestJson } from '@/lib/api';
+import { fetchUserProfile } from '@/features/profile/api/profile.api';
 
 export function AccountNavLink() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<AppUserRole | null>(null);
+  const [isLogisticsPartner, setIsLogisticsPartner] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const closeTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const syncLoginState = () => {
-      setIsLoggedIn(hasAccessToken());
-      setUserRole(getUserRoleFromToken());
+    let isMounted = true;
+
+    const syncLoginState = async () => {
+      const loggedIn = hasAccessToken();
+      const role = getUserRoleFromToken();
+
+      if (!isMounted) {
+        return;
+      }
+
+      setIsLoggedIn(loggedIn);
+      setUserRole(role);
+
+      if (!loggedIn) {
+        setIsLogisticsPartner(false);
+        return;
+      }
+
+      try {
+        const profile = await fetchUserProfile();
+        if (!isMounted) {
+          return;
+        }
+
+        setIsLogisticsPartner(profile.isLogisticsPartner);
+      } catch {
+        if (isMounted) {
+          setIsLogisticsPartner(false);
+        }
+      }
     };
 
-    syncLoginState();
+    void syncLoginState();
 
-    window.addEventListener('storage', syncLoginState);
-    window.addEventListener('focus', syncLoginState);
+    const handleSync = () => {
+      void syncLoginState();
+    };
+
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('focus', handleSync);
 
     return () => {
-      window.removeEventListener('storage', syncLoginState);
-      window.removeEventListener('focus', syncLoginState);
+      isMounted = false;
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('focus', handleSync);
 
       if (closeTimeoutRef.current) {
         window.clearTimeout(closeTimeoutRef.current);
@@ -70,6 +104,7 @@ export function AccountNavLink() {
     clearAccessToken();
     setIsLoggedIn(false);
     setUserRole(null);
+    setIsLogisticsPartner(false);
     setIsMenuOpen(false);
     router.push('/');
     router.refresh();
@@ -151,6 +186,17 @@ export function AccountNavLink() {
               >
                 <span className='material-symbols-outlined text-[20px]'>storefront</span>
                 Satıcı Panelim
+              </Link>
+            ) : null}
+
+            {isLogisticsPartner ? (
+              <Link
+                className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
+                href='/lojistik-yonetim-paneli'
+                onClick={handleMenuItemClick}
+              >
+                <span className='material-symbols-outlined text-[20px]'>local_shipping</span>
+                Lojistik Yönetim Paneli
               </Link>
             ) : null}
 
