@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import {
   clearAccessToken,
@@ -14,11 +14,13 @@ import { fetchUserProfile } from '@/features/profile/api/profile.api';
 
 export function AccountNavLink() {
   const router = useRouter();
+  const pathname = usePathname();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<AppUserRole | null>(null);
   const [isLogisticsPartner, setIsLogisticsPartner] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const closeTimeoutRef = useRef<number | null>(null);
+  const isLogisticsRoute = pathname.startsWith('/lojistik');
 
   useEffect(() => {
     let isMounted = true;
@@ -147,71 +149,84 @@ export function AccountNavLink() {
       {isMenuOpen ? (
         <div className='absolute right-0 top-full z-50 w-56 pt-2'>
           <div className='overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl'>
-            <div className='px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400'>
-              Hesabım
-            </div>
+            {isLogisticsRoute ? (
+              <>
+                <Link
+                  className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
+                  href='/satici-panelim'
+                  onClick={handleMenuItemClick}
+                >
+                  <span className='material-symbols-outlined text-[20px]'>storefront</span>
+                  Mağaza
+                </Link>
 
-            <Link
-              className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
-              href='/siparislerim'
-              onClick={handleMenuItemClick}
-            >
-              <span className='material-symbols-outlined text-[20px]'>package_2</span>
-              Siparişlerim
-            </Link>
+                <button
+                  type='button'
+                  className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-red-600 transition-colors hover:bg-red-50'
+                  onClick={() => {
+                    void handleLogout();
+                  }}
+                >
+                  <span className='material-symbols-outlined text-[20px]'>logout</span>
+                  Çıkış Yap
+                </button>
+              </>
+            ) : (
+              <>
+                <div className='px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400'>
+                  Hesabım
+                </div>
 
-            <Link
-              className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
-              href='/favorilerim'
-              onClick={handleMenuItemClick}
-            >
-              <span className='material-symbols-outlined text-[20px]'>favorite</span>
-              Favorilerim
-            </Link>
+                <Link
+                  className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
+                  href='/siparislerim'
+                  onClick={handleMenuItemClick}
+                >
+                  <span className='material-symbols-outlined text-[20px]'>package_2</span>
+                  Siparişlerim
+                </Link>
 
-            <Link
-              className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
-              href='/kullanici-bilgilerim'
-              onClick={handleMenuItemClick}
-            >
-              <span className='material-symbols-outlined text-[20px]'>person</span>
-              Kişisel Bilgilerim
-            </Link>
+                <Link
+                  className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
+                  href='/favorilerim'
+                  onClick={handleMenuItemClick}
+                >
+                  <span className='material-symbols-outlined text-[20px]'>favorite</span>
+                  Favorilerim
+                </Link>
 
-            {userRole === 'SUPPLIER' ? (
-              <Link
-                className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
-                href='/satici-panelim'
-                onClick={handleMenuItemClick}
-              >
-                <span className='material-symbols-outlined text-[20px]'>storefront</span>
-                Satıcı Panelim
-              </Link>
-            ) : null}
+                <Link
+                  className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
+                  href='/kullanici-bilgilerim'
+                  onClick={handleMenuItemClick}
+                >
+                  <span className='material-symbols-outlined text-[20px]'>person</span>
+                  Kişisel Bilgilerim
+                </Link>
 
-            {isLogisticsPartner ? (
-              <Link
-                className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
-                href='/lojistik-yonetim-paneli'
-                onClick={handleMenuItemClick}
-              >
-                <span className='material-symbols-outlined text-[20px]'>local_shipping</span>
-                Lojistik Yönetim Paneli
-              </Link>
-            ) : null}
+                {userRole === 'SUPPLIER' ? (
+                  <Link
+                    className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
+                    href='/satici-panelim'
+                    onClick={handleMenuItemClick}
+                  >
+                    <span className='material-symbols-outlined text-[20px]'>storefront</span>
+                    Mağaza
+                  </Link>
+                ) : null}
 
-            <div className='my-1 border-t border-slate-100' />
-
-            <button
-              type='button'
-              className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-red-600 transition-colors hover:bg-red-50'
-              onClick={() => {
-                void handleLogout();
-              }}
-            >
-              <span className='material-symbols-outlined text-[20px]'>logout</span>
-              Çıkış Yap
-            </button>
+                {isLogisticsPartner ? (
+                  <Link
+                    className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#1A56DB]'
+                    href='/lojistik/acik-talepler'
+                    onClick={handleMenuItemClick}
+                  >
+                    <span className='material-symbols-outlined text-[20px]'>local_shipping</span>
+                    Lojistik Yönetim Paneli
+                  </Link>
+                ) : null}
+              </>
+            )}
         </div>
         </div>
       ) : null}
