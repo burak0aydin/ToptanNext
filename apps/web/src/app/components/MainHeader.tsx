@@ -233,7 +233,7 @@ export function MainHeader() {
 
           <div className='hidden items-center gap-4 lg:flex'>
             <Link className='text-[10px] font-medium text-on-surface-variant transition-colors hover:text-primary' href={supplierApplyHref}>
-              ToptanNext'te Satış Yap
+              ToptanNext&#39;te Satış Yap
             </Link>
             <Link className='text-[10px] font-medium text-on-surface-variant transition-colors hover:text-primary' href={logisticsApplyHref}>
               Lojistik Partnerimiz Ol

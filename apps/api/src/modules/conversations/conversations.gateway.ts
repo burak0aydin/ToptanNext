@@ -18,6 +18,8 @@ import { RealtimeService } from '../../realtime/realtime.service';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { QuotesService } from '../quotes/quotes.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
+import { CreateLogisticsOfferDto } from './dto/create-logistics-offer.dto';
+import { CreateLogisticsRequestDto } from './dto/create-logistics-request.dto';
 import { MarkAsReadDto } from './dto/mark-as-read.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { ConversationsService } from './conversations.service';
@@ -65,21 +67,25 @@ export class ConversationsGateway
 
     try {
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-        secret: this.configService.get<string>('JWT_SECRET', 'local-dev-secret'),
+        secret: this.configService.get<string>(
+          'JWT_SECRET',
+          'local-dev-secret',
+        ),
       });
 
       client.data.user = payload;
       client.join(`user:${payload.sub}`);
 
-      const conversationIds = await this.conversationsService.getConversationIdsForUser(
-        payload.sub,
-      );
+      const conversationIds =
+        await this.conversationsService.getConversationIdsForUser(payload.sub);
 
       conversationIds.forEach((conversationId) => {
         client.join(`conv:${conversationId}`);
       });
     } catch (error) {
-      this.logger.warn(`Socket bağlantısı reddedildi: ${(error as Error).message}`);
+      this.logger.warn(
+        `Socket bağlantısı reddedildi: ${(error as Error).message}`,
+      );
       client.disconnect(true);
     }
   }
@@ -90,7 +96,10 @@ export class ConversationsGateway
     @MessageBody() payload: { conversationId: string },
   ): Promise<void> {
     const user = this.requireUser(client);
-    await this.conversationsService.assertParticipant(payload.conversationId, user.sub);
+    await this.conversationsService.assertParticipant(
+      payload.conversationId,
+      user.sub,
+    );
     client.join(`conv:${payload.conversationId}`);
   }
 
@@ -100,7 +109,10 @@ export class ConversationsGateway
     @MessageBody() payload: { conversationId: string },
   ): Promise<void> {
     const user = this.requireUser(client);
-    await this.conversationsService.assertParticipant(payload.conversationId, user.sub);
+    await this.conversationsService.assertParticipant(
+      payload.conversationId,
+      user.sub,
+    );
     client.leave(`conv:${payload.conversationId}`);
   }
 
@@ -116,9 +128,14 @@ export class ConversationsGateway
       throw new WsException('Geçersiz mesaj tipi.');
     }
 
-    const result = await this.conversationsService.sendMessage(user.sub, payload);
+    const result = await this.conversationsService.sendMessage(
+      user.sub,
+      payload,
+    );
 
-    this.server.to(`conv:${payload.conversationId}`).emit('new_message', result.message);
+    this.server
+      .to(`conv:${payload.conversationId}`)
+      .emit('new_message', result.message);
     result.unreadByUser.forEach((item) => {
       this.server.to(`user:${item.userId}`).emit('unread_count_updated', {
         conversationId: payload.conversationId,
@@ -130,7 +147,8 @@ export class ConversationsGateway
   @SubscribeMessage('send_quote_offer')
   async sendQuoteOffer(
     @ConnectedSocket() client: AuthedSocket,
-    @MessageBody() payload: { conversationId: string; quoteData: CreateQuoteDto },
+    @MessageBody()
+    payload: { conversationId: string; quoteData: CreateQuoteDto },
   ): Promise<void> {
     const user = this.requireUser(client);
     await this.quotesService.createQuoteOffer(
@@ -151,7 +169,10 @@ export class ConversationsGateway
     },
   ): Promise<void> {
     const user = this.requireUser(client);
-    await this.conversationsService.assertParticipant(payload.conversationId, user.sub);
+    await this.conversationsService.assertParticipant(
+      payload.conversationId,
+      user.sub,
+    );
     await this.quotesService.createCounterOffer(
       payload.originalQuoteId,
       user.sub,
@@ -183,7 +204,10 @@ export class ConversationsGateway
     @MessageBody() payload: { conversationId: string },
   ): Promise<void> {
     const user = this.requireUser(client);
-    await this.conversationsService.assertParticipant(payload.conversationId, user.sub);
+    await this.conversationsService.assertParticipant(
+      payload.conversationId,
+      user.sub,
+    );
 
     client.to(`conv:${payload.conversationId}`).emit('user_typing', {
       userId: user.sub,
@@ -197,7 +221,10 @@ export class ConversationsGateway
     @MessageBody() payload: { conversationId: string },
   ): Promise<void> {
     const user = this.requireUser(client);
-    await this.conversationsService.assertParticipant(payload.conversationId, user.sub);
+    await this.conversationsService.assertParticipant(
+      payload.conversationId,
+      user.sub,
+    );
 
     client.to(`conv:${payload.conversationId}`).emit('user_stopped_typing', {
       userId: user.sub,
@@ -211,7 +238,10 @@ export class ConversationsGateway
     @MessageBody() payload: MarkAsReadDto,
   ): Promise<void> {
     const user = this.requireUser(client);
-    const result = await this.conversationsService.markAsRead(user.sub, payload);
+    const result = await this.conversationsService.markAsRead(
+      user.sub,
+      payload,
+    );
 
     this.server.to(`conv:${result.conversationId}`).emit('messages_read', {
       conversationId: result.conversationId,
@@ -225,6 +255,48 @@ export class ConversationsGateway
     });
   }
 
+  @SubscribeMessage('request_logistics')
+  async requestLogistics(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody()
+    payload: { conversationId: string; data: CreateLogisticsRequestDto },
+  ): Promise<void> {
+    const user = this.requireUser(client);
+    await this.assertMessageRateLimit(user.sub, payload.conversationId);
+
+    await this.conversationsService.createLogisticsRequest(
+      user.sub,
+      payload.conversationId,
+      payload.data,
+    );
+  }
+
+  @SubscribeMessage('offer_logistics')
+  async offerLogistics(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody()
+    payload: { requestId: string; data: CreateLogisticsOfferDto },
+  ): Promise<void> {
+    const user = this.requireUser(client);
+    await this.conversationsService.createLogisticsOffer(
+      user.sub,
+      payload.requestId,
+      payload.data,
+    );
+  }
+
+  @SubscribeMessage('select_logistics_offer')
+  async selectLogisticsOffer(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() payload: { offerId: string },
+  ): Promise<void> {
+    const user = this.requireUser(client);
+    await this.conversationsService.selectLogisticsOffer(
+      user.sub,
+      payload.offerId,
+    );
+  }
+
   private requireUser(client: AuthedSocket): JwtPayload {
     const user = client.data.user;
     if (!user) {
@@ -235,8 +307,9 @@ export class ConversationsGateway
   }
 
   private extractSocketToken(client: Socket): string | null {
-    const authToken =
-      (client.handshake.auth as Record<string, unknown> | undefined)?.token;
+    const authToken = (
+      client.handshake.auth as Record<string, unknown> | undefined
+    )?.token;
 
     if (typeof authToken === 'string' && authToken.trim().length > 0) {
       return authToken.replace(/^Bearer\s+/i, '').trim();

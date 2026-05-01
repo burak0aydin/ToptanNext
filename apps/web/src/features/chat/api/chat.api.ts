@@ -9,7 +9,9 @@ export type MessageType =
   | 'QUOTE_OFFER'
   | 'QUOTE_ACCEPTED'
   | 'QUOTE_REJECTED'
-  | 'COUNTER_OFFER';
+  | 'COUNTER_OFFER'
+  | 'LOGISTICS_REQUEST'
+  | 'LOGISTICS_OFFER';
 
 export type QuoteStatus =
   | 'PENDING'
@@ -18,6 +20,22 @@ export type QuoteStatus =
   | 'COUNTERED'
   | 'EXPIRED'
   | 'CANCELED';
+
+export type LogisticsRequestStatus =
+  | 'PENDING'
+  | 'COLLECTING'
+  | 'CLOSED'
+  | 'CANCELED'
+  | 'OFFERED'
+  | 'APPROVED'
+  | 'EXPIRED';
+
+export type LogisticsOfferStatus =
+  | 'DRAFT'
+  | 'OFFERED'
+  | 'SUBMITTED'
+  | 'SELECTED'
+  | 'REJECTED';
 
 export type ChatAttachment = {
   id: string;
@@ -42,6 +60,55 @@ export type ChatQuote = {
   counterQuoteId: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type LogisticsRequest = {
+  id: string;
+  conversationId: string;
+  requesterId: string;
+  fromCity: string;
+  toCity: string;
+  palletCount: number | null;
+  itemCount: number | null;
+  status: LogisticsRequestStatus;
+  createdAt: string;
+  updatedAt: string;
+  offers: LogisticsOffer[];
+  requesterCompanyName?: string | null;
+  requesterName?: string | null;
+  productName?: string | null;
+  productImageMediaId?: string | null;
+  isSellerDelivery?: boolean;
+  sellerDeliveryFee?: number | null;
+};
+
+export type LogisticsOffer = {
+  id: string;
+  requestId: string;
+  partnerId: string;
+  partnerCompanyName: string | null;
+  partnerAvatarUrl: string | null;
+  price: number;
+  currency: string;
+  estimatedDays: number;
+  isInsured: boolean;
+  notes: string | null;
+  status: LogisticsOfferStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PartnerLogisticsOffer = LogisticsOffer & {
+  conversationId: string;
+  requestStatus: LogisticsRequestStatus;
+  fromCity: string;
+  toCity: string;
+  requesterCompanyName: string | null;
+  requesterName: string | null;
+  productName: string | null;
+  productImageMediaId: string | null;
+  isSellerDelivery: boolean;
+  sellerDeliveryFee: number | null;
 };
 
 export type ChatMessage = {
@@ -80,6 +147,8 @@ export type ConversationSummary = {
   unreadCount: number;
   lastMessage: ChatMessage | null;
   hasPendingQuote: boolean;
+  hasPendingLogistics: boolean;
+  hasApprovedLogistics: boolean;
 };
 
 export type ConversationMessagesResponse = {
@@ -117,7 +186,7 @@ export type UploadPresignedUrlResponse = {
 };
 
 export async function fetchConversations(params?: {
-  filter?: 'all' | 'pending_quotes' | 'unread';
+  filter?: 'all' | 'pending_quotes' | 'unread' | 'logistics_pending';
   search?: string;
 }): Promise<ConversationSummary[]> {
   const query = new URLSearchParams();
@@ -264,4 +333,92 @@ export async function uploadChatAttachment(file: File): Promise<{
     auth: true,
     body: formData,
   });
+}
+
+export async function requestLogistics(
+  conversationId: string,
+  payload: {
+    fromCity: string;
+    toCity: string;
+    palletCount?: number;
+    itemCount?: number;
+    notes?: string;
+    // If seller wants to deliver with own vehicle
+    isSellerDelivery?: boolean;
+    sellerDeliveryFee?: number;
+  },
+): Promise<LogisticsRequest> {
+  return requestJson<LogisticsRequest, typeof payload>(
+    `/conversations/${conversationId}/logistics-request`,
+    {
+      method: 'POST',
+      auth: true,
+      body: payload,
+    },
+  );
+}
+
+export async function fetchLatestLogisticsRequest(
+  conversationId: string,
+): Promise<LogisticsRequest | null> {
+  return requestJson<LogisticsRequest | null>(
+    `/conversations/${conversationId}/logistics-request`,
+    { auth: true },
+  );
+}
+
+export async function fetchOpenLogisticsRequests(): Promise<LogisticsRequest[]> {
+  return requestJson<LogisticsRequest[]>('/logistics/requests/open', {
+    auth: true,
+  });
+}
+
+export async function fetchMyLogisticsOffers(): Promise<PartnerLogisticsOffer[]> {
+  return requestJson<PartnerLogisticsOffer[]>('/logistics/offers/me', {
+    auth: true,
+  });
+}
+
+export async function createLogisticsOffer(
+  requestId: string,
+  payload: {
+    price: number;
+    currency?: string;
+    estimatedDays: number;
+    isInsured?: boolean;
+    notes?: string;
+  },
+): Promise<LogisticsOffer> {
+  return requestJson<LogisticsOffer, typeof payload>(
+    `/logistics/requests/${requestId}/offers`,
+    {
+      method: 'POST',
+      auth: true,
+      body: payload,
+    },
+  );
+}
+
+export async function listLogisticsOffers(
+  conversationId: string,
+): Promise<LogisticsOffer[]> {
+  return requestJson<LogisticsOffer[]>(
+    `/conversations/${conversationId}/logistics-offers`,
+    { auth: true },
+  );
+}
+
+export async function selectLogisticsOffer(
+  conversationId: string,
+  offerId: string,
+): Promise<LogisticsOffer> {
+  void conversationId;
+
+  return requestJson<LogisticsOffer>(
+    `/logistics/offers/${offerId}/select`,
+    {
+      method: 'PATCH',
+      auth: true,
+    },
+  );
 }

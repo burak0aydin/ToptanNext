@@ -56,6 +56,8 @@ function createConversation(overrides?: Partial<ConversationSummary>): Conversat
     createdAt: new Date('2026-04-24T09:00:00.000Z').toISOString(),
     unreadCount: 2,
     hasPendingQuote: true,
+    hasPendingLogistics: false,
+    hasApprovedLogistics: false,
     lastMessage: {
       id: 'msg-1',
       conversationId: 'conv-1',

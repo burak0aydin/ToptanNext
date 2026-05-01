@@ -6,6 +6,7 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { getUserRoleFromToken, type AppUserRole } from "@/lib/auth-token";
 import { MainFooter } from "../../components/MainFooter";
 import { MainHeader } from "../../components/MainHeader";
+import { SellerPanelShell } from "./SellerPanelShell";
 import {
   accountTopMenuItems,
   isExactPath,
@@ -74,7 +75,6 @@ export function AccountLayoutShell({ children }: AccountLayoutShellProps) {
   const isSellerRoute =
     pathname.startsWith("/satici-panelim") || isPathInMenu(pathname, sellerMenuItems);
   const personalRootHref = personalMenuItems[0]?.href ?? "/kullanici-bilgilerim";
-  const sellerRootHref = sellerMenuItems[0]?.href ?? "/satici-panelim";
 
   useEffect(() => {
     const syncUserRole = () => {
@@ -103,6 +103,10 @@ export function AccountLayoutShell({ children }: AccountLayoutShellProps) {
   const hideDefaultPageHeader =
     isExactPath(pathname, "/satici-panelim/urunlerim") ||
     isExactPath(pathname, "/satici-panelim/urun-yukle");
+
+  if (isSellerRoute) {
+    return <SellerPanelShell>{children}</SellerPanelShell>;
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-surface text-on-surface">
@@ -157,29 +161,13 @@ export function AccountLayoutShell({ children }: AccountLayoutShellProps) {
             </div>
 
             {userRole === "SUPPLIER" ? (
-              <div className={`rounded-lg ${isSellerRoute ? "bg-primary/5" : ""}`}>
-                <Link
-                  href={sellerRootHref}
-                  className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-medium transition-all ${sectionButtonClass(false)}`}
-                >
-                  <span className={`material-symbols-outlined ${isSellerRoute ? "text-[#003FB1]" : "text-slate-600"}`}>
-                    storefront
-                  </span>
-                  <span className="text-sm">Satıcı Panelim</span>
-                </Link>
-
-                <div className="ml-11 space-y-1 border-l border-slate-100 pb-3">
-                  {sellerMenuItems.map((item) => {
-                    const isActive = isExactPath(pathname, item.href);
-
-                    return (
-                      <Link key={item.href} href={item.href} className={leafItemClass(isActive)}>
-                        {item.label}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
+              <Link
+                href="/satici-panelim"
+                className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-medium text-slate-700 transition-all hover:bg-slate-50 hover:text-[#003FB1]"
+              >
+                <span className="material-symbols-outlined text-slate-600">storefront</span>
+                <span className="text-sm">Mağaza</span>
+              </Link>
             ) : null}
           </nav>
         </aside>

@@ -1,5 +1,7 @@
 import { ConversationList } from '@/components/chat/ConversationList';
 
+export const dynamic = 'force-dynamic';
+
 export default function MessagesPage() {
   return (
     <div className='flex h-full min-h-0 bg-slate-50 md:items-center md:justify-center md:p-6'>

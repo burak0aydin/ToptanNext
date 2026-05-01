@@ -14,7 +14,11 @@ const FILTERS: Array<{ key: 'all' | 'pending_quotes' | 'unread'; label: string }
   { key: 'unread', label: 'Okunmayanlar' },
 ];
 
-export function ConversationList() {
+type ConversationListProps = {
+  basePath?: string;
+};
+
+export function ConversationList({ basePath = '/messages' }: ConversationListProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -58,9 +62,9 @@ export function ConversationList() {
     const currentQueryString = searchParams.toString();
 
     if (nextQueryString !== currentQueryString) {
-      router.replace(`/messages${nextQueryString.length > 0 ? `?${nextQueryString}` : ''}`);
+      router.replace(`${basePath}${nextQueryString.length > 0 ? `?${nextQueryString}` : ''}`);
     }
-  }, [debouncedSearch, router, searchParams]);
+  }, [basePath, debouncedSearch, router, searchParams]);
 
   const { isLoading, isError, data } = useQuery({
     queryKey: ['chat', 'conversations', activeFilter, debouncedSearch],
@@ -97,7 +101,7 @@ export function ConversationList() {
       nextQuery.set('filter', value);
     }
 
-    router.replace(`/messages${nextQuery.toString().length > 0 ? `?${nextQuery.toString()}` : ''}`);
+    router.replace(`${basePath}${nextQuery.toString().length > 0 ? `?${nextQuery.toString()}` : ''}`);
   };
 
   return (
@@ -150,7 +154,8 @@ export function ConversationList() {
             key={conversation.id}
             conversation={conversation}
             currentUserId={currentUserId}
-            isActive={pathname === `/messages/${conversation.id}`}
+            isActive={pathname === `${basePath}/${conversation.id}`}
+            basePath={basePath}
           />
         ))}
 

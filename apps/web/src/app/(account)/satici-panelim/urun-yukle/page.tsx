@@ -1,7 +1,6 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useSearchParams } from 'next/navigation';
 import {
   productListingStepOneSchema,
   productListingStepThreeSchema,
@@ -40,6 +39,8 @@ import {
   type SectorRecord,
 } from '@/features/product-listing/api/product-listing.api';
 import { RichTextEditor } from '@/features/product-listing/components/RichTextEditor';
+
+export const dynamic = 'force-dynamic';
 
 type WizardStep = 1 | 2 | 3;
 
@@ -353,8 +354,7 @@ export default function SellerProductUploadPage() {
   const [isCompleted, setIsCompleted] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const searchParams = useSearchParams();
-  const forceNewListing = searchParams.get('new') === '1';
+  const [forceNewListing, setForceNewListing] = useState(false);
   const coverImageInputRef = useRef<HTMLInputElement | null>(null);
   const galleryImageInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
@@ -362,6 +362,11 @@ export default function SellerProductUploadPage() {
   const stepSectionRef = useRef<HTMLElement | null>(null);
   const cropImageRef = useRef<HTMLImageElement | null>(null);
   const hasMountedStepRef = useRef(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setForceNewListing(params.get('new') === '1');
+  }, []);
 
   const stepOneForm = useForm<ProductListingStepOneDto>({
     resolver: zodResolver(

@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
+import { SellerMessagesWorkspace } from "@/components/chat/SellerMessagesWorkspace";
 
 export default function SellerMessagesRedirectPage() {
-  redirect('/messages');
+  return <SellerMessagesWorkspace />;
 }

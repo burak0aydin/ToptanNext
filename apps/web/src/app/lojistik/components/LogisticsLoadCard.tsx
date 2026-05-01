@@ -20,6 +20,10 @@ interface LoadCardProps {
   timeLeft: string;
   timeLeftColor: 'red' | 'amber';
   loadTypeColor: 'blue' | 'emerald';
+  offerButtonLabel?: string;
+  isOfferDisabled?: boolean;
+  onOffer?: () => void;
+  onChat?: () => void;
 }
 
 export function LogisticsLoadCard({
@@ -38,6 +42,10 @@ export function LogisticsLoadCard({
   timeLeft,
   timeLeftColor,
   loadTypeColor,
+  offerButtonLabel = 'Teklif Ver',
+  isOfferDisabled = false,
+  onOffer,
+  onChat,
 }: LoadCardProps) {
   const loadTypeColors = {
     blue: 'text-blue-600',
@@ -136,9 +144,26 @@ export function LogisticsLoadCard({
                 <span>Son Teklif: {timeLeft}</span>
               </div>
             </div>
-            <button className="w-full lg:w-auto bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors focus:ring-4 focus:ring-blue-100">
-              Teklif Ver
-            </button>
+            <div className="flex w-full gap-2 lg:w-auto">
+              {onChat ? (
+                <button
+                  type="button"
+                  onClick={onChat}
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  <span className="material-symbols-outlined align-middle">chat</span>
+                  <span className="ml-2">Sohbet</span>
+                </button>
+              ) : null}
+              <button
+                type="button"
+                disabled={isOfferDisabled}
+                onClick={onOffer}
+                className="rounded-lg bg-blue-700 px-6 py-2.5 font-semibold text-white transition-colors hover:bg-blue-800 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-300 lg:w-auto"
+              >
+                {offerButtonLabel}
+              </button>
+            </div>
           </div>
         </div>
       </div>

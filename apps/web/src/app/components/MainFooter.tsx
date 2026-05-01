@@ -47,7 +47,7 @@ export function MainFooter() {
                 Toptan<span className='text-[#FF5A1F]'>Next</span>
               </span>
               <p className='mb-6 text-sm leading-relaxed'>
-                Turkiye'nin lider B2B pazaryeri platformu. Ticaretin dijital mimari.
+                Turkiye&#39;nin lider B2B pazaryeri platformu. Ticaretin dijital mimari.
               </p>
             </div>
             <div>

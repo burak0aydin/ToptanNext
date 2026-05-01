@@ -1,7 +1,5 @@
-import { AccountSectionPlaceholder } from "../_components/AccountSectionPlaceholder";
+import { SellerMessagesWorkspace } from "@/components/chat/SellerMessagesWorkspace";
 
 export default function SellerPanelOverviewPage() {
-  return (
-    <AccountSectionPlaceholder text="Genel Bakış sayfası hazır. Buraya satıcı dashboard kartları ve metrikleri entegre edebilirsiniz." />
-  );
+  return <SellerMessagesWorkspace />;
 }

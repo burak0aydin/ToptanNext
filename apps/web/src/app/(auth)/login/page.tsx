@@ -1,17 +1,25 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginDtoSchema, type LoginDto } from "@toptannext/types";
 import { useForm } from "react-hook-form";
 import { useLoginMutation } from "@/features/auth/hooks/useAuthMutations";
 import { setAccessToken } from "@/lib/auth-token";
 
+export const dynamic = 'force-dynamic';
+
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const [nextPath, setNextPath] = useState<string | null>(null);
   const loginMutation = useLoginMutation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setNextPath(params.get('next'));
+  }, []);
 
   const {
     register,
@@ -34,7 +42,6 @@ export default function LoginPage() {
           return;
         }
 
-        const nextPath = searchParams.get("next");
         if (nextPath && nextPath.startsWith("/")) {
           router.push(nextPath);
           return;

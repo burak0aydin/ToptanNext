@@ -9,12 +9,14 @@ type ConversationItemProps = {
   conversation: ConversationSummary;
   currentUserId: string | null;
   isActive: boolean;
+  basePath?: string;
 };
 
 export function ConversationItem({
   conversation,
   currentUserId,
   isActive,
+  basePath = '/messages',
 }: ConversationItemProps) {
   const partner =
     conversation.participants.find((participant) => participant.userId !== currentUserId)
@@ -31,7 +33,7 @@ export function ConversationItem({
 
   return (
     <Link
-      href={`/messages/${conversation.id}`}
+      href={`${basePath}/${conversation.id}`}
       className={[
         'block rounded-xl border p-3 transition-colors',
         isActive

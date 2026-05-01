@@ -13,6 +13,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { CreateConversationDto } from './dto/create-conversation.dto';
+import { CreateLogisticsRequestDto } from './dto/create-logistics-request.dto';
 import { ConversationsService } from './conversations.service';
 
 type AuthenticatedRequest = Request & {
@@ -27,7 +28,7 @@ export class ConversationsController {
   @Get()
   async getConversationList(
     @Req() req: AuthenticatedRequest,
-    @Query('filter') filter?: 'all' | 'pending_quotes' | 'unread',
+    @Query('filter') filter?: 'all' | 'pending_quotes' | 'unread' | 'logistics_pending' | 'approved',
     @Query('search') search?: string,
   ) {
     const data = await this.conversationsService.getConversationList(req.user.sub, {
@@ -105,6 +106,55 @@ export class ConversationsController {
         archived: true,
       },
       message: 'Konuşma arşive taşındı.',
+    };
+  }
+
+  @Get(':id/logistics-request')
+  async getLatestLogisticsRequest(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    const data = await this.conversationsService.getLatestLogisticsRequest(req.user.sub, id);
+
+    return {
+      success: true,
+      data,
+      message: data
+        ? 'Lojistik talebi başarıyla getirildi.'
+        : 'Bu konuşma için lojistik talebi bulunamadı.',
+    };
+  }
+
+  @Post(':id/logistics-request')
+  async createLogisticsRequest(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: CreateLogisticsRequestDto,
+  ) {
+    const data = await this.conversationsService.createLogisticsRequest(
+      req.user.sub,
+      id,
+      dto,
+    );
+
+    return {
+      success: true,
+      data,
+      message: 'Lojistik talebi oluşturuldu.',
+    };
+  }
+
+  @Get(':id/logistics-offers')
+  async getLatestLogisticsOffers(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    const request = await this.conversationsService.getLatestLogisticsRequest(req.user.sub, id);
+
+    return {
+      success: true,
+      data: request?.offers ?? [],
+      message: 'Lojistik teklifleri başarıyla getirildi.',
     };
   }
 }

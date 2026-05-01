@@ -22,6 +22,11 @@ describe('ConversationsService', () => {
     queueNewMessageNotification: jest.fn(),
   };
 
+  const realtimeMock = {
+    emitToConversation: jest.fn(),
+    emitToUser: jest.fn(),
+  };
+
   let service: ConversationsService;
 
   beforeEach(() => {
@@ -30,6 +35,7 @@ describe('ConversationsService', () => {
       prismaMock as never,
       redisMock as never,
       notificationsMock as never,
+      realtimeMock as never,
     );
   });
 

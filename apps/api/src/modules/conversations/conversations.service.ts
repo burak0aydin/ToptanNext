@@ -6,14 +6,20 @@ import {
 } from '@nestjs/common';
 import {
   ConversationStatus,
+  LogisticsOfferStatus,
+  LogisticsRequestStatus,
   MessageType,
   Prisma,
   QuoteStatus,
+  Role,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../redis/redis.service';
+import { RealtimeService } from '../../realtime/realtime.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
+import { CreateLogisticsOfferDto } from './dto/create-logistics-offer.dto';
+import { CreateLogisticsRequestDto } from './dto/create-logistics-request.dto';
 import { MarkAsReadDto } from './dto/mark-as-read.dto';
 import { MessageAttachmentDto, SendMessageDto } from './dto/send-message.dto';
 
@@ -80,6 +86,57 @@ export type ConversationListItem = {
   unreadCount: number;
   lastMessage: MessageRecord | null;
   hasPendingQuote: boolean;
+  hasPendingLogistics: boolean;
+  hasApprovedQuote: boolean;
+};
+
+export type LogisticsOfferRecord = {
+  id: string;
+  requestId: string;
+  partnerId: string;
+  partnerCompanyName: string | null;
+  partnerAvatarUrl: string | null;
+  price: number;
+  currency: string;
+  estimatedDays: number;
+  isInsured: boolean;
+  notes: string | null;
+  status: LogisticsOfferStatus;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type LogisticsOfferListItem = LogisticsOfferRecord & {
+  conversationId: string;
+  requestStatus: LogisticsRequestStatus;
+  fromCity: string;
+  toCity: string;
+  requesterCompanyName: string | null;
+  requesterName: string | null;
+  productName: string | null;
+  productImageMediaId: string | null;
+  isSellerDelivery: boolean;
+  sellerDeliveryFee: number | null;
+};
+
+export type LogisticsRequestRecord = {
+  id: string;
+  conversationId: string;
+  requesterId: string;
+  fromCity: string;
+  toCity: string;
+  palletCount: number | null;
+  itemCount: number | null;
+  isSellerDelivery?: boolean;
+  sellerDeliveryFee?: number | null;
+  status: LogisticsRequestStatus;
+  createdAt: Date;
+  updatedAt: Date;
+  offers: LogisticsOfferRecord[];
+  requesterCompanyName?: string | null;
+  requesterName?: string | null;
+  productName?: string | null;
+  productImageMediaId?: string | null;
 };
 
 export type ConversationMessagesResult = {
@@ -88,7 +145,7 @@ export type ConversationMessagesResult = {
 };
 
 type ConversationListFilters = {
-  filter?: 'all' | 'pending_quotes' | 'unread';
+  filter?: 'all' | 'pending_quotes' | 'unread' | 'logistics_pending' | 'approved';
   search?: string;
 };
 
@@ -165,6 +222,7 @@ export class ConversationsService {
     private readonly prisma: PrismaService,
     private readonly redisService: RedisService,
     private readonly notificationsService: NotificationsService,
+    private readonly realtimeService: RealtimeService,
   ) {}
 
   async createConversation(
@@ -294,6 +352,26 @@ export class ConversationsService {
       };
     }
 
+    if (filters.filter === 'logistics_pending') {
+      where.logisticsRequests = {
+        some: {
+          status: {
+            in: [LogisticsRequestStatus.PENDING, LogisticsRequestStatus.COLLECTING],
+          },
+        },
+      };
+    }
+
+    if (filters.filter === 'approved') {
+      where.messages = {
+        some: {
+          quote: {
+            status: QuoteStatus.ACCEPTED,
+          },
+        },
+      };
+    }
+
     if (normalizedSearch && normalizedSearch.length > 0) {
       andConditions.push({
         participants: {
@@ -410,6 +488,46 @@ export class ConversationsService {
       ).map((quote) => quote.message.conversationId),
     );
 
+    const approvedQuoteConversationIds = new Set(
+      (
+        await this.prisma.quote.findMany({
+          where: {
+            status: QuoteStatus.ACCEPTED,
+            message: {
+              conversationId: {
+                in: conversationIds,
+              },
+            },
+          },
+          select: {
+            message: {
+              select: {
+                conversationId: true,
+              },
+            },
+          },
+        })
+      ).map((quote) => quote.message.conversationId),
+    );
+
+    const pendingLogisticsConversationIds = new Set(
+      (
+        await this.prisma.logisticsRequest.findMany({
+          where: {
+            status: {
+              in: [LogisticsRequestStatus.PENDING, LogisticsRequestStatus.COLLECTING],
+            },
+            conversationId: {
+              in: conversationIds,
+            },
+          },
+          select: {
+            conversationId: true,
+          },
+        })
+      ).map((request) => request.conversationId),
+    );
+
     const mapped = await Promise.all(
       conversations.map(async (conversation) => {
         const unreadCount = await this.getUnreadCount(
@@ -422,6 +540,8 @@ export class ConversationsService {
           conversation,
           unreadCount,
           pendingQuoteConversationIds.has(conversation.id),
+          pendingLogisticsConversationIds.has(conversation.id),
+          approvedQuoteConversationIds.has(conversation.id),
         );
       }),
     );
@@ -451,7 +571,31 @@ export class ConversationsService {
       },
     });
 
-    return this.toConversationListItem(conversation, unreadCount, hasPendingQuote > 0);
+    const hasApprovedQuote = await this.prisma.quote.count({
+      where: {
+        status: QuoteStatus.ACCEPTED,
+        message: {
+          conversationId,
+        },
+      },
+    });
+
+    const hasPendingLogistics = await this.prisma.logisticsRequest.count({
+      where: {
+        conversationId,
+        status: {
+          in: [LogisticsRequestStatus.PENDING, LogisticsRequestStatus.COLLECTING],
+        },
+      },
+    });
+
+    return this.toConversationListItem(
+      conversation,
+      unreadCount,
+      hasPendingQuote > 0,
+      hasPendingLogistics > 0,
+      hasApprovedQuote > 0,
+    );
   }
 
   async getMessages(
@@ -784,6 +928,595 @@ export class ConversationsService {
     return participants.map((participant) => participant.userId);
   }
 
+  async getLatestLogisticsRequest(
+    userId: string,
+    conversationId: string,
+  ): Promise<LogisticsRequestRecord | null> {
+    await this.assertParticipant(conversationId, userId);
+
+    const request = await this.prisma.logisticsRequest.findFirst({
+      where: {
+        conversationId,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      include: {
+        offers: {
+          include: {
+            partner: {
+              select: {
+                id: true,
+                companyName: true,
+                avatarUrl: true,
+              },
+            },
+          },
+          orderBy: {
+            price: 'asc',
+          },
+        },
+      },
+    });
+
+    if (!request) {
+      return null;
+    }
+
+    return this.toLogisticsRequestRecord(request);
+  }
+
+  async getOpenLogisticsRequests(userId: string): Promise<LogisticsRequestRecord[]> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { isLogisticsPartner: true },
+    });
+
+    if (!user?.isLogisticsPartner) {
+      throw new ForbiddenException('Sadece lojistik ortakları açık yük ilanlarını görüntüleyebilir.');
+    }
+
+    const requests = await this.prisma.logisticsRequest.findMany({
+      where: {
+        status: {
+          in: [LogisticsRequestStatus.PENDING, LogisticsRequestStatus.COLLECTING],
+        },
+      },
+      include: {
+        requester: {
+          select: {
+            fullName: true,
+            companyName: true,
+          },
+        },
+        conversation: {
+          select: {
+            productListing: {
+              select: {
+                name: true,
+                media: {
+                  where: { mediaType: 'IMAGE' },
+                  orderBy: { displayOrder: 'asc' },
+                  take: 1,
+                  select: { id: true },
+                },
+              },
+            },
+          },
+        },
+        offers: {
+          include: {
+            partner: {
+              select: {
+                id: true,
+                companyName: true,
+                avatarUrl: true,
+              },
+            },
+          },
+          orderBy: {
+            price: 'asc',
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 200,
+    });
+
+    return requests.map((request) => ({
+      ...this.toLogisticsRequestRecord(request),
+      requesterCompanyName: request.requester.companyName,
+      requesterName: request.requester.fullName,
+      productName: request.conversation.productListing?.name ?? null,
+      productImageMediaId: request.conversation.productListing?.media[0]?.id ?? null,
+    }));
+  }
+
+  async getMyLogisticsOffers(userId: string): Promise<LogisticsOfferListItem[]> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { isLogisticsPartner: true },
+    });
+
+    if (!user?.isLogisticsPartner) {
+      throw new ForbiddenException('Sadece lojistik ortakları kendi tekliflerini görüntüleyebilir.');
+    }
+
+    const offers = await this.prisma.logisticsOffer.findMany({
+      where: {
+        partnerId: userId,
+      },
+      include: {
+        partner: {
+          select: {
+            id: true,
+            companyName: true,
+            avatarUrl: true,
+          },
+        },
+        request: {
+          select: {
+            id: true,
+            conversationId: true,
+            fromCity: true,
+            toCity: true,
+            status: true,
+            isSellerDelivery: true,
+            sellerDeliveryFee: true,
+            requester: {
+              select: {
+                fullName: true,
+                companyName: true,
+              },
+            },
+            conversation: {
+              select: {
+                productListing: {
+                  select: {
+                    name: true,
+                    media: {
+                      where: { mediaType: 'IMAGE' },
+                      orderBy: { displayOrder: 'asc' },
+                      take: 1,
+                      select: { id: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+      take: 200,
+    });
+
+    return offers.map((offer) => ({
+      ...this.toLogisticsOfferRecord(offer),
+      conversationId: offer.request.conversationId,
+      requestStatus: offer.request.status,
+      fromCity: offer.request.fromCity,
+      toCity: offer.request.toCity,
+      requesterCompanyName: offer.request.requester.companyName,
+      requesterName: offer.request.requester.fullName,
+      productName: offer.request.conversation.productListing?.name ?? null,
+      productImageMediaId: offer.request.conversation.productListing?.media[0]?.id ?? null,
+      isSellerDelivery: offer.request.isSellerDelivery,
+      sellerDeliveryFee: offer.request.sellerDeliveryFee ? Number(offer.request.sellerDeliveryFee) : null,
+    }));
+  }
+
+  async getLogisticsRequestById(
+    userId: string,
+    requestId: string,
+  ): Promise<LogisticsRequestRecord> {
+    const request = await this.prisma.logisticsRequest.findUnique({
+      where: {
+        id: requestId,
+      },
+      include: {
+        conversation: {
+          include: {
+            participants: true,
+          },
+        },
+        offers: {
+          include: {
+            partner: {
+              select: {
+                id: true,
+                companyName: true,
+                avatarUrl: true,
+              },
+            },
+          },
+          orderBy: {
+            price: 'asc',
+          },
+        },
+      },
+    });
+
+    if (!request) {
+      throw new NotFoundException('Lojistik talebi bulunamadı.');
+    }
+
+    const isParticipant = request.conversation.participants.some(
+      (participant) => participant.userId === userId,
+    );
+
+    if (!isParticipant) {
+      throw new ForbiddenException('Bu lojistik talebi için erişim yetkiniz yok.');
+    }
+
+    return this.toLogisticsRequestRecord(request);
+  }
+
+  async createLogisticsRequest(
+    requesterId: string,
+    conversationId: string,
+    dto: CreateLogisticsRequestDto,
+  ): Promise<LogisticsRequestRecord> {
+    const requester = await this.prisma.user.findUnique({
+      where: { id: requesterId },
+      select: { role: true },
+    });
+
+    if (!requester) {
+      throw new NotFoundException('Kullanıcı bulunamadı.');
+    }
+
+    if (requester.role !== Role.SUPPLIER) {
+      throw new ForbiddenException('Sadece satıcılar lojistik talebi oluşturabilir.');
+    }
+
+    await this.assertParticipant(conversationId, requesterId);
+
+    const request = await this.prisma.$transaction(async (tx) => {
+      await tx.logisticsRequest.updateMany({
+        where: {
+          conversationId,
+          status: {
+            in: [LogisticsRequestStatus.PENDING, LogisticsRequestStatus.COLLECTING],
+          },
+        },
+        data: {
+          status: LogisticsRequestStatus.CANCELED,
+        },
+      });
+
+      return tx.logisticsRequest.create({
+        data: {
+          conversationId,
+          requesterId,
+          fromCity: dto.fromCity.trim(),
+          toCity: dto.toCity.trim(),
+          palletCount: dto.palletCount ?? null,
+          itemCount: dto.itemCount ?? null,
+          isSellerDelivery: dto.isSellerDelivery ?? false,
+          sellerDeliveryFee: dto.sellerDeliveryFee ? new Prisma.Decimal(dto.sellerDeliveryFee) : null,
+        },
+        include: {
+          offers: {
+            include: {
+              partner: {
+                select: {
+                  id: true,
+                  companyName: true,
+                  avatarUrl: true,
+                },
+              },
+            },
+            orderBy: {
+              price: 'asc',
+            },
+          },
+        },
+      });
+    });
+
+    const record = this.toLogisticsRequestRecord(request);
+    this.realtimeService.emitToConversation(conversationId, 'logistics_request_created', record);
+
+    const logisticsPartners = await this.prisma.user.findMany({
+      where: {
+        isLogisticsPartner: true,
+        isActive: true,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    logisticsPartners.forEach((partner) => {
+      this.realtimeService.emitToUser(partner.id, 'logistics_request_created', record);
+    });
+
+    return record;
+  }
+
+  async createLogisticsOffer(
+    partnerId: string,
+    requestId: string,
+    dto: CreateLogisticsOfferDto,
+  ): Promise<LogisticsOfferRecord> {
+    const partner = await this.prisma.user.findUnique({
+      where: { id: partnerId },
+      select: { isLogisticsPartner: true, companyName: true, avatarUrl: true },
+    });
+
+    if (!partner) {
+      throw new NotFoundException('Kullanıcı bulunamadı.');
+    }
+
+    if (!partner.isLogisticsPartner) {
+      throw new ForbiddenException('Sadece lojistik ortakları teklif verebilir.');
+    }
+
+    const request = await this.prisma.logisticsRequest.findUnique({
+      where: { id: requestId },
+      select: {
+        id: true,
+        status: true,
+        conversationId: true,
+        requesterId: true,
+        fromCity: true,
+        toCity: true,
+        palletCount: true,
+        itemCount: true,
+        conversation: {
+          select: {
+            productListing: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!request) {
+      throw new NotFoundException('Lojistik talebi bulunamadı.');
+    }
+
+    if (request.status === LogisticsRequestStatus.CLOSED) {
+      throw new BadRequestException('Bu lojistik talebi kapatılmış.');
+    }
+
+    const { offer, message } = await this.prisma.$transaction(async (tx) => {
+      await tx.conversationParticipant.upsert({
+        where: {
+          conversationId_userId: {
+            conversationId: request.conversationId,
+            userId: partnerId,
+          },
+        },
+        update: {},
+        create: {
+          conversationId: request.conversationId,
+          userId: partnerId,
+          unreadCount: 0,
+        },
+      });
+
+      const created = await tx.logisticsOffer.upsert({
+        where: {
+          requestId_partnerId: {
+            requestId,
+            partnerId,
+          },
+        },
+        update: {
+          price: new Prisma.Decimal(dto.price),
+          currency: dto.currency?.trim() || 'TRY',
+          estimatedDays: dto.estimatedDays,
+          isInsured: dto.isInsured ?? false,
+          notes: dto.notes?.trim() || null,
+          status: LogisticsOfferStatus.OFFERED,
+        },
+        create: {
+          requestId,
+          partnerId,
+          price: new Prisma.Decimal(dto.price),
+          currency: dto.currency?.trim() || 'TRY',
+          estimatedDays: dto.estimatedDays,
+          isInsured: dto.isInsured ?? false,
+          notes: dto.notes?.trim() || null,
+          status: LogisticsOfferStatus.OFFERED,
+        },
+        include: {
+          partner: {
+            select: {
+              id: true,
+              companyName: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      });
+
+      if (request.status === LogisticsRequestStatus.PENDING) {
+        await tx.logisticsRequest.update({
+          where: { id: requestId },
+          data: { status: LogisticsRequestStatus.COLLECTING },
+        });
+      }
+
+      const price = Number(dto.price).toLocaleString('tr-TR', {
+        maximumFractionDigits: 2,
+      });
+      const route = `${request.fromCity} → ${request.toCity}`;
+      const loadSummary = [
+        request.palletCount ? `${request.palletCount} palet` : null,
+        request.itemCount ? `${request.itemCount} adet` : null,
+      ].filter(Boolean).join(' / ');
+      const messageBody = [
+        `Lojistik teklifim hazır: ${route}.`,
+        request.conversation.productListing?.name
+          ? `Ürün: ${request.conversation.productListing.name}.`
+          : null,
+        loadSummary ? `Yük: ${loadSummary}.` : null,
+        `Teklif: ${price} ${dto.currency?.trim() || 'TRY'}, tahmini ${dto.estimatedDays} gün${dto.isInsured ? ', sigortalı taşıma' : ''}.`,
+        dto.notes?.trim() ? `Not: ${dto.notes.trim()}` : null,
+      ].filter(Boolean).join(' ');
+
+      const createdMessage = await tx.message.create({
+        data: {
+          conversationId: request.conversationId,
+          senderId: partnerId,
+          type: MessageType.TEXT,
+          body: messageBody,
+        },
+        include: {
+          attachments: true,
+          quote: {
+            include: {
+              productListing: {
+                select: {
+                  name: true,
+                  media: {
+                    where: {
+                      mediaType: 'IMAGE',
+                    },
+                    orderBy: {
+                      displayOrder: 'asc',
+                    },
+                    take: 1,
+                    select: {
+                      id: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      await tx.conversation.update({
+        where: { id: request.conversationId },
+        data: { lastMessageAt: createdMessage.createdAt },
+      });
+
+      await tx.conversationParticipant.updateMany({
+        where: {
+          conversationId: request.conversationId,
+          userId: {
+            not: partnerId,
+          },
+        },
+        data: {
+          unreadCount: {
+            increment: 1,
+          },
+        },
+      });
+
+      return {
+        offer: created,
+        message: createdMessage,
+      };
+    });
+
+    const record = this.toLogisticsOfferRecord(offer);
+    const messageRecord = this.toMessageRecord(message);
+    this.realtimeService.emitToConversation(request.conversationId, 'logistics_offer_created', {
+      requestId,
+      offer: record,
+    });
+    this.realtimeService.emitToConversation(request.conversationId, 'new_message', messageRecord);
+    this.realtimeService.emitToUser(request.requesterId, 'logistics_offer_created', {
+      requestId,
+      offer: record,
+    });
+
+    return record;
+  }
+
+  async selectLogisticsOffer(
+    actorUserId: string,
+    offerId: string,
+  ): Promise<LogisticsOfferRecord> {
+    const offer = await this.prisma.logisticsOffer.findUnique({
+      where: { id: offerId },
+      include: {
+        request: true,
+        partner: {
+          select: {
+            id: true,
+            companyName: true,
+            avatarUrl: true,
+          },
+        },
+      },
+    });
+
+    if (!offer) {
+      throw new NotFoundException('Lojistik teklifi bulunamadı.');
+    }
+
+    if (offer.request.requesterId !== actorUserId) {
+      throw new ForbiddenException('Bu lojistik teklifini seçme yetkiniz yok.');
+    }
+
+    if (offer.request.status === LogisticsRequestStatus.CLOSED) {
+      throw new BadRequestException('Lojistik talebi zaten kapatıldı.');
+    }
+
+    const selectedOffer = await this.prisma.$transaction(async (tx) => {
+      await tx.logisticsOffer.updateMany({
+        where: {
+          requestId: offer.requestId,
+        },
+        data: {
+          status: LogisticsOfferStatus.REJECTED,
+        },
+      });
+
+      const updatedOffer = await tx.logisticsOffer.update({
+        where: {
+          id: offerId,
+        },
+        data: {
+          status: LogisticsOfferStatus.SELECTED,
+        },
+        include: {
+          partner: {
+            select: {
+              id: true,
+              companyName: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      });
+
+      await tx.logisticsRequest.update({
+        where: { id: offer.requestId },
+        data: { status: LogisticsRequestStatus.CLOSED },
+      });
+
+      return updatedOffer;
+    });
+
+    const record = this.toLogisticsOfferRecord(selectedOffer);
+    this.realtimeService.emitToConversation(offer.request.conversationId, 'logistics_offer_selected', {
+      requestId: offer.requestId,
+      offer: record,
+    });
+    this.realtimeService.emitToUser(offer.partnerId, 'logistics_offer_selected', {
+      requestId: offer.requestId,
+      offer: record,
+    });
+
+    return record;
+  }
+
   private async findConversationOrThrow(
     conversationId: string,
   ): Promise<ConversationWithRelations> {
@@ -880,6 +1613,8 @@ export class ConversationsService {
     conversation: ConversationWithRelations,
     unreadCount: number,
     hasPendingQuote: boolean,
+    hasPendingLogistics: boolean,
+    hasApprovedQuote: boolean,
   ): ConversationListItem {
     return {
       id: conversation.id,
@@ -904,6 +1639,84 @@ export class ConversationsService {
         ? this.toMessageRecord(conversation.messages[0])
         : null,
       hasPendingQuote,
+      hasPendingLogistics,
+      hasApprovedQuote,
+    };
+  }
+
+  private toLogisticsOfferRecord(offer: {
+    id: string;
+    requestId: string;
+    partnerId: string;
+    price: Prisma.Decimal;
+    currency: string;
+    estimatedDays: number;
+    isInsured: boolean;
+    notes: string | null;
+    status: LogisticsOfferStatus;
+    createdAt: Date;
+    updatedAt: Date;
+    partner?: { companyName: string | null; avatarUrl: string | null } | null;
+  }): LogisticsOfferRecord {
+    return {
+      id: offer.id,
+      requestId: offer.requestId,
+      partnerId: offer.partnerId,
+      partnerCompanyName: offer.partner?.companyName ?? null,
+      partnerAvatarUrl: offer.partner?.avatarUrl ?? null,
+      price: Number(offer.price),
+      currency: offer.currency,
+      estimatedDays: offer.estimatedDays,
+      isInsured: offer.isInsured,
+      notes: offer.notes,
+      status: offer.status,
+      createdAt: offer.createdAt,
+      updatedAt: offer.updatedAt,
+    };
+  }
+
+  private toLogisticsRequestRecord(request: {
+    id: string;
+    conversationId: string;
+    requesterId: string;
+    fromCity: string;
+    toCity: string;
+    palletCount: number | null;
+    itemCount: number | null;
+    isSellerDelivery?: boolean;
+    sellerDeliveryFee?: Prisma.Decimal | null;
+    status: LogisticsRequestStatus;
+    createdAt: Date;
+    updatedAt: Date;
+    offers: Array<{
+      id: string;
+      requestId: string;
+      partnerId: string;
+      price: Prisma.Decimal;
+      currency: string;
+      estimatedDays: number;
+      isInsured: boolean;
+      notes: string | null;
+      status: LogisticsOfferStatus;
+      createdAt: Date;
+      updatedAt: Date;
+      partner?: { companyName: string | null; avatarUrl: string | null } | null;
+    }>;
+  }): LogisticsRequestRecord {
+    return {
+      id: request.id,
+      conversationId: request.conversationId,
+      requesterId: request.requesterId,
+      fromCity: request.fromCity,
+      toCity: request.toCity,
+      palletCount: request.palletCount,
+      itemCount: request.itemCount,
+      isSellerDelivery: request.isSellerDelivery ?? false,
+      sellerDeliveryFee: request.sellerDeliveryFee ? Number(request.sellerDeliveryFee) : null,
+      status: request.status,
+      createdAt: request.createdAt,
+      updatedAt: request.updatedAt,
+      offers: request.offers.map((offer) => this.toLogisticsOfferRecord(offer)),
     };
   }
 

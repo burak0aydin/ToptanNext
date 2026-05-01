@@ -4,7 +4,12 @@ import { useEffect, useMemo } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import { getAccessToken } from '@/lib/auth-token';
 import { useChatStore } from '../store/useChatStore';
-import type { ChatMessage, QuoteStatus } from '../api/chat.api';
+import type {
+  ChatMessage,
+  QuoteStatus,
+  LogisticsRequest,
+  LogisticsOffer,
+} from '../api/chat.api';
 
 let socketInstance: Socket | null = null;
 let listenersBound = false;
@@ -52,7 +57,8 @@ function bindListeners(socket: Socket): void {
       updatedAt: string;
       conversationId?: string;
     }) => {
-      const conversationId = payload.conversationId ?? useChatStore.getState().activeConversationId;
+      const conversationId =
+        payload.conversationId ?? useChatStore.getState().activeConversationId;
       if (!conversationId) {
         return;
       }
@@ -87,9 +93,59 @@ function bindListeners(socket: Socket): void {
   socket.on(
     'unread_count_updated',
     (payload: { conversationId: string; count: number }) => {
-      useChatStore
-        .getState()
-        .updateUnreadCount(payload.conversationId, payload.count);
+      useChatStore.getState().updateUnreadCount(payload.conversationId, payload.count);
+    },
+  );
+
+  // Logistics event listeners
+  socket.on(
+    'logistics_request_created',
+    (payload: LogisticsRequest | { request: LogisticsRequest; senderId?: string }) => {
+      const request = 'request' in payload ? payload.request : payload;
+      const conversationId = request.conversationId;
+      if (!conversationId) {
+        return;
+      }
+
+      useChatStore.getState().addLogisticsRequest(conversationId, request);
+    },
+  );
+
+  socket.on(
+    'logistics_offer_created',
+    (payload: {
+      offer: LogisticsOffer;
+      request?: LogisticsRequest;
+      requestId?: string;
+      senderId: string;
+    }) => {
+      const conversationId =
+        payload.request?.conversationId ?? useChatStore.getState().activeConversationId;
+      if (!conversationId) {
+        return;
+      }
+
+      useChatStore.getState().addLogisticsOffer(conversationId, payload.offer);
+    },
+  );
+
+  socket.on(
+    'logistics_offer_selected',
+    (payload: {
+      selected?: LogisticsOffer;
+      offer?: LogisticsOffer;
+      request?: LogisticsRequest;
+      requestId?: string;
+      userId: string;
+    }) => {
+      const conversationId =
+        payload.request?.conversationId ?? useChatStore.getState().activeConversationId;
+      const selectedOffer = payload.selected ?? payload.offer;
+      if (!conversationId || !selectedOffer) {
+        return;
+      }
+
+      useChatStore.getState().selectLogisticsOffer(conversationId, selectedOffer);
     },
   );
 }

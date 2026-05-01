@@ -29,6 +29,8 @@ model User {
   productListings     ProductListing[]
   conversationParticipants ConversationParticipant[]
   sentMessages        Message[]            @relation("UserSentMessages")
+  logisticsRequests   LogisticsRequest[]
+  logisticsOffers     LogisticsOffer[]
   cartItems           CartItem[]           @relation("UserCartItems")
 
   @@index([email])
@@ -286,6 +288,7 @@ model Conversation {
   productListing   ProductListing?           @relation(fields: [productListingId], references: [id], onDelete: SetNull)
   participants     ConversationParticipant[]
   messages         Message[]
+  logisticsRequests LogisticsRequest[]
 
   @@index([lastMessageAt])
   @@index([status])
@@ -367,6 +370,49 @@ model Quote {
   @@index([productListingId])
   @@index([counterQuoteId])
   @@map("quotes")
+}
+
+model LogisticsRequest {
+  id             String                  @id @default(cuid())
+  conversationId String                  @map("conversation_id")
+  requesterId    String                  @map("requester_id")
+  fromCity       String                  @map("from_city")
+  toCity         String                  @map("to_city")
+  palletCount    Int?                    @map("pallet_count")
+  itemCount      Int?                    @map("item_count")
+  isSellerDelivery Boolean               @default(false) @map("is_seller_delivery")
+  sellerDeliveryFee Decimal?             @db.Decimal(12, 2) @map("seller_delivery_fee")
+  status         LogisticsRequestStatus  @default(PENDING)
+  createdAt      DateTime                @default(now()) @map("created_at")
+  updatedAt      DateTime                @updatedAt @map("updated_at")
+  conversation   Conversation            @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  requester      User                    @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+  offers         LogisticsOffer[]
+
+  @@index([conversationId])
+  @@index([status, createdAt])
+  @@map("logistics_requests")
+}
+
+model LogisticsOffer {
+  id             String                @id @default(cuid())
+  requestId      String                @map("request_id")
+  partnerId      String                @map("partner_id")
+  price          Decimal               @db.Decimal(12, 2)
+  currency       String                @default("TRY")
+  estimatedDays  Int                   @map("estimated_days")
+  isInsured      Boolean               @default(false) @map("is_insured")
+  notes          String?               @db.Text
+  status         LogisticsOfferStatus  @default(OFFERED)
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
+  request        LogisticsRequest      @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  partner        User                  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, partnerId])
+  @@index([requestId])
+  @@index([status])
+  @@map("logistics_offers")
 }
 
 model ProductListingSector {
@@ -517,6 +563,8 @@ enum MessageType {
   QUOTE_ACCEPTED
   QUOTE_REJECTED
   COUNTER_OFFER
+  LOGISTICS_REQUEST
+  LOGISTICS_OFFER
 }
 
 enum QuoteStatus {
@@ -526,4 +574,17 @@ enum QuoteStatus {
   COUNTERED
   EXPIRED
   CANCELED
+}
+
+enum LogisticsRequestStatus {
+  PENDING
+  COLLECTING
+  CLOSED
+  CANCELED
+}
+
+enum LogisticsOfferStatus {
+  OFFERED
+  SELECTED
+  REJECTED
 }
