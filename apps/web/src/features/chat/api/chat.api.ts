@@ -1,6 +1,8 @@
 import { requestJson } from '@/lib/api';
+import type { CartSummary } from '@/features/cart/api/cart.api';
 
 export type ConversationStatus = 'ACTIVE' | 'ARCHIVED' | 'BLOCKED';
+export type ConversationType = 'PRODUCT' | 'LOGISTICS';
 export type MessageType =
   | 'TEXT'
   | 'IMAGE'
@@ -138,8 +140,16 @@ export type ConversationParticipant = {
 export type ConversationSummary = {
   id: string;
   productListingId: string | null;
+  conversationType: ConversationType;
+  logisticsRequestId: string | null;
   productName: string | null;
   productImageMediaId: string | null;
+  logisticsFromCity: string | null;
+  logisticsToCity: string | null;
+  logisticsPalletCount: number | null;
+  logisticsItemCount: number | null;
+  logisticsIsSellerDelivery: boolean;
+  logisticsSellerDeliveryFee: number | null;
   status: ConversationStatus;
   lastMessageAt: string;
   createdAt: string;
@@ -236,8 +246,9 @@ export async function fetchConversationMessages(
 }
 
 export async function createConversation(payload: {
-  participantId: string;
+  participantId?: string;
   productListingId?: string;
+  logisticsRequestId?: string;
 }): Promise<ConversationSummary> {
   return requestJson<ConversationSummary, typeof payload>('/conversations', {
     method: 'POST',
@@ -262,6 +273,8 @@ export async function acceptQuote(quoteId: string): Promise<{
   status: QuoteStatus;
   updatedAt: string;
   conversationId: string;
+  cartOwnerUserId: string;
+  cart?: CartSummary;
 }> {
   return requestJson(`/quotes/${quoteId}/accept`, {
     method: 'PATCH',

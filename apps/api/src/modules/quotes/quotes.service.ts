@@ -14,6 +14,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../redis/redis.service';
 import { RealtimeService } from '../../realtime/realtime.service';
+import { CartService } from '../cart/cart.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateQuoteDto } from '../conversations/dto/create-quote.dto';
 
@@ -53,6 +54,8 @@ export type QuoteMessageRecord = {
   } | null;
 };
 
+type CartSummary = Awaited<ReturnType<CartService['getCart']>>;
+
 @Injectable()
 export class QuotesService {
   constructor(
@@ -60,6 +63,7 @@ export class QuotesService {
     private readonly redisService: RedisService,
     private readonly notificationsService: NotificationsService,
     private readonly realtimeService: RealtimeService,
+    private readonly cartService: CartService,
   ) {}
 
   async getQuoteById(quoteId: string, requesterUserId: string) {
@@ -70,7 +74,15 @@ export class QuotesService {
           include: {
             conversation: {
               include: {
-                participants: true,
+                participants: {
+                  include: {
+                    user: {
+                      select: {
+                        role: true,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
@@ -398,7 +410,14 @@ export class QuotesService {
   async acceptQuote(
     quoteId: string,
     actorUserId: string,
-  ): Promise<{ quoteId: string; status: QuoteStatus; updatedAt: Date; conversationId: string }> {
+  ): Promise<{
+    quoteId: string;
+    status: QuoteStatus;
+    updatedAt: Date;
+    conversationId: string;
+    cartOwnerUserId: string;
+    cart?: CartSummary;
+  }> {
     const requester = await this.prisma.user.findUnique({
       where: { id: actorUserId },
       select: { id: true },
@@ -415,7 +434,15 @@ export class QuotesService {
           include: {
             conversation: {
               include: {
-                participants: true,
+                participants: {
+                  include: {
+                    user: {
+                      select: {
+                        role: true,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
@@ -425,6 +452,17 @@ export class QuotesService {
 
     if (!quote) {
       throw new NotFoundException('Teklif bulunamadı.');
+    }
+
+    const cartOwnerUserId = quote.message.conversation.participants.find(
+      (participant) => participant.user.role === Role.BUYER,
+    )?.userId
+      ?? quote.message.conversation.participants.find(
+        (participant) => participant.userId !== quote.message.senderId,
+      )?.userId;
+
+    if (!cartOwnerUserId) {
+      throw new BadRequestException('Teklif için sepet sahibi belirlenemedi.');
     }
 
     const isParticipant = quote.message.conversation.participants.some(
@@ -521,6 +559,17 @@ export class QuotesService {
         },
       });
 
+      await this.cartService.syncAcceptedQuoteItem(tx, {
+        buyerId: cartOwnerUserId,
+        quoteId: quote.id,
+        productListingId: quote.productListingId,
+        quantity: quote.quantity,
+        unitPrice: quote.unitPrice,
+        logisticsFee: quote.logisticsFee,
+        currency: quote.currency,
+        notes: quote.notes,
+      });
+
       const participantStates = await tx.conversationParticipant.findMany({
         where: {
           conversationId: quote.message.conversationId,
@@ -568,12 +617,26 @@ export class QuotesService {
       recipientUserIds,
     });
 
-    return {
+    const response: {
+      quoteId: string;
+      status: QuoteStatus;
+      updatedAt: Date;
+      conversationId: string;
+      cartOwnerUserId: string;
+      cart?: CartSummary;
+    } = {
       quoteId: payload.acceptedQuote.id,
       status: payload.acceptedQuote.status,
       updatedAt: payload.acceptedQuote.updatedAt,
       conversationId: quote.message.conversationId,
+      cartOwnerUserId,
     };
+
+    if (cartOwnerUserId === actorUserId) {
+      response.cart = await this.cartService.getCart(cartOwnerUserId);
+    }
+
+    return response;
   }
 
   async rejectQuote(

@@ -192,6 +192,9 @@ Modeller                : User eklendi (Supplier ve Product bir sonraki sprint k
 
 2026-04-17 | TR karakter guvencesi icin layout font subset'leri latin-ext'e cekildi ve html lang tr standardize edildi.
            Gerekce: i/ı, g/ğ, s/ş gibi karakterlerde render bozulmasini onlemek.
+
+2026-05-02 | Lojistik sohbetleri ürün sohbetlerinden ConversationType + logisticsRequestId ile ayrıştırıldı.
+           Gerekce: lojistikçinin ayrı bir sohbet başlatması ve satıcının rota/yük bilgisini üstte görmesi.
 ```
 
 ---

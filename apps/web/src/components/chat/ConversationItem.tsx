@@ -23,13 +23,17 @@ export function ConversationItem({
     ?? conversation.participants[0];
 
   const partnerName =
-    partner?.companyName
-    || partner?.fullName
-    || partner?.email
-    || 'Kullanıcı';
+    conversation.conversationType === 'LOGISTICS'
+      ? `${conversation.logisticsFromCity ?? ''}${conversation.logisticsFromCity && conversation.logisticsToCity ? ' → ' : ''}${conversation.logisticsToCity ?? ''}` || 'Lojistik Sohbeti'
+      : partner?.companyName
+        || partner?.fullName
+        || partner?.email
+        || 'Kullanıcı';
 
   const preview = conversation.lastMessage?.body
-    || (conversation.lastMessage?.type ? `[${conversation.lastMessage.type}]` : 'Henüz mesaj yok');
+    || (conversation.conversationType === 'LOGISTICS'
+      ? 'Lojistik sohbeti'
+      : (conversation.lastMessage?.type ? `[${conversation.lastMessage.type}]` : 'Henüz mesaj yok'));
 
   return (
     <Link

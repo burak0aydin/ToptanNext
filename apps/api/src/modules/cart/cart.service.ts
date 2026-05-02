@@ -12,6 +12,11 @@ import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 const cartItemSelect = {
   id: true,
   quantity: true,
+  quoteId: true,
+  quotedUnitPrice: true,
+  quotedLogisticsFee: true,
+  quotedCurrency: true,
+  quoteNotes: true,
   createdAt: true,
   updatedAt: true,
   productListing: {
@@ -60,6 +65,7 @@ type CartSummary = {
     id: string;
     productListingId: string;
     supplierId: string;
+    quoteId: string | null;
     productName: string;
     productSlug: string;
     supplierName: string | null;
@@ -67,6 +73,12 @@ type CartSummary = {
     minOrderQuantity: number | null;
     stock: number | null;
     unitPrice: string | null;
+    quotedUnitPrice: string | null;
+    quotedLogisticsFee: string | null;
+    quotedCurrency: string | null;
+    quoteNotes: string | null;
+    productTotal: string | null;
+    logisticsFee: string | null;
     currency: string;
     imageMediaId: string | null;
     lineTotal: string | null;
@@ -82,6 +94,17 @@ type PricingTierRecord = {
   minQuantity: number;
   maxQuantity: number;
   unitPrice: number;
+};
+
+type AcceptedQuoteSnapshot = {
+  buyerId: string;
+  quoteId: string;
+  productListingId: string;
+  quantity: number;
+  unitPrice: Prisma.Decimal;
+  logisticsFee: Prisma.Decimal | null;
+  currency: string;
+  notes: string | null;
 };
 
 @Injectable()
@@ -164,14 +187,56 @@ export class CartService {
       create: {
         buyerId: userId,
         productListingId: dto.productListingId,
+        quoteId: null,
+        quotedUnitPrice: null,
+        quotedLogisticsFee: null,
+        quotedCurrency: null,
+        quoteNotes: null,
         quantity: nextQuantity,
       },
       update: {
+        quoteId: null,
+        quotedUnitPrice: null,
+        quotedLogisticsFee: null,
+        quotedCurrency: null,
+        quoteNotes: null,
         quantity: nextQuantity,
       },
     });
 
     return this.getCart(userId);
+  }
+
+  async syncAcceptedQuoteItem(
+    client: Prisma.TransactionClient,
+    snapshot: AcceptedQuoteSnapshot,
+  ): Promise<void> {
+    await client.cartItem.upsert({
+      where: {
+        buyerId_productListingId: {
+          buyerId: snapshot.buyerId,
+          productListingId: snapshot.productListingId,
+        },
+      },
+      create: {
+        buyerId: snapshot.buyerId,
+        productListingId: snapshot.productListingId,
+        quoteId: snapshot.quoteId,
+        quotedUnitPrice: snapshot.unitPrice,
+        quotedLogisticsFee: snapshot.logisticsFee,
+        quotedCurrency: snapshot.currency,
+        quoteNotes: snapshot.notes,
+        quantity: snapshot.quantity,
+      },
+      update: {
+        quoteId: snapshot.quoteId,
+        quotedUnitPrice: snapshot.unitPrice,
+        quotedLogisticsFee: snapshot.logisticsFee,
+        quotedCurrency: snapshot.currency,
+        quoteNotes: snapshot.notes,
+        quantity: snapshot.quantity,
+      },
+    });
   }
 
   async updateItem(
@@ -247,19 +312,23 @@ export class CartService {
 
   private buildSummary(items: CartItemRecord[]): CartSummary {
     const normalizedItems = items.map((item) => {
-      const unitPrice = this.resolveUnitPrice(
+      const quotedUnitPrice = item.quotedUnitPrice ?? null;
+      const unitPrice = quotedUnitPrice ?? this.resolveUnitPrice(
         item.productListing.basePrice,
         item.productListing.pricingTiers,
         item.quantity,
       );
-      const lineTotal = unitPrice
-        ? unitPrice.mul(item.quantity)
-        : null;
+      const productTotal = unitPrice ? unitPrice.mul(item.quantity) : null;
+      const logisticsFee = item.quotedLogisticsFee ?? null;
+      const lineTotal = productTotal
+        ? (logisticsFee ? productTotal.add(logisticsFee) : productTotal)
+        : logisticsFee;
 
       return {
         id: item.id,
         productListingId: item.productListing.id,
         supplierId: item.productListing.supplierId,
+        quoteId: item.quoteId,
         productName: item.productListing.name,
         productSlug: item.productListing.slug,
         supplierName:
@@ -270,7 +339,13 @@ export class CartService {
         minOrderQuantity: item.productListing.minOrderQuantity,
         stock: item.productListing.stock,
         unitPrice: unitPrice?.toFixed(2) ?? null,
-        currency: item.productListing.currency,
+        quotedUnitPrice: quotedUnitPrice?.toFixed(2) ?? null,
+        quotedLogisticsFee: logisticsFee?.toFixed(2) ?? null,
+        quotedCurrency: item.quotedCurrency ?? null,
+        quoteNotes: item.quoteNotes ?? null,
+        productTotal: productTotal?.toFixed(2) ?? null,
+        logisticsFee: logisticsFee?.toFixed(2) ?? null,
+        currency: item.quotedCurrency ?? item.productListing.currency,
         imageMediaId: item.productListing.media[0]?.id ?? null,
         lineTotal: lineTotal?.toFixed(2) ?? null,
         createdAt: item.createdAt,

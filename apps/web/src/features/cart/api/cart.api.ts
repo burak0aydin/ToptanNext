@@ -4,6 +4,7 @@ export type CartItemRecord = {
   id: string;
   productListingId: string;
   supplierId: string;
+  quoteId: string | null;
   productName: string;
   productSlug: string;
   supplierName: string | null;
@@ -11,6 +12,12 @@ export type CartItemRecord = {
   minOrderQuantity: number | null;
   stock: number | null;
   unitPrice: string | null;
+  quotedUnitPrice: string | null;
+  quotedLogisticsFee: string | null;
+  quotedCurrency: string | null;
+  quoteNotes: string | null;
+  productTotal: string | null;
+  logisticsFee: string | null;
   currency: string;
   imageMediaId: string | null;
   lineTotal: string | null;

@@ -56,6 +56,10 @@ function getInitials(value: string | null | undefined): string {
 }
 
 function statusBadge(conversation: ConversationSummary) {
+  if (conversation.conversationType === "LOGISTICS") {
+    return { icon: "local_shipping", label: "Lojistik Sohbeti", className: "bg-emerald-50 text-emerald-700 ring-emerald-200" };
+  }
+
   if (conversation.hasPendingLogistics) {
     return { icon: "local_shipping", label: "Kargo Bekliyor", className: "bg-slate-100 text-slate-600 ring-slate-200" };
   }
@@ -81,7 +85,9 @@ function ConversationCard({
   onSelect,
 }: ConversationCardProps) {
   const partner = getPartner(conversation, currentUserId);
-  const partnerName = partner?.companyName || partner?.fullName || "Müşteri";
+  const partnerName = conversation.conversationType === "LOGISTICS"
+    ? `${conversation.logisticsFromCity ?? ""}${conversation.logisticsFromCity && conversation.logisticsToCity ? " → " : ""}${conversation.logisticsToCity ?? ""}` || "Lojistik Sohbeti"
+    : partner?.companyName || partner?.fullName || "Müşteri";
   const lastMessage = conversation.lastMessage?.body || "Henüz mesaj yok";
   const badge = statusBadge(conversation);
 
@@ -135,7 +141,8 @@ function OfferManagementPanel({
 }: OfferManagementPanelProps) {
   const queryClient = useQueryClient();
   const { socket } = useSocket();
-  const canRequestLogistics = useMemo(() => getCurrentUserRoleFromToken() === "SUPPLIER", []);
+  const [isMounted, setIsMounted] = useState(false);
+  const canRequestLogistics = isMounted && getCurrentUserRoleFromToken() === "SUPPLIER";
   const storeRequests = useChatStore((state) => state.logisticsRequests);
   const storeOffers = useChatStore((state) => state.logisticsOffers);
   const selectedOffers = useChatStore((state) => state.selectedLogisticsOffer);
@@ -147,6 +154,10 @@ function OfferManagementPanel({
   const [sellerDeliveryFee, setSellerDeliveryFee] = useState<number | null>(0);
   const [openStep, setOpenStep] = useState<1 | 2 | 3>(1);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const latestRequestQuery = useQuery({
     queryKey: ["seller-logistics-request", conversationId],
@@ -504,7 +515,7 @@ export function SellerMessagesWorkspace() {
     queryKey: ["seller-conversations", audience, activeFilter, debouncedSearch],
     queryFn: () =>
       fetchConversations({
-        filter: audience === "logistics" ? "logistics_pending" : activeFilter,
+        filter: audience === "logistics" ? "all" : activeFilter,
         search: debouncedSearch,
       }),
   });
@@ -516,11 +527,20 @@ export function SellerMessagesWorkspace() {
   }, [conversationsQuery.data, setConversations]);
 
   const conversations = useMemo(
-    () =>
-      Array.from(conversationMap.values()).sort(
+    () => {
+      const items = Array.from(conversationMap.values());
+
+      const filtered = audience === "logistics"
+        ? items.filter((conversation) =>
+            conversation.conversationType === "LOGISTICS" || conversation.hasPendingLogistics,
+          )
+        : items;
+
+      return filtered.sort(
         (left, right) => new Date(right.lastMessageAt).getTime() - new Date(left.lastMessageAt).getTime(),
-      ),
-    [conversationMap],
+      );
+    },
+    [audience, conversationMap],
   );
 
   useEffect(() => {
@@ -543,6 +563,17 @@ export function SellerMessagesWorkspace() {
   const productImage = activeConversation?.productImageMediaId
     ? resolveProductListingMediaUrl(activeConversation.productImageMediaId)
     : null;
+  const logisticsRoute = activeConversation?.conversationType === "LOGISTICS"
+    && activeConversation.logisticsFromCity
+    && activeConversation.logisticsToCity
+    ? `${activeConversation.logisticsFromCity} → ${activeConversation.logisticsToCity}`
+    : null;
+  const logisticsLoadSummary = activeConversation?.conversationType === "LOGISTICS"
+    ? [
+      activeConversation.logisticsPalletCount ? `${activeConversation.logisticsPalletCount} palet` : null,
+      activeConversation.logisticsItemCount ? `${activeConversation.logisticsItemCount} adet` : null,
+    ].filter(Boolean).join(" / ")
+    : "";
 
   return (
     <div className="flex h-full min-h-0 w-full">
@@ -640,13 +671,28 @@ export function SellerMessagesWorkspace() {
                 </div>
                 <div className="min-w-0">
                   <h2 className="truncate text-sm font-semibold text-[#191c1e]">
-                    {activeConversation.productName ?? "Ürün görüşmesi"}
+                    {activeConversation.conversationType === "LOGISTICS" ? "Lojistik sohbeti" : (activeConversation.productName ?? "Ürün görüşmesi")}
                   </h2>
                   <div className="mt-0.5 flex flex-wrap items-center gap-3">
-                    <span className="rounded bg-[#eceef0] px-2 py-0.5 text-xs font-medium text-[#434654]">
-                      Müşteri: {partner?.companyName || partner?.fullName || "Müşteri"}
-                    </span>
-                    <span className="text-xs font-semibold text-[#003fb1]">Beklenen: ~4.500.000 TL</span>
+                    {activeConversation.conversationType === "LOGISTICS" ? (
+                      <>
+                        <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                          {logisticsRoute ?? "Lojistik sohbeti"}
+                        </span>
+                        {logisticsLoadSummary ? (
+                          <span className="rounded bg-[#eceef0] px-2 py-0.5 text-xs font-medium text-[#434654]">
+                            Yük: {logisticsLoadSummary}
+                          </span>
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        <span className="rounded bg-[#eceef0] px-2 py-0.5 text-xs font-medium text-[#434654]">
+                          Müşteri: {partner?.companyName || partner?.fullName || "Müşteri"}
+                        </span>
+                        <span className="text-xs font-semibold text-[#003fb1]">Beklenen: ~4.500.000 TL</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -680,11 +726,13 @@ export function SellerMessagesWorkspace() {
         )}
       </section>
 
-      <OfferManagementPanel
-        conversationId={activeConversationId}
-        productListingId={activeConversation?.productListingId ?? null}
-        productName={activeConversation?.productName ?? null}
-      />
+      {activeConversation?.conversationType !== "LOGISTICS" ? (
+        <OfferManagementPanel
+          conversationId={activeConversationId}
+          productListingId={activeConversation?.productListingId ?? null}
+          productName={activeConversation?.productName ?? null}
+        />
+      ) : null}
     </div>
   );
 }

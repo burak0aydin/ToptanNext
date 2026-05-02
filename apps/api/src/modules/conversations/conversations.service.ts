@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import {
   ConversationStatus,
+  ConversationType,
   LogisticsOfferStatus,
   LogisticsRequestStatus,
   MessageType,
@@ -77,8 +78,16 @@ export type MessageRecord = {
 export type ConversationListItem = {
   id: string;
   productListingId: string | null;
+  conversationType: ConversationType;
+  logisticsRequestId: string | null;
   productName: string | null;
   productImageMediaId: string | null;
+  logisticsFromCity: string | null;
+  logisticsToCity: string | null;
+  logisticsPalletCount: number | null;
+  logisticsItemCount: number | null;
+  logisticsIsSellerDelivery: boolean;
+  logisticsSellerDeliveryFee: number | null;
   status: ConversationStatus;
   lastMessageAt: Date;
   createdAt: Date;
@@ -213,6 +222,17 @@ type ConversationWithRelations = Prisma.ConversationGetPayload<{
         };
       };
     };
+    logisticsRequest: {
+      select: {
+        id: true;
+        fromCity: true;
+        toCity: true;
+        palletCount: true;
+        itemCount: true;
+        isSellerDelivery: true;
+        sellerDeliveryFee: true;
+      };
+    };
   };
 }>;
 
@@ -225,10 +245,132 @@ export class ConversationsService {
     private readonly realtimeService: RealtimeService,
   ) {}
 
+  private async getOrCreateLogisticsConversation(
+    prismaClient: PrismaService | Prisma.TransactionClient,
+    requesterUserId: string,
+    logisticsRequestId: string,
+  ): Promise<string> {
+    const requesterUser = await prismaClient.user.findUnique({
+      where: { id: requesterUserId },
+      select: {
+        id: true,
+        isLogisticsPartner: true,
+      },
+    });
+
+    if (!requesterUser) {
+      throw new NotFoundException('Oturum sahibi kullanıcı bulunamadı.');
+    }
+
+    if (!requesterUser.isLogisticsPartner) {
+      throw new ForbiddenException('Sadece lojistik ortakları lojistik sohbeti başlatabilir.');
+    }
+
+    const logisticsRequest = await prismaClient.logisticsRequest.findUnique({
+      where: { id: logisticsRequestId },
+      select: {
+        id: true,
+        requesterId: true,
+        conversation: {
+          select: {
+            productListingId: true,
+          },
+        },
+      },
+    });
+
+    if (!logisticsRequest) {
+      throw new NotFoundException('Lojistik talebi bulunamadı.');
+    }
+
+    if (logisticsRequest.requesterId === requesterUserId) {
+      throw new BadRequestException('Kendi talebiniz için lojistik sohbeti başlatamazsınız.');
+    }
+
+    const existingConversation = await prismaClient.conversation.findFirst({
+      where: {
+        conversationType: ConversationType.LOGISTICS,
+        logisticsRequestId,
+        status: ConversationStatus.ACTIVE,
+        AND: [
+          {
+            participants: {
+              some: {
+                userId: requesterUserId,
+              },
+            },
+          },
+          {
+            participants: {
+              some: {
+                userId: logisticsRequest.requesterId,
+              },
+            },
+          },
+          {
+            participants: {
+              every: {
+                userId: {
+                  in: [requesterUserId, logisticsRequest.requesterId],
+                },
+              },
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (existingConversation) {
+      return existingConversation.id;
+    }
+
+    const createdConversation = await prismaClient.conversation.create({
+      data: {
+        conversationType: ConversationType.LOGISTICS,
+        logisticsRequestId,
+        productListingId: logisticsRequest.conversation.productListingId,
+        participants: {
+          create: [
+            {
+              userId: requesterUserId,
+              unreadCount: 0,
+            },
+            {
+              userId: logisticsRequest.requesterId,
+              unreadCount: 0,
+            },
+          ],
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    return createdConversation.id;
+  }
+
   async createConversation(
     requesterUserId: string,
     dto: CreateConversationDto,
   ): Promise<ConversationListItem> {
+    if (dto.logisticsRequestId) {
+      const conversationId = await this.getOrCreateLogisticsConversation(
+        this.prisma,
+        requesterUserId,
+        dto.logisticsRequestId,
+      );
+
+      return this.getConversationById(requesterUserId, conversationId);
+    }
+
+    if (!dto.participantId) {
+      throw new BadRequestException('Katılımcı bilgisi zorunludur.');
+    }
+
     if (dto.participantId === requesterUserId) {
       throw new BadRequestException('Kendi kendinize konuşma başlatamazsınız.');
     }
@@ -258,6 +400,7 @@ export class ConversationsService {
 
     const existingConversation = await this.prisma.conversation.findFirst({
       where: {
+        conversationType: ConversationType.PRODUCT,
         productListingId: dto.productListingId ?? null,
         status: ConversationStatus.ACTIVE,
         AND: [
@@ -294,6 +437,7 @@ export class ConversationsService {
     const conversationId = existingConversation?.id
       ?? (await this.prisma.conversation.create({
         data: {
+          conversationType: ConversationType.PRODUCT,
           productListingId: dto.productListingId ?? null,
           participants: {
             create: [
@@ -412,6 +556,17 @@ export class ConversationsService {
                 id: true,
               },
             },
+          },
+        },
+        logisticsRequest: {
+          select: {
+            id: true,
+            fromCity: true,
+            toCity: true,
+            palletCount: true,
+            itemCount: true,
+            isSellerDelivery: true,
+            sellerDeliveryFee: true,
           },
         },
         participants: {
@@ -1060,6 +1215,7 @@ export class ConversationsService {
           select: {
             id: true,
             conversationId: true,
+            requesterId: true,
             fromCity: true,
             toCity: true,
             status: true,
@@ -1086,6 +1242,17 @@ export class ConversationsService {
                 },
               },
             },
+            logisticsConversations: {
+              select: {
+                id: true,
+                conversationType: true,
+                participants: {
+                  select: {
+                    userId: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -1097,7 +1264,13 @@ export class ConversationsService {
 
     return offers.map((offer) => ({
       ...this.toLogisticsOfferRecord(offer),
-      conversationId: offer.request.conversationId,
+      conversationId:
+        offer.request.logisticsConversations.find(
+          (conversation) =>
+            conversation.conversationType === ConversationType.LOGISTICS
+            && conversation.participants.some((participant) => participant.userId === userId)
+            && conversation.participants.some((participant) => participant.userId === offer.request.requesterId),
+        )?.id ?? offer.request.conversationId,
       requestStatus: offer.request.status,
       fromCity: offer.request.fromCity,
       toCity: offer.request.toCity,
@@ -1289,20 +1462,11 @@ export class ConversationsService {
     }
 
     const { offer, message } = await this.prisma.$transaction(async (tx) => {
-      await tx.conversationParticipant.upsert({
-        where: {
-          conversationId_userId: {
-            conversationId: request.conversationId,
-            userId: partnerId,
-          },
-        },
-        update: {},
-        create: {
-          conversationId: request.conversationId,
-          userId: partnerId,
-          unreadCount: 0,
-        },
-      });
+      const logisticsConversationId = await this.getOrCreateLogisticsConversation(
+        tx,
+        partnerId,
+        requestId,
+      );
 
       const created = await tx.logisticsOffer.upsert({
         where: {
@@ -1367,7 +1531,7 @@ export class ConversationsService {
 
       const createdMessage = await tx.message.create({
         data: {
-          conversationId: request.conversationId,
+          conversationId: logisticsConversationId,
           senderId: partnerId,
           type: MessageType.TEXT,
           body: messageBody,
@@ -1399,13 +1563,13 @@ export class ConversationsService {
       });
 
       await tx.conversation.update({
-        where: { id: request.conversationId },
+        where: { id: logisticsConversationId },
         data: { lastMessageAt: createdMessage.createdAt },
       });
 
       await tx.conversationParticipant.updateMany({
         where: {
-          conversationId: request.conversationId,
+          conversationId: logisticsConversationId,
           userId: {
             not: partnerId,
           },
@@ -1425,11 +1589,11 @@ export class ConversationsService {
 
     const record = this.toLogisticsOfferRecord(offer);
     const messageRecord = this.toMessageRecord(message);
-    this.realtimeService.emitToConversation(request.conversationId, 'logistics_offer_created', {
+    this.realtimeService.emitToConversation(message.conversationId, 'logistics_offer_created', {
       requestId,
       offer: record,
     });
-    this.realtimeService.emitToConversation(request.conversationId, 'new_message', messageRecord);
+    this.realtimeService.emitToConversation(message.conversationId, 'new_message', messageRecord);
     this.realtimeService.emitToUser(request.requesterId, 'logistics_offer_created', {
       requestId,
       offer: record,
@@ -1543,6 +1707,17 @@ export class ConversationsService {
             },
           },
         },
+        logisticsRequest: {
+          select: {
+            id: true,
+            fromCity: true,
+            toCity: true,
+            palletCount: true,
+            itemCount: true,
+            isSellerDelivery: true,
+            sellerDeliveryFee: true,
+          },
+        },
         participants: {
           include: {
             user: {
@@ -1619,8 +1794,18 @@ export class ConversationsService {
     return {
       id: conversation.id,
       productListingId: conversation.productListingId,
+      conversationType: conversation.conversationType,
+      logisticsRequestId: conversation.logisticsRequestId,
       productName: conversation.productListing?.name ?? null,
       productImageMediaId: conversation.productListing?.media[0]?.id ?? null,
+      logisticsFromCity: conversation.logisticsRequest?.fromCity ?? null,
+      logisticsToCity: conversation.logisticsRequest?.toCity ?? null,
+      logisticsPalletCount: conversation.logisticsRequest?.palletCount ?? null,
+      logisticsItemCount: conversation.logisticsRequest?.itemCount ?? null,
+      logisticsIsSellerDelivery: conversation.logisticsRequest?.isSellerDelivery ?? false,
+      logisticsSellerDeliveryFee: conversation.logisticsRequest?.sellerDeliveryFee
+        ? Number(conversation.logisticsRequest.sellerDeliveryFee)
+        : null,
       status: conversation.status,
       lastMessageAt: conversation.lastMessageAt,
       createdAt: conversation.createdAt,

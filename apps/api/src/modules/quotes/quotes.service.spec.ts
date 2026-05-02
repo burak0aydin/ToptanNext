@@ -7,14 +7,43 @@ function createBaseQuote() {
     id: 'quote-1',
     status: QuoteStatus.PENDING,
     expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    productListingId: 'prd-1',
+    quantity: 50,
+    unitPrice: new Prisma.Decimal(1200),
+    logisticsFee: new Prisma.Decimal(300),
+    currency: 'TRY',
+    notes: 'Kapıda teslim',
     message: {
       id: 'msg-1',
       conversationId: 'conv-1',
       senderId: 'supplier-1',
+      productListingId: 'prd-1',
+      quantity: 50,
+      unitPrice: new Prisma.Decimal(1200),
+      logisticsFee: new Prisma.Decimal(300),
+      currency: 'TRY',
+      notes: 'Kapıda teslim',
+      quote: {
+        id: 'quote-1',
+        productListingId: 'prd-1',
+        quantity: 50,
+        unitPrice: new Prisma.Decimal(1200),
+        logisticsFee: new Prisma.Decimal(300),
+        currency: 'TRY',
+        notes: 'Kapıda teslim',
+        status: QuoteStatus.PENDING,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        counterQuoteId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
       conversation: {
         id: 'conv-1',
         productListingId: 'prd-1',
-        participants: [{ userId: 'buyer-1' }, { userId: 'supplier-1' }],
+        participants: [
+          { userId: 'buyer-1', user: { role: Role.BUYER } },
+          { userId: 'supplier-1', user: { role: Role.SUPPLIER } },
+        ],
       },
     },
   };
@@ -32,6 +61,11 @@ describe('QuotesService', () => {
       findMany: jest.fn(),
     },
     $transaction: jest.fn(),
+  };
+
+  const cartMock = {
+    syncAcceptedQuoteItem: jest.fn(),
+    getCart: jest.fn(),
   };
 
   const redisMock = {
@@ -58,6 +92,7 @@ describe('QuotesService', () => {
       redisMock as never,
       notificationsMock as never,
       realtimeMock as never,
+      cartMock as never,
     );
   });
 
@@ -91,6 +126,13 @@ describe('QuotesService', () => {
       },
     };
 
+    cartMock.getCart.mockResolvedValue({
+      items: [],
+      totalItems: 1,
+      subtotal: '1500.00',
+      currency: 'TRY',
+    });
+
     prismaMock.$transaction.mockImplementation(async (callback: (arg: typeof tx) => unknown) => callback(tx));
 
     const result = await service.acceptQuote('quote-1', 'buyer-1');
@@ -117,7 +159,19 @@ describe('QuotesService', () => {
       initiatorUserId: 'buyer-1',
       recipientUserIds: ['supplier-1'],
     });
+    expect(cartMock.syncAcceptedQuoteItem).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({
+        buyerId: 'buyer-1',
+        quoteId: 'quote-1',
+        productListingId: 'prd-1',
+        quantity: 50,
+      }),
+    );
+    expect(cartMock.getCart).toHaveBeenCalledWith('buyer-1');
     expect(result.status).toBe(QuoteStatus.ACCEPTED);
+    expect(result.cartOwnerUserId).toBe('buyer-1');
+    expect(result.cart?.totalItems).toBe(1);
   });
 
   it('acceptQuote should allow supplier to accept buyer counter offer', async () => {
@@ -174,6 +228,8 @@ describe('QuotesService', () => {
       recipientUserIds: ['buyer-1'],
     });
     expect(result.status).toBe(QuoteStatus.ACCEPTED);
+    expect(result.cartOwnerUserId).toBe('buyer-1');
+    expect(cartMock.getCart).not.toHaveBeenCalled();
   });
 
   it('acceptQuote should expire and reject when quote already expired', async () => {

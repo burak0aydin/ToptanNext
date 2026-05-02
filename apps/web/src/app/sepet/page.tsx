@@ -125,6 +125,37 @@ export default function CartPage() {
                   <div className='min-w-0'>
                     <h2 className='truncate text-base font-semibold text-slate-900'>{item.productName}</h2>
                     <p className='mt-1 text-sm text-slate-500'>{item.supplierName ?? 'Satıcı'}</p>
+                    {item.quoteId ? (
+                      <div className='mt-3 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2.5 text-xs text-emerald-900'>
+                        <div className='flex items-center gap-2 font-bold'>
+                          <span className='material-symbols-outlined text-[15px]'>verified</span>
+                          Kabul edilen teklif özeti
+                        </div>
+                        <div className='mt-2 space-y-1.5'>
+                          <div className='flex items-center justify-between gap-3'>
+                            <span>Ürün toplamı</span>
+                            <span className='font-semibold'>
+                              {formatPrice(item.productTotal ?? null, item.currency)}
+                            </span>
+                          </div>
+                          <div className='flex items-center justify-between gap-3'>
+                            <span>Lojistik</span>
+                            <span className='font-semibold'>
+                              {formatPrice(item.logisticsFee ?? null, item.currency)}
+                            </span>
+                          </div>
+                          <div className='flex items-center justify-between gap-3 border-t border-emerald-100 pt-1.5 text-sm font-bold'>
+                            <span>Genel toplam</span>
+                            <span>{formatPrice(item.lineTotal ?? null, item.currency)}</span>
+                          </div>
+                        </div>
+                        {item.quoteNotes ? (
+                          <p className='mt-2 text-[11px] leading-relaxed text-emerald-800/80'>
+                            Not: {item.quoteNotes}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <p className='mt-2 text-sm font-semibold text-[#1A56DB]'>
                       {formatPrice(item.unitPrice, item.currency)}
                     </p>
@@ -195,9 +226,9 @@ export default function CartPage() {
                 ? 'bg-[#1A56DB] text-white hover:opacity-95'
                 : 'pointer-events-none bg-slate-200 text-slate-500'
             }`}
-            href='/siparis'
+            href='/odeme'
           >
-            Siparişe Geç
+            Ödemeye Geç
           </Link>
         </aside>
       </main>

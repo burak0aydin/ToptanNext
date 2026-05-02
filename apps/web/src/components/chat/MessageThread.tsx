@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   useInfiniteQuery,
+  useQueryClient,
   useMutation,
   useQuery,
   type InfiniteData,
@@ -52,6 +54,8 @@ function formatDateSeparator(date: Date): string {
 
 export function MessageThread({ conversationId, showHeader = true }: MessageThreadProps) {
   const { socket } = useSocket();
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const currentUserId = useMemo(() => getCurrentUserIdFromToken(), []);
 
   const setMessages = useChatStore((state) => state.setMessages);
@@ -92,6 +96,14 @@ export function MessageThread({ conversationId, showHeader = true }: MessageThre
 
   const acceptMutation = useMutation({
     mutationFn: (quoteId: string) => acceptQuote(quoteId),
+    onSuccess: (result) => {
+      if (result.cartOwnerUserId !== currentUserId || !result.cart) {
+        return;
+      }
+
+      queryClient.setQueryData(['cart'], result.cart);
+      router.push('/odeme');
+    },
   });
 
   const rejectMutation = useMutation({
@@ -317,6 +329,17 @@ export function MessageThread({ conversationId, showHeader = true }: MessageThre
   const productImageUrl = conversationQuery.data?.productImageMediaId
     ? resolveProductListingMediaUrl(conversationQuery.data.productImageMediaId)
     : null;
+  const logisticsRoute = conversationQuery.data?.conversationType === 'LOGISTICS'
+    && conversationQuery.data.logisticsFromCity
+    && conversationQuery.data.logisticsToCity
+    ? `${conversationQuery.data.logisticsFromCity} → ${conversationQuery.data.logisticsToCity}`
+    : null;
+  const logisticsLoadSummary = conversationQuery.data?.conversationType === 'LOGISTICS'
+    ? [
+      conversationQuery.data.logisticsPalletCount ? `${conversationQuery.data.logisticsPalletCount} palet` : null,
+      conversationQuery.data.logisticsItemCount ? `${conversationQuery.data.logisticsItemCount} adet` : null,
+    ].filter(Boolean).join(' / ')
+    : '';
 
   return (
     <div className='flex h-full min-h-0 flex-col'>
@@ -349,6 +372,21 @@ export function MessageThread({ conversationId, showHeader = true }: MessageThre
           ) : (
             <h3 className='text-sm font-bold text-slate-800'>Konuşma</h3>
           )}
+          {logisticsRoute ? (
+            <div className='mt-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-500'>
+              <span className='inline-flex items-center rounded-full bg-emerald-50 px-2 py-1 text-emerald-700 ring-1 ring-emerald-200'>
+                Lojistik Sohbeti
+              </span>
+              <span className='rounded-full bg-slate-100 px-2 py-1 text-slate-600'>
+                {logisticsRoute}
+              </span>
+              {logisticsLoadSummary ? (
+                <span className='rounded-full bg-slate-100 px-2 py-1 text-slate-600'>
+                  {logisticsLoadSummary}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
 

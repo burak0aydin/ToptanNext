@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import {
+  createConversation,
   createLogisticsOffer,
   fetchOpenLogisticsRequests,
   type LogisticsRequest,
@@ -36,6 +37,13 @@ export default function AcikTaleplerPage() {
   const requestsQuery = useQuery({
     queryKey: ['logistics-open-requests'],
     queryFn: fetchOpenLogisticsRequests,
+  });
+
+  const startConversationMutation = useMutation({
+    mutationFn: (request: LogisticsRequest) => createConversation({ logisticsRequestId: request.id }),
+    onSuccess: (conversation) => {
+      router.push(`/lojistik/mesajlar/${conversation.id}`);
+    },
   });
 
   const offerMutation = useMutation({
@@ -165,9 +173,7 @@ export default function AcikTaleplerPage() {
                 setNotes(myOffer?.notes ?? '');
               }}
               onChat={() => {
-                if (request.conversationId) {
-                  router.push(`/lojistik/mesajlar/${request.conversationId}`);
-                }
+                startConversationMutation.mutate(request);
               }}
             />
           );
