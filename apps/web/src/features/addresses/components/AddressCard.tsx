@@ -18,37 +18,37 @@ export default function AddressCard({
   isLoading,
 }: AddressCardProps) {
   return (
-    <div className="h-[257px]">
+    <div className="min-h-[202px] sm:h-[257px]">
       <button
         type="button"
         onClick={onSelect}
         disabled={isLoading}
-        className={`h-[218px] w-full overflow-hidden rounded-lg border-2 p-5 text-left transition ${
+        className={`min-h-[168px] w-full overflow-hidden rounded-lg border-2 p-3 text-left transition sm:h-[218px] sm:p-5 ${
           isSelected
             ? 'border-blue-700 bg-blue-50'
             : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
         } disabled:cursor-not-allowed disabled:opacity-70`}
       >
-        <div className="mb-3 flex items-start justify-between gap-4">
+        <div className="mb-2 flex items-start justify-between gap-3 sm:mb-3 sm:gap-4">
           <div className="flex min-w-0 items-center gap-2 text-blue-700">
-            <span className="material-symbols-outlined text-xl">home</span>
-            <span className="truncate text-base font-bold">{address.title || 'Adres'}</span>
+            <span className="material-symbols-outlined text-lg sm:text-xl">home</span>
+            <span className="truncate text-sm font-bold sm:text-base">{address.title || 'Adres'}</span>
           </div>
 
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center sm:h-7 sm:w-7">
             {isSelected ? (
-              <span className="material-symbols-outlined text-[28px] leading-none text-blue-700">
+              <span className="material-symbols-outlined text-[24px] leading-none text-blue-700 sm:text-[28px]">
                 check_circle
               </span>
             ) : (
-              <span className="h-7 w-7 rounded-full border-2 border-slate-300" />
+              <span className="h-6 w-6 rounded-full border-2 border-slate-300 sm:h-7 sm:w-7" />
             )}
           </span>
         </div>
 
-        <div className="space-y-1 pl-7 text-sm leading-6 text-slate-600">
-          <p className="truncate text-base font-semibold text-slate-900">{address.fullName}</p>
-          <p className="truncate">{address.address}</p>
+        <div className="space-y-1 pl-0 text-xs leading-5 text-slate-600 sm:pl-7 sm:text-sm sm:leading-6">
+          <p className="truncate text-sm font-semibold text-slate-900 sm:text-base">{address.fullName}</p>
+          <p className="line-clamp-2 sm:truncate">{address.address}</p>
           <p className="truncate">
             {address.neighborhood} / {address.district} / {address.province}
           </p>
@@ -60,7 +60,7 @@ export default function AddressCard({
         </div>
       </button>
 
-      <div className="mt-3 flex items-center gap-3 text-sm">
+      <div className="mt-2 flex items-center gap-3 text-xs sm:mt-3 sm:text-sm">
         <button
           type="button"
           onClick={onEdit}

@@ -10,10 +10,14 @@ type MessagesLayoutProps = {
 
 export default function MessagesLayout({ children }: MessagesLayoutProps) {
   return (
-    <div className='flex h-dvh flex-col overflow-hidden bg-surface'>
+    <div className='flex h-[calc(100dvh-80px)] flex-col overflow-hidden bg-surface md:h-dvh'>
       <MainHeader />
 
       <div className='mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 overflow-hidden border-x border-slate-200 bg-white'>
+        <div className='w-[94px] shrink-0 border-r border-slate-200 md:hidden'>
+          <ConversationList compact />
+        </div>
+
         <div className='hidden w-full max-w-[420px] shrink-0 border-r border-slate-200 md:block'>
           <ConversationList />
         </div>

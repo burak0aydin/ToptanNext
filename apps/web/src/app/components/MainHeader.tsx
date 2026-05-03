@@ -3,9 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { requestJson } from '@/lib/api';
 import { hasAccessToken } from '@/lib/auth-token';
 import { fetchCart } from '@/features/cart/api/cart.api';
+import { fetchConversations } from '@/features/chat/api/chat.api';
+import { useChatStore } from '@/features/chat/store/useChatStore';
 import { useCartStore } from '@/features/cart/store/useCartStore';
 import { fetchMySupplierApplication } from '@/features/supplier-application/api/supplier-application.api';
 import { AccountNavLink } from './AccountNavLink';
@@ -37,6 +40,7 @@ async function fetchSectors(): Promise<SectorItem[]> {
 }
 
 export function MainHeader() {
+  const pathname = usePathname();
   const [desktopMenu, setDesktopMenu] = useState<'categories' | 'sectors' | null>(null);
   const [activeSectorId, setActiveSectorId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -46,6 +50,8 @@ export function MainHeader() {
   const setTotalItems = useCartStore((state) => state.setTotalItems);
   const toast = useCartStore((state) => state.toast);
   const clearToast = useCartStore((state) => state.clearToast);
+  const setConversations = useChatStore((state) => state.setConversations);
+  const conversationMap = useChatStore((state) => state.conversations);
 
   const {
     data: categories = [],
@@ -81,6 +87,13 @@ export function MainHeader() {
     retry: false,
   });
 
+  const conversationsQuery = useQuery({
+    queryKey: ['nav', 'conversations', 'unread'],
+    queryFn: () => fetchConversations({ filter: 'all' }),
+    enabled: hasAccessToken(),
+    retry: false,
+  });
+
   useEffect(() => {
     if (cartQuery.data) {
       setTotalItems(cartQuery.data.totalItems);
@@ -91,6 +104,12 @@ export function MainHeader() {
       setTotalItems(0);
     }
   }, [cartQuery.data, setTotalItems]);
+
+  useEffect(() => {
+    if (conversationsQuery.data) {
+      setConversations(conversationsQuery.data);
+    }
+  }, [conversationsQuery.data, setConversations]);
 
   useEffect(() => {
     if (!toast) {
@@ -130,10 +149,42 @@ export function MainHeader() {
 
   const categoryRoots = categoryMenuData.slice(0, 10);
   const sectorItems = sectors.slice(0, 16);
+  const totalUnreadMessages = Array.from(conversationMap.values()).reduce(
+    (total, conversation) => total + conversation.unreadCount,
+    0,
+  );
+  const isHomeActive = pathname === '/';
+  const isCategoriesActive = pathname.startsWith('/kategori') || pathname.startsWith('/kategoriler');
+  const isMessagesActive = pathname.startsWith('/messages');
+  const isCartActive = pathname.startsWith('/sepet');
+  const isProfileActive =
+    pathname.startsWith('/kullanici-bilgilerim') ||
+    pathname.startsWith('/adres-bilgilerim') ||
+    pathname.startsWith('/kayitli-kartlarim') ||
+    pathname.startsWith('/duyuru-tercihlerim') ||
+    pathname.startsWith('/sifre-degisikligi') ||
+    pathname.startsWith('/siparislerim') ||
+    pathname.startsWith('/favorilerim');
+  const mobileNavItemClass = (isActive: boolean) =>
+    `group flex h-[62px] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-1.5 text-center transition-colors active:bg-slate-100 ${
+      isActive ? 'text-[#003FB1]' : 'text-slate-600'
+    }`;
+  const mobileNavIconClass = (isActive: boolean) =>
+    `material-symbols-outlined flex h-8 w-8 items-center justify-center text-[26px] leading-none ${
+      isActive ? '[font-variation-settings:"FILL"_1]' : ''
+    }`;
 
   return (
-    <header className='sticky top-0 z-50 border-b border-slate-100 bg-white shadow-sm'>
-      <nav className='relative mx-auto flex w-full max-w-[1920px] items-center justify-between px-6 py-3'>
+    <header
+      className={`z-50 bg-white lg:sticky lg:top-0 lg:border-b lg:border-slate-100 lg:shadow-sm ${
+        isHomeActive ? 'sticky top-0 border-b border-slate-100 shadow-sm' : ''
+      }`}
+    >
+      <nav
+        className={`relative mx-auto w-full max-w-[1920px] items-center justify-between px-6 py-3 ${
+          isHomeActive ? 'flex' : 'hidden lg:flex'
+        }`}
+      >
         <Link className='text-2xl font-bold tracking-tighter text-[#003FB1]' href='/'>
           Toptan<span className='text-[#FF5A1F]'>Next</span>
         </Link>
@@ -159,7 +210,7 @@ export function MainHeader() {
 
           <Link
             aria-label='Mesajlar'
-            className='flex items-center gap-1.5 text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'
+            className='hidden items-center gap-1.5 text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95 sm:flex'
             href='/messages'
           >
             <span className='material-symbols-outlined text-[25px] leading-none'>forum</span>
@@ -169,7 +220,7 @@ export function MainHeader() {
           <div className='relative'>
             <Link
               aria-label='Sepetim'
-              className='relative flex items-center gap-1.5 text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95'
+              className='relative hidden items-center gap-1.5 text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95 sm:flex'
               href='/sepet'
             >
               <span className='relative inline-flex items-center justify-center'>
@@ -190,11 +241,17 @@ export function MainHeader() {
             ) : null}
           </div>
 
-          <AccountNavLink />
+          <div className='hidden sm:block'>
+            <AccountNavLink />
+          </div>
         </div>
       </nav>
 
-      <div className='relative border-b border-slate-200/50 bg-slate-50'>
+      <div
+        className={`relative border-b border-slate-200/50 bg-slate-50 ${
+          mobileMenuOpen ? 'block' : 'hidden lg:block'
+        }`}
+      >
         <div
           className='mx-auto flex min-h-10 max-w-[1920px] items-center justify-between px-6'
           onMouseLeave={() => setDesktopMenu(null)}
@@ -389,6 +446,67 @@ export function MainHeader() {
           </div>
         ) : null}
       </div>
+
+      <nav
+        aria-label='Mobil alt navigasyon'
+        className='fixed inset-x-0 bottom-0 z-[70] border-t border-slate-200 bg-white/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] pt-2 shadow-[0_-10px_30px_rgba(15,23,42,0.12)] backdrop-blur lg:hidden'
+      >
+        <div className='mx-auto grid max-w-md grid-cols-5 items-center gap-1'>
+          <Link
+            className={mobileNavItemClass(isHomeActive)}
+            href='/'
+          >
+            <span className={mobileNavIconClass(isHomeActive)}>home</span>
+            <span className='flex h-3.5 items-center justify-center truncate text-[11px] font-bold leading-none'>Anasayfa</span>
+          </Link>
+
+          <Link
+            className={mobileNavItemClass(isCategoriesActive)}
+            href='/kategoriler'
+          >
+            <span className={mobileNavIconClass(isCategoriesActive)}>category</span>
+            <span className='flex h-3.5 items-center justify-center truncate text-[11px] font-bold leading-none'>Kategoriler</span>
+          </Link>
+
+          <Link
+            className={mobileNavItemClass(isMessagesActive)}
+            href='/messages'
+          >
+            <span className='relative inline-flex'>
+              <span className={mobileNavIconClass(isMessagesActive)}>forum</span>
+              {totalUnreadMessages > 0 ? (
+                <span className='absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border border-white bg-[#FF5A1F] px-1 text-[9px] font-black leading-none text-white'>
+                  {totalUnreadMessages > 99 ? '99+' : totalUnreadMessages}
+                </span>
+              ) : null}
+            </span>
+            <span className='flex h-3.5 items-center justify-center truncate text-[11px] font-bold leading-none'>Mesajlarım</span>
+          </Link>
+
+          <Link
+            className={`${mobileNavItemClass(isCartActive)} relative`}
+            href='/sepet'
+          >
+            <span className='relative inline-flex'>
+              <span className={mobileNavIconClass(isCartActive)}>shopping_cart</span>
+              {totalItems > 0 ? (
+                <span className='absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border border-white bg-[#FF5A1F] px-1 text-[9px] font-black leading-none text-white'>
+                  {totalItems > 99 ? '99+' : totalItems}
+                </span>
+              ) : null}
+            </span>
+            <span className='flex h-3.5 items-center justify-center truncate text-[11px] font-bold leading-none'>Sepetim</span>
+          </Link>
+
+          <Link
+            className={mobileNavItemClass(isProfileActive)}
+            href='/kullanici-bilgilerim'
+          >
+            <span className={mobileNavIconClass(isProfileActive)}>account_circle</span>
+            <span className='flex h-3.5 items-center justify-center truncate text-[11px] font-bold leading-none'>Profil</span>
+          </Link>
+        </div>
+      </nav>
     </header>
   );
 }

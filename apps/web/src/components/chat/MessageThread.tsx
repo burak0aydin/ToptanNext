@@ -344,13 +344,13 @@ export function MessageThread({ conversationId, showHeader = true }: MessageThre
   return (
     <div className='flex h-full min-h-0 flex-col'>
       {showHeader ? (
-        <div className='border-b border-slate-200 px-4 py-2'>
+        <div className='border-b border-slate-200 px-3 py-2 md:px-4'>
           {productHref ? (
             <Link
               href={productHref}
               className='inline-flex max-w-full items-center gap-2 rounded-lg px-1 py-1 transition hover:bg-slate-50'
             >
-              <span className='flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 text-slate-400'>
+                <span className='flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 text-slate-400 md:h-10 md:w-10'>
                 {productImageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -363,7 +363,7 @@ export function MessageThread({ conversationId, showHeader = true }: MessageThre
                 )}
               </span>
               <span className='min-w-0'>
-                <span className='block truncate text-sm font-bold leading-tight text-slate-800'>
+                <span className='block truncate text-xs font-bold leading-tight text-slate-800 md:text-sm'>
                   {conversationQuery.data?.productName ?? 'Ürün'}
                 </span>
                 <span className='block text-[11px] font-medium text-slate-400'>Ürünü görüntüle</span>
@@ -391,7 +391,7 @@ export function MessageThread({ conversationId, showHeader = true }: MessageThre
       ) : null}
 
       <div className='relative min-h-0 flex-1'>
-        <div ref={parentRef} className='h-full overflow-y-auto bg-slate-50 px-4 py-4'>
+        <div ref={parentRef} className='h-full overflow-y-auto bg-slate-50 px-2.5 py-3 md:px-4 md:py-4'>
           <div
             style={{
               height: `${rowVirtualizer.getTotalSize()}px`,

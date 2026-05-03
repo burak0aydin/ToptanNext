@@ -58,7 +58,7 @@ export function HomeHeroSlider() {
 
   return (
     <section
-      className='relative flex h-[420px] items-center overflow-hidden bg-slate-900'
+      className='relative flex h-[360px] items-center overflow-hidden bg-slate-900 md:h-[420px]'
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -74,35 +74,35 @@ export function HomeHeroSlider() {
         </div>
       ))}
 
-      <div className='container relative z-10 mx-auto px-6'>
+      <div className='container relative z-10 mx-auto px-4 sm:px-6'>
         <div className='max-w-2xl'>
-          <h1 className='mb-4 text-4xl font-extrabold leading-tight text-white md:text-5xl'>
+          <h1 className='mb-3 text-3xl font-extrabold leading-tight text-white md:mb-4 md:text-5xl'>
             {activeSlide.title}
-            <span className='ml-2 text-[#0353fe]'>Toptan</span>
+            <span className='ml-1 text-[#0353fe] md:ml-2'>Toptan</span>
             <span className='text-[#FF5A1F] drop-shadow-[0_2px_8px_rgba(0,0,0,0.75)]'>Next</span>
           </h1>
 
-          <p className='max-w-xl text-base leading-relaxed text-slate-200 md:text-lg'>
+          <p className='max-w-xl text-sm leading-relaxed text-slate-200 md:text-lg'>
             {activeSlide.description}
           </p>
 
-          <div className='mt-8 flex flex-wrap gap-4'>
+          <div className='mt-6 grid max-w-sm grid-cols-1 gap-3 sm:grid-cols-2 md:mt-8 md:max-w-none md:flex md:flex-wrap md:gap-4'>
             <button
-              className='inline-flex w-[280px] items-center justify-center whitespace-nowrap rounded-xl border border-[#5fa4ff89] bg-[rgba(26,87,219,0.07)] px-8 py-3 text-base font-bold text-white backdrop-blur-sm transition-colors hover:bg-[#1A56DB]'
+              className='inline-flex w-full items-center justify-center whitespace-nowrap rounded-xl border border-[#5fa4ff89] bg-[rgba(26,87,219,0.07)] px-5 py-3 text-sm font-bold text-white backdrop-blur-sm transition-colors hover:bg-[#1A56DB] md:w-[280px] md:px-8 md:text-base'
               type='button'
             >
               Fırsatları Keşfet
             </button>
             {isSellerCta ? (
               <Link
-                className='inline-flex w-[280px] items-center justify-center whitespace-nowrap rounded-xl border border-[#ffa17f90] bg-[rgba(255,91,31,0.07)] px-8 py-3 text-base font-bold text-white backdrop-blur-sm transition-colors hover:bg-[#ff5b1f]'
+                className='inline-flex w-full items-center justify-center whitespace-nowrap rounded-xl border border-[#ffa17f90] bg-[rgba(255,91,31,0.07)] px-5 py-3 text-sm font-bold text-white backdrop-blur-sm transition-colors hover:bg-[#ff5b1f] md:w-[280px] md:px-8 md:text-base'
                 href='/satici-ol'
               >
                 {activeSlide.secondaryButtonLabel}
               </Link>
             ) : (
               <button
-                className='inline-flex w-[280px] items-center justify-center whitespace-nowrap rounded-xl border border-[#ffa17f90] bg-[rgba(255,91,31,0.07)] px-8 py-3 text-base font-bold text-white backdrop-blur-sm transition-colors hover:bg-[#ff5b1f]'
+                className='inline-flex w-full items-center justify-center whitespace-nowrap rounded-xl border border-[#ffa17f90] bg-[rgba(255,91,31,0.07)] px-5 py-3 text-sm font-bold text-white backdrop-blur-sm transition-colors hover:bg-[#ff5b1f] md:w-[280px] md:px-8 md:text-base'
                 type='button'
               >
                 {activeSlide.secondaryButtonLabel}

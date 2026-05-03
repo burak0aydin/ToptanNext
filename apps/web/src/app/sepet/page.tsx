@@ -56,16 +56,16 @@ export default function CartPage() {
   return (
     <div className='min-h-screen bg-slate-50 text-slate-900'>
       <MainHeader />
-      <main className='mx-auto flex w-full max-w-[1280px] gap-6 px-6 py-8 lg:flex-row'>
-        <section className='min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm'>
-          <div className='mb-6 flex items-center justify-between'>
+      <main className='mx-auto flex w-full max-w-[1280px] flex-col gap-4 px-3 pb-28 pt-4 sm:px-4 lg:flex-row lg:gap-6 lg:px-6 lg:py-8'>
+        <section className='min-w-0 flex-1 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4 lg:rounded-2xl lg:p-6'>
+          <div className='mb-4 flex items-center justify-between gap-3 lg:mb-6'>
             <div>
-              <h1 className='text-2xl font-bold text-slate-900'>Sepetim</h1>
-              <p className='mt-1 text-sm text-slate-500'>
+              <h1 className='text-xl font-bold text-slate-900 lg:text-2xl'>Sepetim</h1>
+              <p className='mt-1 hidden text-sm text-slate-500 sm:block'>
                 Eklediğiniz ürünleri siparişe dönüştürmeden önce burada gözden geçirebilirsiniz.
               </p>
             </div>
-            <span className='rounded-full bg-[#EEF4FF] px-3 py-1 text-xs font-bold text-[#1A56DB]'>
+            <span className='shrink-0 rounded-full bg-[#EEF4FF] px-3 py-1 text-xs font-bold text-[#1A56DB]'>
               {cart?.totalItems ?? 0} ürün
             </span>
           </div>
@@ -104,13 +104,13 @@ export default function CartPage() {
             {cart?.items.map((item) => (
               <article
                 key={item.id}
-                className='flex flex-col gap-4 rounded-2xl border border-slate-200 p-4 md:flex-row md:items-center'
+                className='flex flex-col gap-3 rounded-xl border border-slate-200 p-3 md:flex-row md:items-center lg:rounded-2xl lg:p-4'
               >
                 <Link
-                  className='flex min-w-0 flex-1 items-center gap-4'
+                  className='flex min-w-0 flex-1 items-start gap-3 sm:items-center sm:gap-4'
                   href={`/urun/${item.productListingId}`}
                 >
-                  <div className='flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50'>
+                  <div className='flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 sm:h-24 sm:w-24 md:h-20 md:w-20'>
                     {item.imageMediaId ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -122,11 +122,11 @@ export default function CartPage() {
                       <span className='material-symbols-outlined text-slate-300'>shopping_bag</span>
                     )}
                   </div>
-                  <div className='min-w-0'>
-                    <h2 className='truncate text-base font-semibold text-slate-900'>{item.productName}</h2>
-                    <p className='mt-1 text-sm text-slate-500'>{item.supplierName ?? 'Satıcı'}</p>
+                  <div className='min-w-0 flex-1'>
+                    <h2 className='line-clamp-2 text-sm font-semibold leading-snug text-slate-900 sm:text-base'>{item.productName}</h2>
+                    <p className='mt-1 truncate text-xs text-slate-500 sm:text-sm'>{item.supplierName ?? 'Satıcı'}</p>
                     {item.quoteId ? (
-                      <div className='mt-3 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2.5 text-xs text-emerald-900'>
+                      <div className='mt-3 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[11px] text-emerald-900 sm:text-xs'>
                         <div className='flex items-center gap-2 font-bold'>
                           <span className='material-symbols-outlined text-[15px]'>verified</span>
                           Kabul edilen teklif özeti
@@ -162,19 +162,19 @@ export default function CartPage() {
                   </div>
                 </Link>
 
-                <div className='flex items-center gap-3 self-end md:self-auto'>
+                <div className='flex w-full flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 md:w-auto md:flex-nowrap md:justify-start md:border-t-0 md:pt-0'>
                   <div className='flex items-center rounded-xl border border-slate-200 bg-white'>
                     <button
-                      className='px-3 py-2 text-slate-500 transition hover:text-[#1A56DB]'
+                      className='flex h-9 w-10 items-center justify-center text-slate-500 transition hover:text-[#1A56DB]'
                       disabled={updateMutation.isPending || item.quantity <= 1}
                       onClick={() => updateMutation.mutate({ itemId: item.id, quantity: item.quantity - 1 })}
                       type='button'
                     >
                       <span className='material-symbols-outlined text-[18px]'>remove</span>
                     </button>
-                    <span className='min-w-[42px] text-center text-sm font-semibold'>{item.quantity}</span>
+                    <span className='min-w-[38px] text-center text-sm font-semibold'>{item.quantity}</span>
                     <button
-                      className='px-3 py-2 text-slate-500 transition hover:text-[#1A56DB]'
+                      className='flex h-9 w-10 items-center justify-center text-slate-500 transition hover:text-[#1A56DB]'
                       disabled={
                         updateMutation.isPending
                         || (item.stock !== null && item.quantity >= item.stock)
@@ -186,14 +186,14 @@ export default function CartPage() {
                     </button>
                   </div>
 
-                  <div className='min-w-[120px] text-right'>
+                  <div className='min-w-[110px] text-right'>
                     <p className='text-sm font-bold text-slate-900'>
                       {formatPrice(item.lineTotal, item.currency)}
                     </p>
                   </div>
 
                   <button
-                    className='rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50'
+                    className='rounded-xl border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 sm:text-sm'
                     disabled={removeMutation.isPending}
                     onClick={() => removeMutation.mutate(item.id)}
                     type='button'
@@ -206,9 +206,9 @@ export default function CartPage() {
           </div>
         </section>
 
-        <aside className='w-full rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:sticky lg:top-28 lg:w-[360px] lg:self-start'>
-          <h2 className='text-lg font-bold text-slate-900'>Sipariş Özeti</h2>
-          <div className='mt-5 space-y-3 text-sm'>
+        <aside className='sticky bottom-[76px] z-30 w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_-10px_30px_rgba(15,23,42,0.12)] lg:top-28 lg:bottom-auto lg:w-[360px] lg:self-start lg:p-6 lg:shadow-sm'>
+          <h2 className='text-base font-bold text-slate-900 lg:text-lg'>Sipariş Özeti</h2>
+          <div className='mt-3 space-y-2 text-sm lg:mt-5 lg:space-y-3'>
             <div className='flex items-center justify-between text-slate-600'>
               <span>Toplam ürün</span>
               <span className='font-semibold text-slate-900'>{cart?.totalItems ?? 0}</span>
@@ -221,7 +221,7 @@ export default function CartPage() {
             </div>
           </div>
           <Link
-            className={`mt-6 flex w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-bold shadow-sm transition ${
+            className={`mt-4 flex w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-bold shadow-sm transition lg:mt-6 ${
               hasAccessToken() && (cart?.items.length ?? 0) > 0
                 ? 'bg-[#1A56DB] text-white hover:opacity-95'
                 : 'pointer-events-none bg-slate-200 text-slate-500'

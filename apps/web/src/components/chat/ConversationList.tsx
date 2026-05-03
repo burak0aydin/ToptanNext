@@ -16,9 +16,10 @@ const FILTERS: Array<{ key: 'all' | 'pending_quotes' | 'unread'; label: string }
 
 type ConversationListProps = {
   basePath?: string;
+  compact?: boolean;
 };
 
-export function ConversationList({ basePath = '/messages' }: ConversationListProps) {
+export function ConversationList({ basePath = '/messages', compact = false }: ConversationListProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -106,19 +107,22 @@ export function ConversationList({ basePath = '/messages' }: ConversationListPro
 
   return (
     <aside className='flex h-full min-h-0 flex-col border-r border-slate-200 bg-white'>
-      <div className='border-b border-slate-100 p-4'>
-        <h2 className='text-2xl font-bold text-slate-800'>Mesajlar</h2>
+      <div className={compact ? 'border-b border-slate-100 px-2 py-2' : 'border-b border-slate-100 p-4'}>
+        <h2 className={compact ? 'text-center text-xs font-bold text-slate-700' : 'text-2xl font-bold text-slate-800'}>{compact ? 'Sohbet' : 'Mesajlar'}</h2>
 
-        <div className='mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2'>
+        {!compact ? (
+          <div className='mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2'>
           <input
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
             className='w-full border-none bg-transparent text-sm text-slate-700 outline-none'
             placeholder='Kişilerde ara...'
           />
-        </div>
+          </div>
+        ) : null}
 
-        <div className='mt-3 flex flex-wrap gap-2'>
+        {!compact ? (
+          <div className='mt-3 flex flex-wrap gap-2'>
           {FILTERS.map((filter) => {
             const isActive = activeFilter === filter.key;
             return (
@@ -137,7 +141,8 @@ export function ConversationList({ basePath = '/messages' }: ConversationListPro
               </button>
             );
           })}
-        </div>
+          </div>
+        ) : null}
       </div>
 
       {isLoading ? (
@@ -148,7 +153,7 @@ export function ConversationList({ basePath = '/messages' }: ConversationListPro
         <div className='p-4 text-sm text-red-600'>Konuşmalar yüklenirken bir hata oluştu.</div>
       ) : null}
 
-      <div className='flex-1 space-y-2 overflow-y-auto p-3'>
+      <div className={compact ? 'flex-1 space-y-2 overflow-y-auto p-1.5' : 'flex-1 space-y-2 overflow-y-auto p-3'}>
         {conversations.map((conversation) => (
           <ConversationItem
             key={conversation.id}
@@ -156,12 +161,13 @@ export function ConversationList({ basePath = '/messages' }: ConversationListPro
             currentUserId={currentUserId}
             isActive={pathname === `${basePath}/${conversation.id}`}
             basePath={basePath}
+            compact={compact}
           />
         ))}
 
         {!isLoading && conversations.length === 0 ? (
-          <div className='rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-center text-sm text-slate-500'>
-            Bu filtrede konuşma bulunamadı.
+          <div className={compact ? 'rounded-xl border border-dashed border-slate-300 bg-slate-50 p-2 text-center text-[11px] text-slate-500' : 'rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-center text-sm text-slate-500'}>
+            {compact ? 'Yok' : 'Bu filtrede konuşma bulunamadı.'}
           </div>
         ) : null}
       </div>

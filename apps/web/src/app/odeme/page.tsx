@@ -15,7 +15,9 @@ import {
   fetchPaymentCards,
   selectPaymentCard,
 } from '@/features/payment-cards/api/payment-cards.api';
+import PaymentCardPreview from '@/features/payment-cards/components/PaymentCardPreview';
 import SavedPaymentCard from '@/features/payment-cards/components/SavedPaymentCard';
+import { resolveProductListingMediaUrl } from '@/features/product-listing/api/product-listing.api';
 import { hasAccessToken } from '@/lib/auth-token';
 
 function formatPrice(value: number | string | null | undefined, currency = 'TRY'): string {
@@ -29,14 +31,31 @@ function formatPrice(value: number | string | null | undefined, currency = 'TRY'
   }).format(Number.isFinite(numericValue) ? numericValue : 0);
 }
 
+function formatInputCardNumber(value: string): string {
+  return value.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})(?=\d)/g, '$1 ');
+}
+
+function formatExpiry(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+}
+
 export default function PaymentPage() {
   const queryClient = useQueryClient();
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [isAddressFormOpen, setIsAddressFormOpen] = useState(false);
+  const [showSavedCards, setShowSavedCards] = useState(false);
   const [acceptedContracts, setAcceptedContracts] = useState(false);
-  const [paymentTab, setPaymentTab] = useState<'card' | 'transfer'>('card');
   const [installment, setInstallment] = useState<'single' | 'three'>('single');
+  const [isCvcFocused, setIsCvcFocused] = useState(false);
+  const [cardForm, setCardForm] = useState({
+    holderName: '',
+    number: '',
+    expiry: '',
+    cvc: '',
+  });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
@@ -90,9 +109,7 @@ export default function PaymentPage() {
     addresses.find((address) => address.isSelected) ??
     addresses[0];
   const selectedPaymentCard =
-    paymentCards.find((card) => card.id === selectedCardId) ??
-    paymentCards.find((card) => card.isSelected) ??
-    paymentCards[0];
+    paymentCards.find((card) => card.id === selectedCardId) ?? null;
 
   const totals = useMemo(() => {
     const grossTotal = Number(cart?.subtotal ?? 0);
@@ -109,12 +126,18 @@ export default function PaymentPage() {
     };
   }, [cart?.subtotal]);
 
+  const hasManualCard =
+    cardForm.holderName.trim().length > 2 &&
+    cardForm.number.replace(/\D/g, '').length === 16 &&
+    cardForm.expiry.replace(/\D/g, '').length === 4 &&
+    cardForm.cvc.replace(/\D/g, '').length >= 3;
+
   const canPay =
     isLoggedIn &&
     (cart?.items.length ?? 0) > 0 &&
     Boolean(selectedAddress) &&
     acceptedContracts &&
-    (paymentTab === 'transfer' || Boolean(selectedPaymentCard));
+    (Boolean(selectedPaymentCard) || hasManualCard);
 
   const handleSelectAddress = (addressId: string) => {
     setSelectedAddressId(addressId);
@@ -123,6 +146,12 @@ export default function PaymentPage() {
 
   const handleSelectPaymentCard = (cardId: string) => {
     setSelectedCardId(cardId);
+    setCardForm({
+      holderName: '',
+      number: '',
+      expiry: '',
+      cvc: '',
+    });
     selectPaymentCardMutation.mutate(cardId);
   };
 
@@ -136,9 +165,9 @@ export default function PaymentPage() {
         <div className="mx-auto flex max-w-[1440px] items-center justify-between">
           <Link
             href="/"
-            className="flex items-center gap-1 text-xl font-bold tracking-tight text-primary"
+            className="text-2xl font-bold tracking-tighter text-[#003FB1]"
           >
-            Toptan<span className="text-secondary-container">Next</span>
+            Toptan<span className="text-[#FF5A1F]">Next</span>
           </Link>
           <div className="flex items-center gap-2 text-on-surface-variant">
             <span className="material-symbols-outlined text-green-600 [font-variation-settings:'FILL'_1]">
@@ -166,6 +195,75 @@ export default function PaymentPage() {
 
         <div className="relative flex flex-col items-start gap-8 lg:flex-row">
           <div className="flex w-full flex-col gap-8 lg:w-8/12">
+            <section className="overflow-hidden rounded-xl border border-surface-variant bg-surface-container-lowest shadow-[0_4px_24px_rgba(25,28,30,0.04)]">
+              <div className="border-b border-surface-variant bg-surface-bright p-6">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-semibold text-on-surface">Sepet Özeti</h2>
+                    <p className="mt-1 text-sm text-on-surface-variant">
+                      {cart?.totalItems ?? 0} ürün ödeme için hazırlanıyor.
+                    </p>
+                  </div>
+                  <Link
+                    href="/sepet"
+                    className="text-sm font-semibold text-primary hover:text-primary-container"
+                  >
+                    Sepete Dön
+                  </Link>
+                </div>
+              </div>
+
+              <div className="divide-y divide-surface-variant">
+                {(cart?.items ?? []).slice(0, 3).map((item) => (
+                  <Link
+                    key={item.id}
+                    href={`/urun/${item.productListingId}`}
+                    className="flex items-center justify-between gap-4 px-6 py-4 transition-colors hover:bg-surface-container-low"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-surface-variant bg-surface-container-low">
+                        {item.imageMediaId ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            alt={item.productName}
+                            className="h-full w-full object-cover"
+                            src={resolveProductListingMediaUrl(item.imageMediaId)}
+                          />
+                        ) : (
+                          <span className="material-symbols-outlined text-slate-300">
+                            shopping_bag
+                          </span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-on-surface">
+                          {item.productName}
+                        </p>
+                        <p className="mt-1 text-xs text-on-surface-variant">
+                          {item.supplierName || 'ToptanNext'} · {item.quantity} adet
+                        </p>
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-sm font-bold text-on-surface">
+                      {formatPrice(item.lineTotal ?? item.productTotal, item.currency)}
+                    </span>
+                  </Link>
+                ))}
+
+                {(cart?.items.length ?? 0) > 3 ? (
+                  <div className="px-6 py-3 text-sm font-medium text-on-surface-variant">
+                    +{(cart?.items.length ?? 0) - 3} ürün daha
+                  </div>
+                ) : null}
+
+                {(cart?.items.length ?? 0) === 0 ? (
+                  <div className="px-6 py-5 text-sm font-medium text-on-surface-variant">
+                    Sepetinizde ödeme yapılacak ürün bulunmuyor.
+                  </div>
+                ) : null}
+              </div>
+            </section>
+
             <section className="overflow-hidden rounded-xl border border-surface-variant bg-surface-container-lowest shadow-[0_4px_24px_rgba(25,28,30,0.04)]">
               <div className="border-b border-surface-variant bg-surface-bright p-6">
                 <h2 className="text-xl font-semibold text-on-surface">
@@ -290,181 +388,263 @@ export default function PaymentPage() {
                 <h2 className="text-xl font-semibold text-on-surface">Ödeme Yöntemi</h2>
               </div>
               <div className="p-6">
-                <div className="mb-6 flex border-b border-surface-variant">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentTab('card')}
-                    className={`flex items-center gap-2 border-b-2 px-6 py-3 text-sm ${
-                      paymentTab === 'card'
-                        ? 'border-primary font-semibold text-primary'
-                        : 'border-transparent font-medium text-on-surface-variant transition-colors hover:text-on-surface'
-                    }`}
-                  >
+                <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-surface-variant pb-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-primary">
                     <span className="material-symbols-outlined text-[20px]">credit_card</span>
                     Kredi/Banka Kartı
-                  </button>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setPaymentTab('transfer')}
-                    className={`flex items-center gap-2 border-b-2 px-6 py-3 text-sm ${
-                      paymentTab === 'transfer'
-                        ? 'border-primary font-semibold text-primary'
-                        : 'border-transparent font-medium text-on-surface-variant transition-colors hover:text-on-surface'
-                    }`}
+                    onClick={() => setShowSavedCards((value) => !value)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-outline-variant px-4 py-2 text-sm font-semibold text-on-surface transition hover:border-primary hover:text-primary"
                   >
-                    <span className="material-symbols-outlined text-[20px]">account_balance</span>
-                    Havale/EFT
+                    <span className="material-symbols-outlined text-[18px]">wallet</span>
+                    Kayıtlı Kartlarım
                   </button>
                 </div>
 
-                {paymentTab === 'card' ? (
-                  <div className="flex flex-col gap-8 lg:flex-row">
-                    <div className="w-full lg:w-1/2">
-                      <div className="mb-3 flex items-center justify-between gap-3">
-                        <h4 className="text-sm font-semibold text-on-surface">Kayıtlı Kartlarım</h4>
+                <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,0.95fr)_minmax(340px,0.75fr)]">
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                    <div className="md:col-span-2">
+                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+                        Kart Üzerindeki İsim
+                      </label>
+                      <input
+                        value={cardForm.holderName}
+                        onChange={(event) => {
+                          setSelectedCardId(null);
+                          setCardForm((prev) => ({
+                            ...prev,
+                            holderName: event.target.value.toUpperCase(),
+                          }));
+                        }}
+                        className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                        placeholder="AD SOYAD"
+                        type="text"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+                        Kart Numarası
+                      </label>
+                      <div className="relative">
+                        <input
+                          value={cardForm.number}
+                          onChange={(event) => {
+                            setSelectedCardId(null);
+                            setCardForm((prev) => ({
+                              ...prev,
+                              number: formatInputCardNumber(event.target.value),
+                            }));
+                          }}
+                          className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-3 pr-11 font-mono text-sm tracking-widest outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                          placeholder="0000 0000 0000 0000"
+                          type="text"
+                        />
+                        <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline">
+                          credit_card
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+                        Son Kullanma (AA/YY)
+                      </label>
+                      <input
+                        value={cardForm.expiry}
+                        onChange={(event) => {
+                          setSelectedCardId(null);
+                          setCardForm((prev) => ({
+                            ...prev,
+                            expiry: formatExpiry(event.target.value),
+                          }));
+                        }}
+                        className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-3 text-center text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                        placeholder="AA/YY"
+                        type="text"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+                        CVC / CVV
+                      </label>
+                      <input
+                        value={cardForm.cvc}
+                        onBlur={() => setIsCvcFocused(false)}
+                        onFocus={() => setIsCvcFocused(true)}
+                        onChange={(event) => {
+                          setSelectedCardId(null);
+                          setCardForm((prev) => ({
+                            ...prev,
+                            cvc: event.target.value.replace(/\D/g, '').slice(0, 4),
+                          }));
+                        }}
+                        className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-3 text-center text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                        placeholder="***"
+                        type="text"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="xl:pt-6">
+                    <PaymentCardPreview
+                      cardNumber={cardForm.number}
+                      expiry={cardForm.expiry}
+                      cvv={cardForm.cvc}
+                      cardHolderName={cardForm.holderName}
+                      isFlipped={isCvcFocused}
+                    />
+                    {selectedPaymentCard ? (
+                      <div className="mt-4 rounded-lg border border-primary/20 bg-primary-fixed/20 p-3 text-sm font-medium text-primary">
+                        Ödeme için {selectedPaymentCard.brand} {selectedPaymentCard.maskedNumber}{' '}
+                        kartı seçildi.
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                {showSavedCards ? (
+                  <div className="mt-8 rounded-xl border border-surface-variant bg-surface-container-low p-4">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <h4 className="text-sm font-semibold text-on-surface">Kayıtlı Kartlarım</h4>
+                      <Link
+                        href="/kayitli-kartlarim"
+                        className="text-sm font-medium text-primary hover:text-primary-container"
+                      >
+                        Kartları Yönet
+                      </Link>
+                    </div>
+
+                    {paymentCards.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        {paymentCards.map((card) => (
+                          <SavedPaymentCard
+                            key={card.id}
+                            card={{
+                              ...card,
+                              isSelected: selectedPaymentCard?.id === card.id,
+                            }}
+                            onSelect={() => handleSelectPaymentCard(card.id)}
+                            isLoading={selectPaymentCardMutation.isPending}
+                            selectableOnly
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-lg border border-dashed border-outline-variant bg-white p-5">
+                        <p className="text-sm font-medium text-on-surface-variant">
+                          Kayıtlı kartınız yok. Kart eklemek için kayıtlı kartlar sayfasını
+                          kullanabilirsiniz.
+                        </p>
                         <Link
                           href="/kayitli-kartlarim"
-                          className="text-sm font-medium text-primary hover:text-primary-container"
+                          className="mt-4 inline-flex rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white"
                         >
-                          Kartları Yönet
+                          Kart Ekle
                         </Link>
                       </div>
+                    )}
+                  </div>
+                ) : null}
 
-                      {paymentCards.length > 0 ? (
-                        <div className="grid grid-cols-1 gap-4">
-                          {paymentCards.slice(0, 3).map((card) => (
-                            <SavedPaymentCard
-                              key={card.id}
-                              card={{
-                                ...card,
-                                isSelected: selectedPaymentCard?.id === card.id,
-                              }}
-                              onSelect={() => handleSelectPaymentCard(card.id)}
-                              isLoading={selectPaymentCardMutation.isPending}
-                              selectableOnly
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="rounded-xl border border-dashed border-outline-variant bg-surface-container-low p-5">
-                          <p className="text-sm font-medium text-on-surface-variant">
-                            Kayıtlı kartınız yok. Kartınızı güvenli şekilde kaydettikten sonra
-                            ödeme sırasında buradan seçebilirsiniz.
-                          </p>
-                          <Link
-                            href="/kayitli-kartlarim"
-                            className="mt-4 inline-flex rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white"
-                          >
-                            Kart Ekle
-                          </Link>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="w-full lg:w-1/2">
-                      <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-on-surface">
-                        Kurumsal Taksit Seçenekleri
-                        <span className="rounded bg-surface-container-high px-2 py-0.5 text-xs text-on-surface-variant">
-                          Ticari Kart
-                        </span>
-                      </h4>
-                      <div className="overflow-hidden rounded-lg border border-surface-variant">
-                        <table className="w-full text-left text-sm">
-                          <thead className="bg-surface-container-low text-xs uppercase text-on-surface-variant">
-                            <tr>
-                              <th className="px-4 py-3 font-medium">Taksit</th>
-                              <th className="px-4 py-3 text-right font-medium">Aylık Ödeme</th>
-                              <th className="px-4 py-3 text-right font-medium">Toplam</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-surface-variant">
-                            <tr
-                              onClick={() => setInstallment('single')}
-                              className={`cursor-pointer transition-colors ${
+                <div className="mt-8">
+                  <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-on-surface">
+                    Kurumsal Taksit Seçenekleri
+                    <span className="rounded bg-surface-container-high px-2 py-0.5 text-xs text-on-surface-variant">
+                      Ticari Kart
+                    </span>
+                  </h4>
+                  <div className="overflow-hidden rounded-lg border border-surface-variant">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-surface-container-low text-xs uppercase text-on-surface-variant">
+                        <tr>
+                          <th className="px-4 py-3 font-medium">Taksit</th>
+                          <th className="px-4 py-3 text-right font-medium">Aylık Ödeme</th>
+                          <th className="px-4 py-3 text-right font-medium">Toplam</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-surface-variant">
+                        <tr
+                          onClick={() => setInstallment('single')}
+                          className={`cursor-pointer transition-colors ${
+                            installment === 'single'
+                              ? 'bg-primary-fixed/20 hover:bg-primary-fixed/30'
+                              : 'hover:bg-surface-container-low'
+                          }`}
+                        >
+                          <td className="flex items-center gap-2 px-4 py-3">
+                            <span
+                              className={`flex h-4 w-4 items-center justify-center rounded-full border ${
                                 installment === 'single'
-                                  ? 'bg-primary-fixed/20 hover:bg-primary-fixed/30'
-                                  : 'hover:bg-surface-container-low'
+                                  ? 'border-primary'
+                                  : 'border-outline-variant'
                               }`}
                             >
-                              <td className="flex items-center gap-2 px-4 py-3">
-                                <span
-                                  className={`flex h-4 w-4 items-center justify-center rounded-full border ${
-                                    installment === 'single'
-                                      ? 'border-primary'
-                                      : 'border-outline-variant'
-                                  }`}
-                                >
-                                  {installment === 'single' ? (
-                                    <span className="h-2 w-2 rounded-full bg-primary" />
-                                  ) : null}
-                                </span>
-                                <span
-                                  className={
-                                    installment === 'single'
-                                      ? 'font-semibold text-primary'
-                                      : 'text-on-surface-variant'
-                                  }
-                                >
-                                  Tek Çekim
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-right text-on-surface">
-                                {formatPrice(totals.grossTotal, cart?.currency)}
-                              </td>
-                              <td className="px-4 py-3 text-right font-semibold text-on-surface">
-                                {formatPrice(totals.grossTotal, cart?.currency)}
-                              </td>
-                            </tr>
-                            <tr
-                              onClick={() => setInstallment('three')}
-                              className={`cursor-pointer transition-colors ${
+                              {installment === 'single' ? (
+                                <span className="h-2 w-2 rounded-full bg-primary" />
+                              ) : null}
+                            </span>
+                            <span
+                              className={
+                                installment === 'single'
+                                  ? 'font-semibold text-primary'
+                                  : 'text-on-surface-variant'
+                              }
+                            >
+                              Tek Çekim
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right text-on-surface">
+                            {formatPrice(totals.grossTotal, cart?.currency)}
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-on-surface">
+                            {formatPrice(totals.grossTotal, cart?.currency)}
+                          </td>
+                        </tr>
+                        <tr
+                          onClick={() => setInstallment('three')}
+                          className={`cursor-pointer transition-colors ${
+                            installment === 'three'
+                              ? 'bg-primary-fixed/20 hover:bg-primary-fixed/30'
+                              : 'hover:bg-surface-container-low'
+                          }`}
+                        >
+                          <td className="flex items-center gap-2 px-4 py-3">
+                            <span
+                              className={`flex h-4 w-4 items-center justify-center rounded-full border ${
                                 installment === 'three'
-                                  ? 'bg-primary-fixed/20 hover:bg-primary-fixed/30'
-                                  : 'hover:bg-surface-container-low'
+                                  ? 'border-primary'
+                                  : 'border-outline-variant'
                               }`}
                             >
-                              <td className="flex items-center gap-2 px-4 py-3">
-                                <span
-                                  className={`flex h-4 w-4 items-center justify-center rounded-full border ${
-                                    installment === 'three'
-                                      ? 'border-primary'
-                                      : 'border-outline-variant'
-                                  }`}
-                                >
-                                  {installment === 'three' ? (
-                                    <span className="h-2 w-2 rounded-full bg-primary" />
-                                  ) : null}
-                                </span>
-                                <span
-                                  className={
-                                    installment === 'three'
-                                      ? 'font-semibold text-primary'
-                                      : 'text-on-surface-variant'
-                                  }
-                                >
-                                  3 Taksit (%5 Vade)
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-right text-on-surface">
-                                {formatPrice(totals.threeInstallmentMonthly, cart?.currency)}
-                              </td>
-                              <td className="px-4 py-3 text-right text-on-surface-variant">
-                                {formatPrice(totals.threeInstallmentTotal, cart?.currency)}
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
+                              {installment === 'three' ? (
+                                <span className="h-2 w-2 rounded-full bg-primary" />
+                              ) : null}
+                            </span>
+                            <span
+                              className={
+                                installment === 'three'
+                                  ? 'font-semibold text-primary'
+                                  : 'text-on-surface-variant'
+                              }
+                            >
+                              3 Taksit (%5 Vade)
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right text-on-surface">
+                            {formatPrice(totals.threeInstallmentMonthly, cart?.currency)}
+                          </td>
+                          <td className="px-4 py-3 text-right text-on-surface-variant">
+                            {formatPrice(totals.threeInstallmentTotal, cart?.currency)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
-                ) : (
-                  <div className="rounded-xl border border-dashed border-outline-variant bg-surface-container-low p-5">
-                    <h3 className="text-sm font-semibold text-on-surface">Havale/EFT</h3>
-                    <p className="mt-2 text-sm text-on-surface-variant">
-                      Sipariş onayından sonra banka bilgileri ve ödeme referansı paylaşılacaktır.
-                    </p>
-                  </div>
-                )}
+                </div>
               </div>
             </section>
 
@@ -502,12 +682,65 @@ export default function PaymentPage() {
             </section>
           </div>
 
-          <aside className="relative w-full lg:w-4/12">
-            <div className="sticky top-24">
+          <aside className="w-full self-start lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:w-4/12 lg:overflow-y-auto lg:pr-1">
+            <div>
               <div className="flex flex-col gap-6 rounded-xl border border-surface-variant bg-surface-container-lowest p-6 shadow-[0_4px_24px_rgba(25,28,30,0.06)]">
                 <h3 className="border-b border-surface-variant pb-4 text-xl font-bold text-on-surface">
                   Sipariş Özeti
                 </h3>
+                <div className="max-h-[280px] overflow-y-auto pr-1">
+                  <div className="flex flex-col gap-3">
+                    {(cart?.items ?? []).map((item) => (
+                      <Link
+                        key={item.id}
+                        href={`/urun/${item.productListingId}`}
+                        className="block rounded-lg border border-surface-variant bg-surface-container-low p-3 transition hover:border-primary/40 hover:bg-primary-fixed/10"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex min-w-0 gap-3">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-surface-variant bg-white">
+                              {item.imageMediaId ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  alt={item.productName}
+                                  className="h-full w-full object-cover"
+                                  src={resolveProductListingMediaUrl(item.imageMediaId)}
+                                />
+                              ) : (
+                                <span className="material-symbols-outlined text-slate-300">
+                                  shopping_bag
+                                </span>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="line-clamp-2 text-sm font-semibold text-on-surface">
+                                {item.productName}
+                              </p>
+                              <p className="mt-1 text-xs text-on-surface-variant">
+                                {item.supplierName || 'ToptanNext'}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="shrink-0 rounded bg-white px-2 py-1 text-xs font-bold text-on-surface">
+                            x{item.quantity}
+                          </span>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between text-xs text-on-surface-variant">
+                          <span>
+                            Birim:{' '}
+                            {formatPrice(
+                              item.quotedUnitPrice ?? item.unitPrice,
+                              item.currency,
+                            )}
+                          </span>
+                          <span className="font-bold text-on-surface">
+                            {formatPrice(item.lineTotal ?? item.productTotal, item.currency)}
+                          </span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
                 <div className="flex flex-col gap-3 text-sm">
                   <div className="flex items-center justify-between text-on-surface-variant">
                     <span>Ara Toplam (KDV Hariç)</span>

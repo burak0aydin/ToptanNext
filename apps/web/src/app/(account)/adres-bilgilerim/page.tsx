@@ -97,18 +97,18 @@ export default function AddressesPage() {
 
   return (
     <div>
-      <header className="mb-8">
-        <h1 className="text-2xl font-bold text-on-surface">Adres Bilgilerim</h1>
-        <p className="mt-2 text-sm text-on-surface-variant">
+      <header className="mb-4 sm:mb-8">
+        <h1 className="text-lg font-bold text-on-surface sm:text-2xl">Adres Bilgilerim</h1>
+        <p className="mt-1 text-xs text-on-surface-variant sm:mt-2 sm:text-sm">
           Teslimat ve fatura adreslerinizi buradan yönetebilirsiniz.
         </p>
       </header>
 
       {addresses.length > 0 ? (
-        <h2 className="mb-4 text-xl font-bold text-slate-900">Teslimat Adresi</h2>
+        <h2 className="mb-3 text-base font-bold text-slate-900 sm:mb-4 sm:text-xl">Teslimat Adresi</h2>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
         {addresses.map((address) => (
           <AddressCard
             key={address.id}
@@ -123,12 +123,12 @@ export default function AddressesPage() {
 
         <button
           onClick={() => setIsFormOpen(true)}
-          className="group flex h-[218px] self-start flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-white transition hover:border-blue-300 hover:bg-slate-50"
+          className="group flex min-h-[148px] self-start flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-white transition hover:border-blue-300 hover:bg-slate-50 sm:h-[218px]"
         >
-          <span className="mb-3 text-5xl text-slate-300 transition group-hover:text-blue-400">
+          <span className="mb-2 text-4xl text-slate-300 transition group-hover:text-blue-400 sm:mb-3 sm:text-5xl">
             +
           </span>
-          <p className="text-base font-semibold text-slate-600 group-hover:text-slate-800">
+          <p className="text-sm font-semibold text-slate-600 group-hover:text-slate-800 sm:text-base">
             Adres Ekleyin
           </p>
         </button>

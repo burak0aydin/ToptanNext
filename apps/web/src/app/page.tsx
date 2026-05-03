@@ -46,17 +46,17 @@ export default function Home() {
     <div className='flex min-h-screen flex-col bg-background text-on-surface antialiased'>
       <MainHeader />
 
-      <main className='flex-1'>
+      <main className='flex-1 pb-24 lg:pb-0'>
         <HomeHeroSlider />
 
         <FeaturedSectorsCarousel />
 
-        <section className='bg-[#F8FAFC] py-16'>
-          <div className='container mx-auto px-6'>
-            <div className='mb-10 flex items-center justify-between'>
-              <h2 className='text-3xl font-bold text-on-surface'>Kesfetmeye Devam Et</h2>
+        <section className='bg-[#F8FAFC] py-10 md:py-16'>
+          <div className='container mx-auto px-4 sm:px-6'>
+            <div className='mb-6 flex items-center justify-between gap-4 md:mb-10'>
+              <h2 className='text-xl font-bold text-on-surface md:text-3xl'>Kesfetmeye Devam Et</h2>
               <div className='relative'>
-                <select className='appearance-none rounded-lg border border-outline-variant/30 bg-white px-4 py-2 pr-10 text-sm font-medium'>
+                <select className='appearance-none rounded-lg border border-outline-variant/30 bg-white px-3 py-2 pr-8 text-xs font-medium md:px-4 md:pr-10 md:text-sm'>
                   <option>Onerilen</option>
                   <option>En Yeniler</option>
                   <option>Fiyata Gore (Artan)</option>
@@ -68,11 +68,11 @@ export default function Home() {
               </div>
             </div>
 
-            <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5'>
+            <div className='grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4 xl:grid-cols-5'>
               {products.map((product) => (
                 <div
                   key={product.title}
-                  className='group overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm transition-all hover:shadow-md'
+                  className='group overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm transition-all hover:shadow-md md:rounded-xl'
                 >
                   <div className='aspect-square overflow-hidden bg-slate-50'>
                     <img
@@ -81,16 +81,16 @@ export default function Home() {
                       alt={product.title}
                     />
                   </div>
-                  <div className='p-4'>
+                  <div className='p-3 md:p-4'>
                     <p className='mb-1 text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant'>
                       {product.sku}
                     </p>
-                    <h3 className='mb-3 min-h-[40px] line-clamp-2 text-sm font-bold text-on-surface'>
+                    <h3 className='mb-2 min-h-[38px] line-clamp-2 text-xs font-bold text-on-surface md:mb-3 md:min-h-[40px] md:text-sm'>
                       {product.title}
                     </h3>
                     <p className='mb-1 text-[10px] text-on-surface-variant'>Toptan Fiyat Araligi</p>
                     <div className='flex items-baseline gap-1'>
-                      <span className='text-lg font-bold text-primary'>{product.price}</span>
+                      <span className='text-sm font-bold text-primary md:text-lg'>{product.price}</span>
                       <span className='text-[10px] text-on-surface-variant'>/ Adet</span>
                     </div>
                   </div>
