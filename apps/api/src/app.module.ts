@@ -4,12 +4,14 @@ import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AddressesModule } from './modules/addresses/addresses.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { CartModule } from './modules/cart/cart.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
 import { LogisticsApplicationsModule } from './modules/logistics-applications/logistics-applications.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { PaymentCardsModule } from './modules/payment-cards/payment-cards.module';
 import { ProductsModule } from './modules/products/products.module';
 import { QuotesModule } from './modules/quotes/quotes.module';
 import { SectorsModule } from './modules/sectors/sectors.module';
@@ -34,6 +36,8 @@ import { RealtimeModule } from './realtime/realtime.module';
     PrismaModule,
     UsersModule,
     AuthModule,
+    AddressesModule,
+    PaymentCardsModule,
     CartModule,
     CategoriesModule,
     SectorsModule,

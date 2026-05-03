@@ -32,10 +32,59 @@ model User {
   logisticsRequests   LogisticsRequest[]
   logisticsOffers     LogisticsOffer[]
   cartItems           CartItem[]           @relation("UserCartItems")
+  addresses           Address[]            @relation("UserAddresses")
+  paymentCards        PaymentCard[]        @relation("UserPaymentCards")
 
   @@index([email])
   @@index([role])
   @@map("users")
+}
+
+model PaymentCard {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  cardHolderName String   @map("card_holder_name")
+  brand          String
+  lastFour       String   @map("last_four")
+  maskedNumber   String   @map("masked_number")
+  expiryMonth    String   @map("expiry_month")
+  expiryYear     String   @map("expiry_year")
+  fingerprint    String
+  isSelected     Boolean  @default(false) @map("is_selected")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  user           User     @relation("UserPaymentCards", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isSelected])
+  @@unique([userId, fingerprint])
+  @@map("payment_cards")
+}
+
+model Address {
+  id                  String     @id @default(cuid())
+  userId              String     @map("user_id")
+  title               String     // e.g., "Merkez Depo", "Ev"
+  fullName            String     @map("full_name")
+  phoneNumber         String     @map("phone_number")
+  province            String
+  district            String
+  neighborhood        String
+  address             String
+  postalCode          String     @map("postal_code")
+  isSelected          Boolean    @default(false) @map("is_selected")
+  invoiceType         String     @default("individual") @map("invoice_type") // "individual" | "corporate"
+  taxId               String?    @map("tax_id") // VKN/TCKN
+  taxOffice           String?    @map("tax_office")
+  companyName         String?    @map("company_name")
+  isETaxPayer         Boolean?   @map("is_e_tax_payer") @default(false)
+  createdAt           DateTime   @default(now()) @map("created_at")
+  updatedAt           DateTime   @updatedAt @map("updated_at")
+  user                User       @relation("UserAddresses", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isSelected])
+  @@map("addresses")
 }
 
 model SupplierApplication {

@@ -101,6 +101,8 @@ export function AccountLayoutShell({ children }: AccountLayoutShellProps) {
   const pageTitle = useMemo(() => getPageTitle(pathname), [pathname]);
   const pageDescription = useMemo(() => getPageDescription(pathname), [pathname]);
   const hideDefaultPageHeader =
+    isExactPath(pathname, "/adres-bilgilerim") ||
+    isExactPath(pathname, "/kayitli-kartlarim") ||
     isExactPath(pathname, "/satici-panelim/urunlerim") ||
     isExactPath(pathname, "/satici-panelim/urun-yukle");
 

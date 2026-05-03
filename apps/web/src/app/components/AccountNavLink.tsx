@@ -225,9 +225,22 @@ export function AccountNavLink() {
                     Lojistik Yönetim Paneli
                   </Link>
                 ) : null}
+
+                <div className='border-t border-slate-100' />
+
+                <button
+                  type='button'
+                  className='flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-red-600 transition-colors hover:bg-red-50'
+                  onClick={() => {
+                    void handleLogout();
+                  }}
+                >
+                  <span className='material-symbols-outlined text-[20px]'>logout</span>
+                  Çıkış Yap
+                </button>
               </>
             )}
-        </div>
+          </div>
         </div>
       ) : null}
     </div>
