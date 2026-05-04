@@ -14,9 +14,8 @@ Amac:
 
 ToptanNext, Turkiye odakli B2B toptan pazaryeri platformudur.
 
-Monorepo 3 ana uygulamadan olusur:
-- [x] `apps/web` -> Kullanici + satici arayuzu (Next.js 14)
-- [x] `apps/admin` -> Admin arayuzu (Next.js 14)
+Monorepo 2 ana uygulamadan olusur:
+- [x] `apps/web` -> Kullanici + satici + admin arayuzu (Next.js 14)
 - [x] `apps/api` -> Backend API (NestJS 10 + Prisma)
 
 Ortak kodlar `packages/` altinda merkezi olarak yonetilir.
@@ -34,8 +33,7 @@ Ortak kodlar `packages/` altinda merkezi olarak yonetilir.
                                 v
 +------------------------------------------------------------------+
 |                        FRONTEND KATMANI                          |
-|  [x] apps/web   (Next.js 14, port 3000)                          |
-|  [x] apps/admin (Next.js 14, port 3002)                          |
+|  [x] apps/web (Next.js 14, port 3000, admin: /admin)             |
 +-------------------------------+----------------------------------+
                                 |
                                 | HTTP (JSON) /api/v1
@@ -68,8 +66,7 @@ Ortak kodlar `packages/` altinda merkezi olarak yonetilir.
 ```text
 toptannext/
 |-- apps/
-|   |-- web/        -> Ana frontend (alici + satici)
-|   |-- admin/      -> Admin frontend
+|   |-- web/        -> Ana frontend (alici + satici + admin)
 |   `-- api/        -> NestJS backend
 |
 |-- packages/
@@ -89,7 +86,7 @@ toptannext/
 Kisa not:
 - [x] Paket yoneticisi: `pnpm`
 - [x] Orkestrasyon: `Turborepo`
-- [x] Workspace kapsami: `apps/*` + `packages/*`
+- [x] Workspace kapsami: `apps/web` + `apps/api` + `packages/*`
 
 ---
 
@@ -105,18 +102,15 @@ Kisa not:
 |     - Ana sayfa + kategori/urun kesfet                       |
 |     - Kullanici profil ekranlari                             |
 |     - Satici basvuru 3 adim akisi                            |
-|                                                               |
-| [x] apps/admin                                                |
-|     - Admin dashboard                                         |
-|     - Admin panel ekranlari                                  |
+|     - Admin dashboard ve panel ekranlari (/admin)             |
 +---------------------------------------------------------------+
 ```
 
 Onemli frontend klasorleri:
 - [x] `apps/web/src/app` -> Route ve sayfalar
+- [x] `apps/web/src/app/admin` -> Admin panel route ve sayfalari
 - [x] `apps/web/src/features` -> Domain bazli feature katmani
 - [x] `apps/web/src/lib` -> API istemcisi + auth token yardimcilari
-- [x] `apps/admin/src/app` -> Admin sayfa cekirdegi
 
 ### 4.2 Backend Katmani
 
@@ -226,12 +220,12 @@ One cikan yollar:
 - [x] `src/app/satici-ol/iletisim-ve-finans/page.tsx`
 - [x] `src/app/satici-ol/belge-yukleme-ve-onay/page.tsx`
 
-### 6.2 apps/admin (Port 3002)
+### 6.2 Admin Panel (apps/web, /admin)
 
 Durum:
-- [x] Next.js 14 tabanli ayri admin uygulamasi
-- [x] Kendi layout/providers yapisi var
-- [x] Admin panelin frontend ayrimi net
+- [x] Next.js 14 tabanli ana web uygulamasi icinde calisir
+- [x] Route: `/admin`
+- [x] Ayni domain ve ayni Vercel deploy'u icinden servis edilir
 
 ### 6.3 apps/api (Port 3001)
 
@@ -250,7 +244,7 @@ Test dosyalari:
 ## 7) packages/ Klasoru - Ortak Kod Stratejisi
 
 ```text
-Eger bir kod hem web hem admin tarafinda kullanilacaksa:
+Eger bir kod birden fazla frontend alaninda kullanilacaksa:
     -> packages/ui veya packages/types altina alinmali
 
 Eger sadece tek uygulamaya ozelse:
@@ -294,7 +288,7 @@ Kural:
 
 - [x] Web: `http://localhost:3000`
 - [x] API: `http://localhost:3001`
-- [x] Admin: `http://localhost:3002`
+- [x] Admin: `http://localhost:3000/admin`
 
 ### 9.3 Altyapi servisleri
 
@@ -318,7 +312,7 @@ Kural:
 
 ```text
 [Yeni ekran mi ekleniyor?]
-    -> Evet: apps/web veya apps/admin (duruma gore)
+    -> Evet: apps/web/src/app
 
 [Yeni endpoint mi gerekiyor?]
     -> Evet: apps/api/src/modules/{domain}
@@ -338,9 +332,9 @@ Kural:
 ## 12) Kisa Mimari Sonuc
 
 ```text
-ToptanNext = Monorepo + Ayrik frontendler + Tek backend + Ortak paketler
+ToptanNext = Monorepo + Tek frontend + Tek backend + Ortak paketler
 
-[x] Frontend: apps/web + apps/admin
+[x] Frontend: apps/web (/admin dahil)
 [x] Backend:  apps/api
 [x] Database: Prisma + PostgreSQL
 [x] Shared:   packages/types + packages/ui (+ utils/config)

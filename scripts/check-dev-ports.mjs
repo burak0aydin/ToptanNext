@@ -2,7 +2,7 @@ import net from 'node:net';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-const requiredPorts = [3000, 3001, 3002];
+const requiredPorts = [3000, 3001];
 const dockerAppServices = ['api', 'web'];
 const execFileAsync = promisify(execFile);
 

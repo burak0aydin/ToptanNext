@@ -32,7 +32,7 @@ async function bootstrap() {
     }),
   );
 
-  const port = Number(process.env.API_PORT ?? process.env.PORT ?? 3001);
-  await app.listen(port);
+  const port = Number(process.env.PORT ?? process.env.API_PORT ?? 3001);
+  await app.listen(port, '0.0.0.0');
 }
 bootstrap();

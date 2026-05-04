@@ -53,7 +53,7 @@ NODE_ENV="development"
 API_PORT=3001
 API_URL="http://localhost:3001"
 FRONTEND_URL="http://localhost:3000"
-CORS_ORIGINS="http://localhost:3000,http://localhost:3002"
+CORS_ORIGINS="http://localhost:3000"
 ```
 
 ### apps/web/.env.local
@@ -139,7 +139,7 @@ volumes:
   meilisearch_data:
 ```
 
-> **NOT:** Uygulama servisleri (api, web, admin) Docker Compose'da yer almaz.
+> **NOT:** Uygulama servisleri (api, web) Docker Compose'da yer almaz.
 > Uygulamalar yerel olarak `pnpm dev` ile çalıştırılır.
 > Docker sadece infrastructure (DB, Redis, Search) için kullanılır.
 
@@ -163,8 +163,7 @@ pnpm prisma db seed
 
 # 6. Uygulamaları başlat (farklı terminal'lerde veya Turborepo ile)
 cd apps/api   && pnpm dev  # :3001
-cd apps/web   && pnpm dev  # :3000
-cd apps/admin && pnpm dev  # :3002
+cd apps/web   && pnpm dev  # :3000 (/admin dahil)
 
 # Turborepo ile hepsini başlat (kök dizinde):
 pnpm dev
@@ -175,7 +174,6 @@ pnpm dev
 ```
 :3000 → apps/web    (Next.js — alıcı + tedarikçi)
 :3001 → apps/api    (NestJS — backend API)
-:3002 → apps/admin  (Next.js — admin paneli)
 :5432 → PostgreSQL  (ana veritabanı)
 :5433 → PostgreSQL  (test veritabanı)
 :6379 → Redis

@@ -1,36 +1,34 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# ToptanNext Web
 
-## Getting Started
+Bu uygulama ToptanNext'in tek frontend uygulamasidir. Alici, satici ve admin arayuzleri ayni Next.js app icinde calisir.
 
-First, run the development server:
+## Rotalar
+
+- `/`: Ana pazar yeri arayuzu
+- `/satici-ol`: Satici basvuru akisi
+- `/admin`: Admin paneli
+
+## Gelistirme
+
+Kok dizinden:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Sadece web uygulamasi:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm --filter web dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+## Deploy
 
-## Learn More
+Vercel'de root directory olarak `apps/web` secin. Admin panel ayni deploy icinde ve ayni domain altinda `/admin` rotasindan calisir.
 
-To learn more about Next.js, take a look at the following resources:
+Gerekli temel environment:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+```bash
+NEXT_PUBLIC_API_URL="https://api-domain.com/api/v1"
+NEXT_PUBLIC_SOCKET_URL="https://api-domain.com"
+```
