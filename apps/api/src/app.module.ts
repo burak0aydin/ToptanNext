@@ -22,14 +22,21 @@ import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 import { RealtimeModule } from './realtime/realtime.module';
 
+const redisUrl = process.env.REDIS_URL?.trim();
+const bullImports = redisUrl
+  ? [
+      BullModule.forRoot({
+        connection: {
+          url: redisUrl,
+        },
+      }),
+    ]
+  : [];
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    BullModule.forRoot({
-      connection: {
-        url: process.env.REDIS_URL ?? 'redis://localhost:6379',
-      },
-    }),
+    ...bullImports,
     ScheduleModule.forRoot(),
     RealtimeModule,
     RedisModule,

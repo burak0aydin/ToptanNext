@@ -5,14 +5,23 @@ import { NOTIFICATIONS_QUEUE } from './notifications.constants';
 import { NotificationsProcessor } from './notifications.processor';
 import { NotificationsService } from './notifications.service';
 
+const hasRedis = Boolean(process.env.REDIS_URL?.trim());
+
 @Module({
   imports: [
     PrismaModule,
-    BullModule.registerQueue({
-      name: NOTIFICATIONS_QUEUE,
-    }),
+    ...(hasRedis
+      ? [
+          BullModule.registerQueue({
+            name: NOTIFICATIONS_QUEUE,
+          }),
+        ]
+      : []),
   ],
-  providers: [NotificationsService, NotificationsProcessor],
+  providers: [
+    NotificationsService,
+    ...(hasRedis ? [NotificationsProcessor] : []),
+  ],
   exports: [NotificationsService],
 })
 export class NotificationsModule {}

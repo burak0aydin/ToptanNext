@@ -1,5 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { NOTIFICATION_JOB, NOTIFICATIONS_QUEUE } from './notifications.constants';
 
@@ -19,14 +19,22 @@ export type QuoteNotificationPayload = {
 
 @Injectable()
 export class NotificationsService {
+  private readonly logger = new Logger(NotificationsService.name);
+
   constructor(
+    @Optional()
     @InjectQueue(NOTIFICATIONS_QUEUE)
-    private readonly notificationsQueue: Queue,
+    private readonly notificationsQueue?: Queue,
   ) {}
 
   async queueNewMessageNotification(
     payload: NewMessageNotificationPayload,
   ): Promise<void> {
+    if (!this.notificationsQueue) {
+      this.logSkippedNotification(NOTIFICATION_JOB.NEW_MESSAGE_NOTIFICATION, payload);
+      return;
+    }
+
     await this.notificationsQueue.add(
       NOTIFICATION_JOB.NEW_MESSAGE_NOTIFICATION,
       payload,
@@ -41,6 +49,11 @@ export class NotificationsService {
   }
 
   async queueQuoteReceived(payload: QuoteNotificationPayload): Promise<void> {
+    if (!this.notificationsQueue) {
+      this.logSkippedNotification(NOTIFICATION_JOB.QUOTE_RECEIVED, payload);
+      return;
+    }
+
     await this.notificationsQueue.add(
       NOTIFICATION_JOB.QUOTE_RECEIVED,
       payload,
@@ -55,6 +68,11 @@ export class NotificationsService {
   }
 
   async queueQuoteAccepted(payload: QuoteNotificationPayload): Promise<void> {
+    if (!this.notificationsQueue) {
+      this.logSkippedNotification(NOTIFICATION_JOB.QUOTE_ACCEPTED, payload);
+      return;
+    }
+
     await this.notificationsQueue.add(
       NOTIFICATION_JOB.QUOTE_ACCEPTED,
       payload,
@@ -69,6 +87,11 @@ export class NotificationsService {
   }
 
   async queueQuoteExpired(payload: QuoteNotificationPayload): Promise<void> {
+    if (!this.notificationsQueue) {
+      this.logSkippedNotification(NOTIFICATION_JOB.QUOTE_EXPIRED, payload);
+      return;
+    }
+
     await this.notificationsQueue.add(
       NOTIFICATION_JOB.QUOTE_EXPIRED,
       payload,
@@ -79,6 +102,15 @@ export class NotificationsService {
           delay: 1_000,
         },
       },
+    );
+  }
+
+  private logSkippedNotification(
+    jobName: string,
+    payload: NewMessageNotificationPayload | QuoteNotificationPayload,
+  ): void {
+    this.logger.warn(
+      `REDIS_URL tanımlı değil. ${jobName} bildirimi kuyruğa alınmadı: ${JSON.stringify(payload)}`,
     );
   }
 }
