@@ -19,10 +19,13 @@ export default function AddressesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState<AddressRecord | null>(null);
 
-  const { data: addresses = [] } = useQuery({
+  const addressesQuery = useQuery<AddressRecord[], Error>({
     queryKey: ['addresses'],
     queryFn: fetchUserAddresses,
+    retry: false,
+    refetchOnMount: 'always',
   });
+  const addresses = addressesQuery.data ?? [];
 
   const createMutation = useMutation({
     mutationFn: createAddress,
@@ -98,17 +101,37 @@ export default function AddressesPage() {
   return (
     <div>
       <header className="mb-4 sm:mb-8">
-        <h1 className="text-lg font-bold text-on-surface sm:text-2xl">Adres Bilgilerim</h1>
+        <h1 className="text-lg font-medium text-on-surface sm:text-2xl">Adres Bilgilerim</h1>
         <p className="mt-1 text-xs text-on-surface-variant sm:mt-2 sm:text-sm">
           Teslimat ve fatura adreslerinizi buradan yönetebilirsiniz.
         </p>
       </header>
 
-      {addresses.length > 0 ? (
-        <h2 className="mb-3 text-base font-bold text-slate-900 sm:mb-4 sm:text-xl">Teslimat Adresi</h2>
+      {addressesQuery.isLoading ? (
+        <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600">
+          Kayıtlı adresleriniz yükleniyor...
+        </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {addressesQuery.isError ? (
+        <div className="mb-3 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p className="font-medium">Adresler yüklenemedi.</p>
+          <p className="mt-1 text-red-600">{addressesQuery.error.message}</p>
+          <button
+            type="button"
+            onClick={() => void addressesQuery.refetch()}
+            className="mt-3 rounded-md bg-white px-3 py-2 text-xs font-medium text-red-700 shadow-sm ring-1 ring-red-100"
+          >
+            Tekrar Dene
+          </button>
+        </div>
+      ) : null}
+
+      {addresses.length > 0 ? (
+        <h2 className="mb-3 text-base font-medium text-slate-900 sm:mb-4 sm:text-xl">Teslimat Adresi</h2>
+      ) : null}
+
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
         {addresses.map((address) => (
           <AddressCard
             key={address.id}
@@ -123,16 +146,22 @@ export default function AddressesPage() {
 
         <button
           onClick={() => setIsFormOpen(true)}
-          className="group flex min-h-[148px] self-start flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-white transition hover:border-blue-300 hover:bg-slate-50 sm:h-[218px]"
+          className="group flex h-[132px] self-start flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-white transition hover:border-blue-300 hover:bg-slate-50 sm:h-[218px]"
         >
-          <span className="mb-2 text-4xl text-slate-300 transition group-hover:text-blue-400 sm:mb-3 sm:text-5xl">
+          <span className="mb-1 text-3xl text-slate-300 transition group-hover:text-blue-400 sm:mb-3 sm:text-5xl">
             +
           </span>
-          <p className="text-sm font-semibold text-slate-600 group-hover:text-slate-800 sm:text-base">
+          <p className="text-center text-xs font-medium text-slate-600 group-hover:text-slate-800 sm:text-base">
             Adres Ekleyin
           </p>
         </button>
       </div>
+
+      {!addressesQuery.isLoading && !addressesQuery.isError && addresses.length === 0 ? (
+        <p className="mt-3 text-xs text-slate-500 sm:text-sm">
+          Henüz kayıtlı adresiniz yok. Eklediğiniz adresler burada kart olarak görünecek.
+        </p>
+      ) : null}
     </div>
   );
 }

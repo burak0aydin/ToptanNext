@@ -120,7 +120,7 @@ export default function AddressForm({
           <span className="material-symbols-outlined text-xl">arrow_back</span>
         </button>
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+          <h2 className="text-2xl font-medium tracking-tight text-slate-900">
             {initialData ? 'Adresi Düzenle' : 'Yeni Adres Ekle'}
           </h2>
           <p className="mt-1 text-sm text-slate-600">
@@ -137,7 +137,7 @@ export default function AddressForm({
           <section>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">Ad Soyad</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Ad Soyad</label>
                 <input
                   type="text"
                   name="fullName"
@@ -150,7 +150,7 @@ export default function AddressForm({
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">Telefon</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Telefon</label>
                 <input
                   type="tel"
                   name="phoneNumber"
@@ -169,7 +169,7 @@ export default function AddressForm({
           <section>
             <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">İl</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">İl</label>
                 <input
                   type="text"
                   name="province"
@@ -182,7 +182,7 @@ export default function AddressForm({
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">İlçe</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">İlçe</label>
                 <input
                   type="text"
                   name="district"
@@ -195,7 +195,7 @@ export default function AddressForm({
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">Mahalle</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Mahalle</label>
                 <input
                   type="text"
                   name="neighborhood"
@@ -212,7 +212,7 @@ export default function AddressForm({
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Adres Detayı
                 </label>
                 <textarea
@@ -228,7 +228,7 @@ export default function AddressForm({
 
               <div className="space-y-6">
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
                     Posta Kodu
                   </label>
                   <input
@@ -245,7 +245,7 @@ export default function AddressForm({
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
                     Adres Başlığı
                   </label>
                   <input
@@ -265,12 +265,12 @@ export default function AddressForm({
 
         <section className="border-y border-slate-200 bg-slate-50 px-6 py-8 md:px-8">
           <div className="mb-8">
-            <span className="mb-3 block text-sm font-semibold text-slate-700">Fatura Türü</span>
+            <span className="mb-3 block text-sm font-medium text-slate-700">Fatura Türü</span>
             <div className="grid max-w-sm grid-cols-2 rounded-lg bg-slate-200 p-1">
               <button
                 type="button"
                 onClick={() => setFormData((prev) => ({ ...prev, invoiceType: 'individual' }))}
-                className={`rounded-md px-4 py-2 text-sm font-semibold transition ${
+                className={`rounded-md px-4 py-2 text-sm font-medium transition ${
                   formData.invoiceType === 'individual'
                     ? 'bg-white text-[#003FB1] shadow-sm'
                     : 'text-slate-600 hover:text-slate-900'
@@ -281,7 +281,7 @@ export default function AddressForm({
               <button
                 type="button"
                 onClick={() => setFormData((prev) => ({ ...prev, invoiceType: 'corporate' }))}
-                className={`rounded-md px-4 py-2 text-sm font-semibold transition ${
+                className={`rounded-md px-4 py-2 text-sm font-medium transition ${
                   formData.invoiceType === 'corporate'
                     ? 'bg-white text-[#003FB1] shadow-sm'
                     : 'text-slate-600 hover:text-slate-900'
@@ -297,7 +297,7 @@ export default function AddressForm({
               <div className="absolute left-0 top-0 h-full w-1 bg-[#003FB1]" />
 
               <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-semibold text-slate-700">Firma Adı</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Firma Adı</label>
                 <input
                   type="text"
                   name="companyName"
@@ -312,7 +312,7 @@ export default function AddressForm({
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Vergi Dairesi
                 </label>
                 <input
@@ -329,7 +329,7 @@ export default function AddressForm({
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">VKN/TCKN</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">VKN/TCKN</label>
                 <input
                   type="text"
                   name="taxId"
@@ -349,7 +349,7 @@ export default function AddressForm({
                   onChange={handleInputChange}
                   className="h-5 w-5 rounded border-slate-300 text-[#003FB1] focus:ring-[#003FB1]"
                 />
-                <span className="text-sm font-semibold text-slate-700">E-fatura mükellefiyim</span>
+                <span className="text-sm font-medium text-slate-700">E-fatura mükellefiyim</span>
               </label>
             </div>
           ) : null}
@@ -360,14 +360,14 @@ export default function AddressForm({
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="rounded-lg px-6 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
+            className="rounded-lg px-6 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
           >
             İptal
           </button>
           <button
             type="submit"
             disabled={isLoading || !hasStartedTyping}
-            className={`flex items-center justify-center gap-2 rounded-lg px-8 py-3 text-sm font-bold text-white shadow-sm transition disabled:cursor-not-allowed ${
+            className={`flex items-center justify-center gap-2 rounded-lg px-8 py-3 text-sm font-medium text-white shadow-sm transition disabled:cursor-not-allowed ${
               hasStartedTyping
                 ? 'bg-blue-700 hover:bg-blue-800 disabled:opacity-50'
                 : 'bg-slate-300 text-slate-500'

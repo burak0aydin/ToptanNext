@@ -87,12 +87,10 @@ export async function requestJson<TData, TBody = unknown>(
     headers["Content-Type"] = "application/json";
   }
 
-  let hasAuthHeader = false;
   if (options.auth) {
     const accessToken = getAccessToken();
     if (accessToken) {
       headers.Authorization = `Bearer ${accessToken}`;
-      hasAuthHeader = true;
     }
   }
 
@@ -122,7 +120,6 @@ export async function requestJson<TData, TBody = unknown>(
   if (
     response.status === 401 &&
     options.auth &&
-    hasAuthHeader &&
     !options._retryAfterRefresh
   ) {
     const nextAccessToken = await refreshAccessToken();

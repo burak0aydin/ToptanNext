@@ -101,39 +101,34 @@ export default function PaymentCardForm({
 
   return (
     <div className="bg-slate-50">
-      <div className="mb-6 flex items-center gap-4">
+      <div className="mb-2 flex items-center gap-3 sm:mb-3 sm:gap-4">
         <button
           type="button"
           onClick={onClose}
-          className="flex h-10 w-10 items-center justify-center rounded-full text-slate-700 transition hover:bg-slate-100"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-slate-700 transition hover:bg-slate-100 sm:h-10 sm:w-10"
           aria-label="Kart listesine dön"
         >
           <span className="material-symbols-outlined text-xl">arrow_back</span>
         </button>
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+          <h2 className="text-base font-medium tracking-tight text-slate-900 sm:text-xl">
             {isEditing ? 'Kartı Düzenle' : 'Yeni Kart Ekle'}
           </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            {isEditing
-              ? 'Kart sahibi ve son kullanma tarihini güncelleyin.'
-              : 'Kart bilgilerinizi güvenli şekilde kaydedin. CVV saklanmaz.'}
-          </p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="rounded-lg border border-slate-200 bg-white shadow-sm">
         {errorMessage ? (
-          <div className="mx-6 mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 md:mx-8">
+          <div className="mx-6 mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 md:mx-8">
             {errorMessage}
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-8 p-6 min-[900px]:flex-row min-[900px]:items-start min-[900px]:justify-center min-[900px]:p-8">
-          <div className="w-full space-y-5 min-[900px]:w-[420px] min-[900px]:shrink-0">
+        <div className="flex flex-col gap-5 p-4 min-[900px]:flex-row min-[900px]:items-start min-[900px]:justify-center min-[900px]:gap-8 min-[900px]:p-6">
+          <div className="order-last w-full space-y-5 min-[900px]:order-first min-[900px]:w-[420px] min-[900px]:shrink-0">
             {!isEditing ? (
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   16 haneli kart numarası
                 </label>
                 <input
@@ -149,7 +144,7 @@ export default function PaymentCardForm({
               </div>
             ) : (
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">Kart numarası</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Kart numarası</label>
                 <input
                   value={formData.cardNumber}
                   disabled
@@ -160,7 +155,7 @@ export default function PaymentCardForm({
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Son kullanma tarihi
                 </label>
                 <input
@@ -177,7 +172,7 @@ export default function PaymentCardForm({
 
               {!isEditing ? (
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">CVC / CVV</label>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">CVC / CVV</label>
                   <input
                     value={formData.cvv}
                     onChange={(event) => updateField('cvv', event.target.value.replace(/\D/g, '').slice(0, 4))}
@@ -193,7 +188,7 @@ export default function PaymentCardForm({
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">Kart sahibi</label>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Kart sahibi</label>
               <input
                 value={formData.cardHolderName}
                 onChange={(event) => updateField('cardHolderName', event.target.value.toUpperCase())}
@@ -208,7 +203,7 @@ export default function PaymentCardForm({
             </div>
           </div>
 
-          <div className="w-full self-start min-[900px]:w-[360px] min-[900px]:shrink-0">
+          <div className="order-first w-full self-start min-[900px]:order-last min-[900px]:w-[360px] min-[900px]:shrink-0">
             <PaymentCardPreview
               cardNumber={isEditing ? '' : formData.cardNumber}
               expiry={formData.expiry}
@@ -225,14 +220,14 @@ export default function PaymentCardForm({
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="rounded-lg px-6 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
+            className="rounded-lg px-6 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
           >
             İptal
           </button>
           <button
             type="submit"
             disabled={isLoading || !hasStartedTyping}
-            className={`flex items-center justify-center gap-2 rounded-lg px-8 py-3 text-sm font-bold text-white shadow-sm transition disabled:cursor-not-allowed ${
+            className={`flex items-center justify-center gap-2 rounded-lg px-8 py-3 text-sm font-medium text-white shadow-sm transition disabled:cursor-not-allowed ${
               hasStartedTyping
                 ? 'bg-blue-700 hover:bg-blue-800 disabled:opacity-50'
                 : 'bg-slate-300 text-slate-500'
