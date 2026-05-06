@@ -11,7 +11,8 @@
     "test:e2e": "turbo run test:e2e",
     "lint": "turbo run lint",
     "type-check": "turbo run type-check",
-    "format": "turbo run format"
+    "format": "turbo run format",
+    "db:push-local-to-prod": "bash ./scripts/sync-local-db-to-production.sh"
   },
   "devDependencies": {
     "turbo": "^1.13.4",
