@@ -34,6 +34,7 @@ import { QuoteOfferModal } from './QuoteOfferModal';
 type MessageThreadProps = {
   conversationId: string;
   showHeader?: boolean;
+  backHref?: string;
 };
 
 type ThreadItem =
@@ -52,7 +53,7 @@ function formatDateSeparator(date: Date): string {
   return format(date, 'dd MMMM yyyy', { locale: tr }).toUpperCase();
 }
 
-export function MessageThread({ conversationId, showHeader = true }: MessageThreadProps) {
+export function MessageThread({ conversationId, showHeader = true, backHref }: MessageThreadProps) {
   const { socket } = useSocket();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -345,11 +346,22 @@ export function MessageThread({ conversationId, showHeader = true }: MessageThre
     <div className='flex h-full min-h-0 flex-col'>
       {showHeader ? (
         <div className='border-b border-slate-200 px-3 py-2 md:px-4'>
-          {productHref ? (
-            <Link
-              href={productHref}
-              className='inline-flex max-w-full items-center gap-2 rounded-lg px-1 py-1 transition hover:bg-slate-50'
-            >
+          <div className='flex min-w-0 items-center gap-2'>
+            {backHref ? (
+              <Link
+                aria-label='Mesajlara geri dön'
+                className='flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-700 transition active:scale-95 active:bg-slate-100 md:hidden'
+                href={backHref}
+              >
+                <span className='material-symbols-outlined text-[24px]'>arrow_back</span>
+              </Link>
+            ) : null}
+
+            {productHref ? (
+              <Link
+                href={productHref}
+                className='inline-flex min-w-0 max-w-full items-center gap-2 rounded-lg px-1 py-1 transition hover:bg-slate-50'
+              >
                 <span className='flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 text-slate-400 md:h-10 md:w-10'>
                 {productImageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -368,10 +380,11 @@ export function MessageThread({ conversationId, showHeader = true }: MessageThre
                 </span>
                 <span className='block text-[11px] font-medium text-slate-400'>Ürünü görüntüle</span>
               </span>
-            </Link>
-          ) : (
-            <h3 className='text-sm font-bold text-slate-800'>Konuşma</h3>
-          )}
+              </Link>
+            ) : (
+              <h3 className='min-w-0 truncate text-sm font-bold text-slate-800'>Konuşma</h3>
+            )}
+          </div>
           {logisticsRoute ? (
             <div className='mt-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-500'>
               <span className='inline-flex items-center rounded-full bg-emerald-50 px-2 py-1 text-emerald-700 ring-1 ring-emerald-200'>

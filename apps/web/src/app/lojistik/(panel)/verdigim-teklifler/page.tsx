@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
+import { hasAccessToken } from '@/lib/auth-token';
 import {
   fetchMyLogisticsOffers,
   type PartnerLogisticsOffer,
@@ -119,7 +120,16 @@ export default function VerdigimTekliflerPage() {
                 <div className='flex shrink-0 flex-col gap-2 lg:items-end'>
                   <button
                     type='button'
-                    onClick={() => router.push(`/lojistik/mesajlar/${offer.conversationId}`)}
+                    onClick={() => {
+                      const nextPath = `/lojistik/mesajlar/${offer.conversationId}`;
+
+                      if (!hasAccessToken()) {
+                        router.push(`/login?next=${encodeURIComponent(nextPath)}`);
+                        return;
+                      }
+
+                      router.push(nextPath);
+                    }}
                     className='rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50'
                   >
                     Sohbet Et

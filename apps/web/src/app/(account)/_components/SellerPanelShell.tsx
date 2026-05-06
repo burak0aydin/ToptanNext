@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { RequireAuth } from "@/components/auth/RequireAuth";
 
 type SellerPanelShellProps = {
   children: ReactNode;
@@ -44,7 +45,7 @@ export function SellerPanelShell({ children }: SellerPanelShellProps) {
   const isMessagesSurface =
     pathname === "/satici-panelim" || pathname.startsWith("/satici-panelim/mesajlar");
 
-  return (
+  const shell = (
     <div className="flex h-dvh overflow-hidden bg-[#f7f9fb] font-body text-[#191c1e]">
       <aside className="flex h-full w-64 shrink-0 flex-col border-r border-slate-800 bg-slate-900 py-4 text-sm font-medium tracking-tight text-slate-400 shadow-xl">
         <div className="px-6 pb-6 pt-2">
@@ -136,4 +137,10 @@ export function SellerPanelShell({ children }: SellerPanelShellProps) {
       </div>
     </div>
   );
+
+  if (isMessagesSurface) {
+    return <RequireAuth>{shell}</RequireAuth>;
+  }
+
+  return shell;
 }

@@ -17,7 +17,7 @@ export default function LogisticsConversationPage({ params }: LogisticsConversat
         </Suspense>
       </div>
       <section className='flex min-w-0 flex-1 flex-col'>
-        <ConversationWorkspace conversationId={params.conversationId} />
+        <ConversationWorkspace backHref='/lojistik/mesajlar' conversationId={params.conversationId} />
       </section>
     </div>
   );

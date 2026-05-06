@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { RequireAuth } from '@/components/auth/RequireAuth';
 import { LogisticsHeader } from '../components/LogisticsHeader';
 import { LogisticsSidebar } from '../components/LogisticsSidebar';
 
@@ -9,6 +11,7 @@ export default function LogisticsLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const toggleSidebar = () => {
@@ -17,7 +20,7 @@ export default function LogisticsLayout({
 
   const mainPaddingClass = isSidebarCollapsed ? 'md:pl-20' : 'md:pl-64';
 
-  return (
+  const shell = (
     <div className="h-screen overflow-hidden flex bg-slate-50">
       <LogisticsSidebar isCollapsed={isSidebarCollapsed} />
 
@@ -30,4 +33,10 @@ export default function LogisticsLayout({
       </div>
     </div>
   );
+
+  if (pathname.startsWith('/lojistik/mesajlar')) {
+    return <RequireAuth>{shell}</RequireAuth>;
+  }
+
+  return shell;
 }

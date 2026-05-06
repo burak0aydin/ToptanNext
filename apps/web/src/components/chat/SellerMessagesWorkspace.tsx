@@ -512,11 +512,10 @@ export function SellerMessagesWorkspace() {
   }, [search]);
 
   const conversationsQuery = useQuery({
-    queryKey: ["seller-conversations", audience, activeFilter, debouncedSearch],
+    queryKey: ["seller-conversations", audience, activeFilter],
     queryFn: () =>
       fetchConversations({
         filter: audience === "logistics" ? "all" : activeFilter,
-        search: debouncedSearch,
       }),
   });
 
@@ -526,21 +525,46 @@ export function SellerMessagesWorkspace() {
     }
   }, [conversationsQuery.data, setConversations]);
 
+  const normalizedSearch = search.trim().toLowerCase();
+
   const conversations = useMemo(
     () => {
       const items = Array.from(conversationMap.values());
 
-      const filtered = audience === "logistics"
+      const filteredByAudience = audience === "logistics"
         ? items.filter((conversation) =>
             conversation.conversationType === "LOGISTICS" || conversation.hasPendingLogistics,
           )
         : items;
 
-      return filtered.sort(
+      const filteredBySearch = filteredByAudience.filter((conversation) => {
+        if (!normalizedSearch) {
+          return true;
+        }
+
+        const searchTarget = [
+          conversation.productName,
+          conversation.lastMessage?.body,
+          conversation.logisticsFromCity,
+          conversation.logisticsToCity,
+          ...conversation.participants.flatMap((participant) => [
+            participant.companyName,
+            participant.fullName,
+            participant.email,
+          ]),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        return searchTarget.includes(normalizedSearch);
+      });
+
+      return filteredBySearch.sort(
         (left, right) => new Date(right.lastMessageAt).getTime() - new Date(left.lastMessageAt).getTime(),
       );
     },
-    [audience, conversationMap],
+    [audience, conversationMap, normalizedSearch],
   );
 
   useEffect(() => {

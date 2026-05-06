@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
+import { hasAccessToken } from '@/lib/auth-token';
 import {
   createConversation,
   createLogisticsOffer,
@@ -173,6 +174,11 @@ export default function AcikTaleplerPage() {
                 setNotes(myOffer?.notes ?? '');
               }}
               onChat={() => {
+                if (!hasAccessToken()) {
+                  router.push(`/login?next=${encodeURIComponent('/lojistik/acik-talepler')}`);
+                  return;
+                }
+
                 startConversationMutation.mutate(request);
               }}
             />

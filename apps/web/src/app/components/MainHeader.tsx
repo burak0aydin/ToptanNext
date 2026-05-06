@@ -168,6 +168,9 @@ export function MainHeader() {
   const profileHref = hasAccessToken()
     ? '/kullanici-bilgilerim'
     : '/login?next=/kullanici-bilgilerim';
+  const messagesHref = hasAccessToken()
+    ? '/messages'
+    : '/login?next=/messages';
   const mobileNavItemClass = (isActive: boolean) =>
     `group flex h-[48px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-center transition-all duration-200 active:scale-95 ${
       isActive ? '-translate-y-0.5 bg-slate-100/55 text-slate-950 shadow-sm' : 'text-slate-600 active:bg-slate-100'
@@ -220,7 +223,7 @@ export function MainHeader() {
           <Link
             aria-label='Mesajlar'
             className='hidden items-center gap-1.5 text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95 sm:flex'
-            href='/messages'
+            href={messagesHref}
           >
             <span className='material-symbols-outlined text-[25px] leading-none'>forum</span>
             <span className='text-[14px] font-medium'>Mesajlar</span>
@@ -479,7 +482,7 @@ export function MainHeader() {
 
           <Link
             className={mobileNavItemClass(isMessagesActive)}
-            href='/messages'
+            href={messagesHref}
           >
             <span className='relative inline-flex'>
               <span className={mobileNavIconClass(isMessagesActive)}>forum</span>

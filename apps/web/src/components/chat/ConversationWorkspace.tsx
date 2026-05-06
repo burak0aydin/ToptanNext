@@ -11,9 +11,10 @@ import { getUserRoleFromToken } from '@/lib/auth-token';
 
 type ConversationWorkspaceProps = {
   conversationId: string;
+  backHref?: string;
 };
 
-export function ConversationWorkspace({ conversationId }: ConversationWorkspaceProps) {
+export function ConversationWorkspace({ conversationId, backHref = '/messages' }: ConversationWorkspaceProps) {
   const { socket } = useSocket();
   const [isSupplier, setIsSupplier] = useState(false);
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
@@ -30,7 +31,7 @@ export function ConversationWorkspace({ conversationId }: ConversationWorkspaceP
   return (
     <div className='flex h-full min-h-0 flex-col'>
       <div className='min-h-0 flex-1'>
-        <MessageThread conversationId={conversationId} />
+        <MessageThread backHref={backHref} conversationId={conversationId} />
       </div>
 
       <MessageInput

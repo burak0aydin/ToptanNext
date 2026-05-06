@@ -104,6 +104,50 @@ function createConversation(overrides?: Partial<ConversationSummary>): Conversat
   };
 }
 
+function createSecondConversation(): ConversationSummary {
+  return createConversation({
+    id: 'conv-2',
+    productName: 'Başka Ürün',
+    lastMessageAt: new Date('2026-04-25T10:00:00.000Z').toISOString(),
+    unreadCount: 0,
+    hasPendingQuote: false,
+    lastMessage: {
+      id: 'msg-2',
+      conversationId: 'conv-2',
+      senderId: 'supplier-2',
+      type: 'TEXT',
+      body: 'Farklı içerik',
+      isEdited: false,
+      deletedAt: null,
+      createdAt: new Date('2026-04-25T10:00:00.000Z').toISOString(),
+      attachments: [],
+      quote: null,
+    },
+    participants: [
+      {
+        userId: 'buyer-1',
+        fullName: 'Buyer User',
+        email: 'buyer@example.com',
+        companyName: 'Buyer Co',
+        avatarUrl: null,
+        role: 'BUYER',
+        unreadCount: 0,
+        lastReadAt: new Date('2026-04-24T09:00:00.000Z').toISOString(),
+      },
+      {
+        userId: 'supplier-2',
+        fullName: 'Another Supplier',
+        email: 'another@example.com',
+        companyName: 'Different Company',
+        avatarUrl: null,
+        role: 'SUPPLIER',
+        unreadCount: 0,
+        lastReadAt: new Date('2026-04-25T09:00:00.000Z').toISOString(),
+      },
+    ],
+  });
+}
+
 describe('ConversationList', () => {
   beforeEach(() => {
     replaceMock.mockReset();
@@ -145,6 +189,22 @@ describe('ConversationList', () => {
     fireEvent.click(screen.getByText('Okunmayanlar'));
 
     expect(replaceMock).toHaveBeenCalledWith('/messages?filter=unread');
+  });
+
+  it('filters the visible conversation list while searching', async () => {
+    fetchConversationsMock.mockResolvedValue([createConversation(), createSecondConversation()]);
+
+    renderWithProviders();
+
+    const input = await screen.findByPlaceholderText('Kişilerde ara...');
+    fireEvent.change(input, { target: { value: 'global' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Global Industrial Ltd.')).toBeInTheDocument();
+      expect(screen.queryByText('Different Company')).not.toBeInTheDocument();
+    }, {
+      timeout: 1200,
+    });
   });
 
   it('debounces search updates for 300ms before updating URL', async () => {
