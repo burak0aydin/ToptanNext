@@ -302,19 +302,18 @@ export function PublicListingView({ mode, slug }: PublicListingViewProps) {
       >
         <main className='flex-1 bg-surface p-6 lg:p-10'>
           <div className='mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center'>
-            <nav className='mb-2 flex items-center gap-2 text-xs font-medium text-outline'>
-              <Link className='hover:text-primary' href='/'>Ana Sayfa</Link>
+            <nav className='mb-2 flex items-center gap-1 text-xs font-medium text-outline overflow-x-auto flex-nowrap'>
               {mode === 'category' && categoryTrail.length > 0 ? (
                 categoryTrail.map((category, index) => {
                   const isLast = index === categoryTrail.length - 1;
 
                   return (
-                    <span key={category.id} className='flex items-center gap-2'>
-                      <span className='material-symbols-outlined text-sm'>chevron_right</span>
+                    <span key={category.id} className='flex items-center gap-1 whitespace-nowrap'>
+                      <span className='material-symbols-outlined text-[12px]'>chevron_right</span>
                       {isLast ? (
                         <span className='text-on-surface'>{formatBreadcrumbLabel(category.name)}</span>
                       ) : (
-                        <Link className='hover:text-primary' href={`/kategori/${category.slug}`}>
+                        <Link className='hover:text-primary whitespace-nowrap' href={`/kategori/${category.slug}`}>
                           {formatBreadcrumbLabel(category.name)}
                         </Link>
                       )}
@@ -329,11 +328,11 @@ export function PublicListingView({ mode, slug }: PublicListingViewProps) {
               )}
             </nav>
 
-            <div className='flex items-center gap-4'>
-              <div className='flex items-center gap-2'>
+            <div className='flex w-full items-center gap-2 sm:w-auto sm:gap-4'>
+              <div className='flex min-w-0 flex-1 items-center gap-2 sm:flex-none'>
                 <span className='text-xs font-semibold uppercase text-outline'>Sıralama:</span>
                 <select
-                  className='cursor-pointer rounded-xl border-none bg-white px-4 py-2 text-sm shadow-sm focus:ring-primary-container'
+                  className='w-full min-w-0 cursor-pointer rounded-xl border-none bg-white px-3 py-2 text-sm shadow-sm focus:ring-primary-container sm:w-[220px] sm:px-4'
                   value={sort}
                   onChange={(event) => {
                     setSort(event.target.value as PublicProductListingSort);
@@ -347,14 +346,16 @@ export function PublicListingView({ mode, slug }: PublicListingViewProps) {
               </div>
 
               <button
-                className='flex items-center gap-2 rounded-xl border border-outline-variant/30 bg-white px-4 py-2 text-sm font-medium text-on-surface shadow-sm transition-colors hover:bg-surface-container-low hover:text-primary'
+                className='shrink-0 rounded-xl border border-outline-variant/30 bg-white px-3 py-2 text-sm font-medium text-on-surface shadow-sm transition-colors hover:bg-surface-container-low hover:text-primary sm:px-4'
                 type='button'
                 aria-controls={filterPanelId}
                 aria-expanded={isFilterPanelOpen}
                 onClick={() => setIsFilterPanelOpen((current) => !current)}
               >
-                <span className='material-symbols-outlined text-[20px]'>filter_list</span>
-                Filtreler
+                <span className='flex items-center gap-2'>
+                  <span className='material-symbols-outlined text-[20px]'>filter_list</span>
+                  Filtreler
+                </span>
               </button>
             </div>
           </div>
@@ -371,10 +372,10 @@ export function PublicListingView({ mode, slug }: PublicListingViewProps) {
             </div>
           ) : null}
 
-          <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+          <div className='grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4'>
             {listQuery.isLoading
               ? Array.from({ length: PAGE_SIZE }).map((_, index) => (
-                <div key={index} className='aspect-[3/4] animate-pulse rounded-2xl bg-slate-200' />
+                <div key={index} className='aspect-[3/4] animate-pulse rounded-lg bg-slate-200 shadow-sm md:rounded-xl' />
               ))
               : items.map((item) => {
                 const imageUrl = getCoverImageUrl(item);
@@ -383,13 +384,13 @@ export function PublicListingView({ mode, slug }: PublicListingViewProps) {
                   <Link
                     key={item.id}
                     href={`/urun/${item.id}`}
-                    className='group flex flex-col overflow-hidden rounded-2xl bg-surface-container-lowest shadow-sm transition-all duration-300 hover:shadow-xl'
+                    className='group flex flex-col overflow-hidden rounded-lg bg-surface-container-lowest shadow-sm transition-all duration-300 hover:shadow-xl md:rounded-xl'
                   >
                     <div className='relative aspect-square overflow-hidden bg-surface-container'>
                       <button
                         aria-label={favoriteIds.has(item.id) ? 'Favorilerden çıkar' : 'Favorilere ekle'}
                         className={[
-                          'absolute right-3 top-3 z-10 flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md transition-colors',
+                          'absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md transition-colors md:right-3 md:top-3 md:h-12 md:w-12',
                           favoriteIds.has(item.id)
                             ? 'text-[#FF5A1F]'
                             : 'text-[#111111] hover:text-[#FF5A1F]',
@@ -398,7 +399,7 @@ export function PublicListingView({ mode, slug }: PublicListingViewProps) {
                         type='button'
                       >
                         <span
-                          className='material-symbols-outlined text-[26px]'
+                          className='material-symbols-outlined text-[20px] md:text-[26px]'
                           style={{
                             fontVariationSettings: favoriteIds.has(item.id)
                               ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
@@ -423,18 +424,18 @@ export function PublicListingView({ mode, slug }: PublicListingViewProps) {
                       )}
                     </div>
 
-                    <div className='flex flex-1 flex-col p-5'>
-                      <h3 className='mb-2 text-sm font-semibold leading-tight text-on-surface transition-colors group-hover:text-primary'>
+                    <div className='flex flex-1 flex-col p-3 md:p-5'>
+                      <h3 className='mb-1 line-clamp-2 text-xs font-semibold leading-tight text-on-surface transition-colors group-hover:text-primary md:mb-2 md:text-sm'>
                         {item.name}
                       </h3>
 
                       <div className='mt-auto'>
-                        <div className='mb-2 flex items-baseline gap-1'>
-                          <span className='whitespace-nowrap text-lg font-bold text-on-surface'>
+                        <div className='mb-1 flex items-baseline gap-1 md:mb-2'>
+                          <span className='whitespace-nowrap text-sm font-bold text-on-surface md:text-lg'>
                             {buildPriceRange(item)}
                           </span>
                         </div>
-                        <span className='inline-flex rounded-xl bg-[#ECEFF3] px-3 py-2 text-[11px] font-semibold text-slate-700'>
+                        <span className='inline-flex rounded-xl bg-[#ECEFF3] px-2 py-1 text-[10px] font-semibold text-slate-700 md:px-3 md:py-2 md:text-[11px]'>
                           MSM: {item.minOrderQuantity ?? 1} Adet
                         </span>
                       </div>

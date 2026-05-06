@@ -156,7 +156,10 @@ export function MainHeader() {
     0,
   );
   const isHomeActive = pathname === '/';
-  const isCategoriesActive = pathname.startsWith('/kategori') || pathname.startsWith('/kategoriler');
+  const isCategoriesActive =
+    pathname.startsWith('/kategori') ||
+    pathname.startsWith('/kategoriler') ||
+    pathname.startsWith('/kesfet');
   const isMessagesActive = pathname.startsWith('/messages');
   const isCartActive = pathname.startsWith('/sepet');
   const isProfileActive =
@@ -497,9 +500,9 @@ export function MainHeader() {
             <span className={mobileNavLabelClass(isHomeActive)}>Anasayfa</span>
           </Link>
 
-          <Link className={mobileNavItemClass(isCategoriesActive)} href='/kategoriler'>
-            <span className={mobileNavIconClass(isCategoriesActive)}>category</span>
-            <span className={mobileNavLabelClass(isCategoriesActive)}>Kategoriler</span>
+          <Link className={mobileNavItemClass(isCategoriesActive)} href='/kesfet'>
+            <span className={mobileNavIconClass(isCategoriesActive)}>explore</span>
+            <span className={mobileNavLabelClass(isCategoriesActive)}>Keşfet</span>
           </Link>
 
           <Link className={mobileNavItemClass(isMessagesActive)} href={messagesHref}>

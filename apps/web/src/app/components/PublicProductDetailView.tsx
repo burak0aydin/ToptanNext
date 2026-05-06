@@ -821,18 +821,21 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
       <MainHeader />
 
       <main className='mx-auto max-w-[1440px] px-6 py-8'>
-        <nav className='mb-6 flex items-center gap-2 text-xs font-medium text-outline'>
-          <Link className='hover:text-primary' href='/'>Ana Sayfa</Link>
-          <span className='material-symbols-outlined text-sm'>chevron_right</span>
-          {categoryTrail.map((item, index) => (
-            <span key={item.id} className='flex items-center gap-2'>
-              <Link className='hover:text-primary' href={`/kategori/${item.slug}`}>
-                {formatBreadcrumbLabel(item.name)}
-              </Link>
-              <span className='material-symbols-outlined text-sm'>chevron_right</span>
-            </span>
-          ))}
-          <span className='text-on-surface'>{formatBreadcrumbLabel(listing.name)}</span>
+        <nav className='mb-6 flex items-center gap-1 text-xs font-medium text-outline overflow-x-auto flex-nowrap'>
+          {categoryTrail.map((item, index) => {
+            const isLast = index === categoryTrail.length - 1;
+
+            return (
+              <span key={item.id} className='flex items-center gap-1 whitespace-nowrap'>
+                <Link className='hover:text-primary whitespace-nowrap' href={`/kategori/${item.slug}`}>
+                  {formatBreadcrumbLabel(item.name)}
+                </Link>
+                {isLast ? null : (
+                  <span className='material-symbols-outlined text-[12px]'>chevron_right</span>
+                )}
+              </span>
+            );
+          })}
         </nav>
 
         <div className='mb-12 grid grid-cols-1 gap-8 lg:grid-cols-12'>
