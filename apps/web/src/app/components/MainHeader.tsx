@@ -165,13 +165,22 @@ export function MainHeader() {
     pathname.startsWith('/sifre-degisikligi') ||
     pathname.startsWith('/siparislerim') ||
     pathname.startsWith('/favorilerim');
+  const profileHref = hasAccessToken()
+    ? '/kullanici-bilgilerim'
+    : '/login?next=/kullanici-bilgilerim';
   const mobileNavItemClass = (isActive: boolean) =>
-    `group flex h-[48px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-center transition-colors active:bg-slate-100 ${
-      isActive ? 'text-[#003FB1]' : 'text-slate-600'
+    `group flex h-[48px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-center transition-all duration-200 active:scale-95 ${
+      isActive ? '-translate-y-0.5 bg-slate-100/55 text-slate-950 shadow-sm' : 'text-slate-600 active:bg-slate-100'
     }`;
   const mobileNavIconClass = (isActive: boolean) =>
-    `material-symbols-outlined flex h-6 w-6 items-center justify-center text-[22px] leading-none ${
-      isActive ? '[font-variation-settings:"FILL"_1]' : ''
+    `material-symbols-outlined flex h-7 w-7 items-center justify-center text-[24px] leading-none ${
+      isActive
+        ? 'text-slate-950 [font-variation-settings:"FILL"_1]'
+        : 'text-slate-500 [font-variation-settings:"FILL"_0]'
+    }`;
+  const mobileNavLabelClass = (isActive: boolean) =>
+    `flex h-3 items-center justify-center truncate text-[9px] leading-none transition-colors ${
+      isActive ? 'font-semibold text-slate-950' : 'font-medium text-slate-600'
     }`;
 
   return (
@@ -457,7 +466,7 @@ export function MainHeader() {
             href='/'
           >
             <span className={mobileNavIconClass(isHomeActive)}>home</span>
-            <span className='flex h-3 items-center justify-center truncate text-[9px] font-medium leading-none'>Anasayfa</span>
+            <span className={mobileNavLabelClass(isHomeActive)}>Anasayfa</span>
           </Link>
 
           <Link
@@ -465,7 +474,7 @@ export function MainHeader() {
             href='/kategoriler'
           >
             <span className={mobileNavIconClass(isCategoriesActive)}>category</span>
-            <span className='flex h-3 items-center justify-center truncate text-[9px] font-medium leading-none'>Kategoriler</span>
+            <span className={mobileNavLabelClass(isCategoriesActive)}>Kategoriler</span>
           </Link>
 
           <Link
@@ -480,7 +489,7 @@ export function MainHeader() {
                 </span>
               ) : null}
             </span>
-            <span className='flex h-3 items-center justify-center truncate text-[9px] font-medium leading-none'>Mesajlarım</span>
+            <span className={mobileNavLabelClass(isMessagesActive)}>Mesajlarım</span>
           </Link>
 
           <Link
@@ -495,15 +504,15 @@ export function MainHeader() {
                 </span>
               ) : null}
             </span>
-            <span className='flex h-3 items-center justify-center truncate text-[9px] font-medium leading-none'>Sepetim</span>
+            <span className={mobileNavLabelClass(isCartActive)}>Sepetim</span>
           </Link>
 
           <Link
             className={mobileNavItemClass(isProfileActive)}
-            href='/kullanici-bilgilerim'
+            href={profileHref}
           >
             <span className={mobileNavIconClass(isProfileActive)}>account_circle</span>
-            <span className='flex h-3 items-center justify-center truncate text-[9px] font-medium leading-none'>Hesabım</span>
+            <span className={mobileNavLabelClass(isProfileActive)}>Hesabım</span>
           </Link>
         </div>
       </nav>
