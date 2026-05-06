@@ -2,6 +2,7 @@ import { MainFooter } from './components/MainFooter';
 import { FeaturedSectorsCarousel } from './components/FeaturedSectorsCarousel';
 import { HomeHeroSlider } from './components/HomeHeroSlider';
 import { MainHeader } from './components/MainHeader';
+import { ProductCard } from './components/ProductCard';
 
 export default function Home() {
   const products = [
@@ -70,31 +71,13 @@ export default function Home() {
 
             <div className='grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4 xl:grid-cols-5'>
               {products.map((product) => (
-                <div
+                <ProductCard
                   key={product.title}
-                  className='group overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm transition-all hover:shadow-md md:rounded-xl'
-                >
-                  <div className='aspect-square overflow-hidden bg-slate-50'>
-                    <img
-                      className='h-full w-full object-cover transition-transform duration-500 group-hover:scale-105'
-                      src={product.image}
-                      alt={product.title}
-                    />
-                  </div>
-                  <div className='p-3 md:p-4'>
-                    <p className='mb-1 text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant'>
-                      {product.sku}
-                    </p>
-                    <h3 className='mb-2 min-h-[38px] line-clamp-2 text-xs font-bold text-on-surface md:mb-3 md:min-h-[40px] md:text-sm'>
-                      {product.title}
-                    </h3>
-                    <p className='mb-1 text-[10px] text-on-surface-variant'>Toptan Fiyat Araligi</p>
-                    <div className='flex items-baseline gap-1'>
-                      <span className='text-sm font-bold text-primary md:text-lg'>{product.price}</span>
-                      <span className='text-[10px] text-on-surface-variant'>/ Adet</span>
-                    </div>
-                  </div>
-                </div>
+                  imageUrl={product.image}
+                  minOrderQuantity={1}
+                  priceLabel={product.price}
+                  title={product.title}
+                />
               ))}
             </div>
 

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { MainFooter } from '@/app/components/MainFooter';
 import { MainHeader } from '@/app/components/MainHeader';
+import { ProductCard } from '@/app/components/ProductCard';
 import {
   fetchCategoriesTree,
   fetchPublicProductListings,
@@ -274,40 +275,14 @@ export function KesfetListing({ slug }: KesfetListingProps) {
               const imageUrl = getCoverImageUrl(item);
 
               return (
-                <Link
+                <ProductCard
                   key={item.id}
                   href={`/urun/${item.id}`}
-                  className='group overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm transition-all hover:shadow-md md:rounded-xl'
-                >
-                  <div className='aspect-square overflow-hidden bg-slate-50'>
-                    {imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={imageUrl}
-                        alt={item.name}
-                        className='h-full w-full object-cover transition-transform duration-500 group-hover:scale-105'
-                      />
-                    ) : (
-                      <div className='flex h-full items-center justify-center text-slate-400'>
-                        <span className='material-symbols-outlined text-4xl'>inventory_2</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className='p-3 md:p-4'>
-                    <p className='mb-1 text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant'>
-                      MSM: {item.minOrderQuantity ?? 1}
-                    </p>
-                    <h3 className='mb-2 min-h-[38px] line-clamp-2 text-xs font-bold text-on-surface md:mb-3 md:min-h-[40px] md:text-sm'>
-                      {item.name}
-                    </h3>
-                    <p className='mb-1 text-[10px] text-on-surface-variant'>Toptan Fiyat Aralığı</p>
-                    <div className='flex items-baseline gap-1'>
-                      <span className='text-sm font-bold text-primary md:text-lg'>{buildPriceRange(item)}</span>
-                      <span className='text-[10px] text-on-surface-variant'>/ Adet</span>
-                    </div>
-                  </div>
-                </Link>
+                  imageUrl={imageUrl}
+                  minOrderQuantity={item.minOrderQuantity}
+                  priceLabel={buildPriceRange(item)}
+                  title={item.name}
+                />
               );
             })}
           </div>

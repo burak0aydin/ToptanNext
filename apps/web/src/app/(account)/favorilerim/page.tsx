@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { ProductCard } from '@/app/components/ProductCard';
 import {
   FAVORITES_UPDATED_EVENT,
   listFavoriteProducts,
@@ -43,29 +44,13 @@ export default function FavorilerimPage() {
     <div className='grid grid-cols-1 gap-4 lg:grid-cols-2'>
       {favorites.map((item) => (
         <article key={item.id} className='overflow-hidden rounded-2xl border border-outline-variant/20 bg-white shadow-sm'>
-          <div className='flex gap-4 p-4'>
-            <div className='h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-outline-variant/20 bg-surface-container-low'>
-              {item.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img alt={item.name} className='h-full w-full object-cover' src={item.imageUrl} />
-              ) : (
-                <div className='flex h-full items-center justify-center text-slate-400'>
-                  <span className='material-symbols-outlined'>inventory_2</span>
-                </div>
-              )}
-            </div>
-
-            <div className='min-w-0 flex-1'>
-              <div className='mb-1 text-xs font-medium text-outline'>
-                {item.categoryName ?? 'Kategori'}
-              </div>
-              <h3 className='line-clamp-2 text-sm font-bold text-on-surface'>{item.name}</h3>
-              <p className='mt-2 text-lg font-bold text-primary'>{item.priceLabel}</p>
-              <p className='mt-1 text-xs text-on-surface-variant'>
-                MSM: {item.minOrderQuantity ?? 1} Adet
-              </p>
-            </div>
-          </div>
+          <ProductCard
+            href={`/urun/${item.id}`}
+            imageUrl={item.imageUrl}
+            minOrderQuantity={item.minOrderQuantity}
+            priceLabel={item.priceLabel}
+            title={item.name}
+          />
 
           <div className='flex items-center justify-between border-t border-outline-variant/20 bg-surface-container-lowest px-4 py-3'>
             <Link href={`/urun/${item.id}`} className='text-sm font-semibold text-primary hover:underline'>

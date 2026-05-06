@@ -1,15 +1,11 @@
 'use client';
 
-import { type MouseEvent, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { MainFooter } from '@/app/components/MainFooter';
 import { MainHeader } from '@/app/components/MainHeader';
-import {
-  FAVORITES_UPDATED_EVENT,
-  listFavoriteProducts,
-  toggleFavoriteProduct,
-} from '@/lib/favorites';
+import { ProductCard } from '@/app/components/ProductCard';
 import {
   fetchCategoriesTree,
   fetchPublicProductListings,
@@ -145,7 +141,6 @@ export function PublicListingView({ mode, slug }: PublicListingViewProps) {
   const [minPriceInput, setMinPriceInput] = useState('');
   const [maxPriceInput, setMaxPriceInput] = useState('');
   const [msmRange, setMsmRange] = useState<PublicProductListingMsmRange>('ANY');
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
   const categoriesQuery = useQuery({
     queryKey: ['public', 'categories'],
@@ -242,53 +237,6 @@ export function PublicListingView({ mode, slug }: PublicListingViewProps) {
   const totalPages = listQuery.data?.totalPages ?? 1;
   const pageItems = buildPaginationPages(page, totalPages);
   const filterPanelId = 'public-listing-filters-panel';
-  const syncFavorites = () => {
-    setFavoriteIds(new Set(listFavoriteProducts().map((item) => item.id)));
-  };
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    syncFavorites();
-    window.addEventListener(FAVORITES_UPDATED_EVENT, syncFavorites);
-    window.addEventListener('storage', syncFavorites);
-
-    return () => {
-      window.removeEventListener(FAVORITES_UPDATED_EVENT, syncFavorites);
-      window.removeEventListener('storage', syncFavorites);
-    };
-  }, []);
-
-  const handleFavoriteToggle = (
-    event: MouseEvent<HTMLButtonElement>,
-    item: ProductListingRecord,
-    imageUrl: string | null,
-  ) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    const nextIsFavorited = toggleFavoriteProduct({
-      id: item.id,
-      name: item.name,
-      imageUrl,
-      priceLabel: buildPriceRange(item),
-      minOrderQuantity: item.minOrderQuantity,
-      categoryName: item.categoryName ?? null,
-      categorySlug: null,
-    });
-
-    setFavoriteIds((current) => {
-      const next = new Set(current);
-      if (nextIsFavorited) {
-        next.add(item.id);
-      } else {
-        next.delete(item.id);
-      }
-      return next;
-    });
-  };
 
   return (
     <div className='bg-surface text-on-surface'>
@@ -381,66 +329,15 @@ export function PublicListingView({ mode, slug }: PublicListingViewProps) {
                 const imageUrl = getCoverImageUrl(item);
 
                 return (
-                  <Link
+                  <ProductCard
                     key={item.id}
                     href={`/urun/${item.id}`}
-                    className='group flex flex-col overflow-hidden rounded-lg bg-surface-container-lowest shadow-sm transition-all duration-300 hover:shadow-xl md:rounded-xl'
-                  >
-                    <div className='relative aspect-square overflow-hidden bg-surface-container'>
-                      <button
-                        aria-label={favoriteIds.has(item.id) ? 'Favorilerden çıkar' : 'Favorilere ekle'}
-                        className={[
-                          'absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md transition-colors md:right-3 md:top-3 md:h-12 md:w-12',
-                          favoriteIds.has(item.id)
-                            ? 'text-[#FF5A1F]'
-                            : 'text-[#111111] hover:text-[#FF5A1F]',
-                        ].join(' ')}
-                        onClick={(event) => handleFavoriteToggle(event, item, imageUrl)}
-                        type='button'
-                      >
-                        <span
-                          className='material-symbols-outlined text-[20px] md:text-[26px]'
-                          style={{
-                            fontVariationSettings: favoriteIds.has(item.id)
-                              ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
-                              : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24",
-                          }}
-                        >
-                          favorite
-                        </span>
-                      </button>
-
-                      {imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={imageUrl}
-                          alt={item.name}
-                          className='h-full w-full object-cover transition-transform duration-500 group-hover:scale-105'
-                        />
-                      ) : (
-                        <div className='flex h-full items-center justify-center text-slate-400'>
-                          <span className='material-symbols-outlined text-5xl'>inventory_2</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className='flex flex-1 flex-col p-3 md:p-5'>
-                      <h3 className='mb-1 line-clamp-2 text-xs font-semibold leading-tight text-on-surface transition-colors group-hover:text-primary md:mb-2 md:text-sm'>
-                        {item.name}
-                      </h3>
-
-                      <div className='mt-auto'>
-                        <div className='mb-1 flex items-baseline gap-1 md:mb-2'>
-                          <span className='whitespace-nowrap text-sm font-bold text-on-surface md:text-lg'>
-                            {buildPriceRange(item)}
-                          </span>
-                        </div>
-                        <span className='inline-flex rounded-xl bg-[#ECEFF3] px-2 py-1 text-[10px] font-semibold text-slate-700 md:px-3 md:py-2 md:text-[11px]'>
-                          MSM: {item.minOrderQuantity ?? 1} Adet
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
+                    imageUrl={imageUrl}
+                    minOrderQuantity={item.minOrderQuantity}
+                    priceLabel={buildPriceRange(item)}
+                    title={item.name}
+                    className='bg-surface-container-lowest'
+                  />
                 );
               })}
           </div>
