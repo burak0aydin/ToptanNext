@@ -46,6 +46,8 @@ export function MainHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileCategoryOpen, setMobileCategoryOpen] = useState(false);
   const [mobileSectorOpen, setMobileSectorOpen] = useState(false);
+  const [mobileSelectedCategoryId, setMobileSelectedCategoryId] = useState<string | null>(null);
+  const [mobileSelectedGroupId, setMobileSelectedGroupId] = useState<string | null>(null);
   const totalItems = useCartStore((state) => state.totalItems);
   const setTotalItems = useCartStore((state) => state.setTotalItems);
   const toast = useCartStore((state) => state.toast);
@@ -185,6 +187,12 @@ export function MainHeader() {
     `flex h-3 items-center justify-center truncate text-[9px] leading-none transition-colors ${
       isActive ? 'font-semibold text-slate-950' : 'font-medium text-slate-600'
     }`;
+  const formatLabel = (value?: string | null) => {
+    if (!value) return '';
+
+    const lower = value.toLocaleLowerCase('tr-TR');
+    return lower.charAt(0).toLocaleUpperCase('tr-TR') + lower.slice(1);
+  };
 
   return (
     <header
@@ -197,6 +205,15 @@ export function MainHeader() {
           isHomeActive ? 'flex' : 'hidden lg:flex'
         }`}
       >
+        <button
+          aria-label='Menü'
+          className='mr-3 flex items-center justify-center text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95 lg:hidden'
+          onClick={() => setMobileMenuOpen((prev) => !prev)}
+          type='button'
+        >
+          <span className='material-symbols-outlined text-[22px] leading-none'>menu</span>
+        </button>
+
         <Link className='text-2xl font-bold tracking-tighter text-[#003FB1]' href='/'>
           Toptan<span className='text-[#FF5A1F]'>Next</span>
         </Link>
@@ -211,15 +228,6 @@ export function MainHeader() {
         </div>
 
         <div className='flex items-center gap-5'>
-          <button
-            aria-label='Menü'
-            className='flex items-center justify-center text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95 lg:hidden'
-            onClick={() => setMobileMenuOpen((prev) => !prev)}
-            type='button'
-          >
-            <span className='material-symbols-outlined text-[22px] leading-none'>menu</span>
-          </button>
-
           <Link
             aria-label='Mesajlar'
             className='hidden items-center gap-1.5 text-slate-600 transition-colors duration-150 hover:text-[#1A56DB] active:scale-95 sm:flex'
@@ -259,11 +267,7 @@ export function MainHeader() {
         </div>
       </nav>
 
-      <div
-        className={`relative border-b border-slate-200/50 bg-slate-50 ${
-          mobileMenuOpen ? 'block' : 'hidden lg:block'
-        }`}
-      >
+      <div className='relative hidden border-b border-slate-200/50 bg-slate-50 lg:block'>
         <div
           className='mx-auto flex min-h-10 max-w-[1920px] items-center justify-between px-6'
           onMouseLeave={() => setDesktopMenu(null)}
@@ -338,9 +342,7 @@ export function MainHeader() {
           >
             <div className='mx-auto max-w-[1920px] px-6 py-6'>
               {isSectorsLoading ? <p className='text-sm text-slate-500'>Sektörler yükleniyor...</p> : null}
-              {isSectorsError ? (
-                <p className='text-sm text-red-600'>Sektörler yüklenirken hata oluştu.</p>
-              ) : null}
+              {isSectorsError ? <p className='text-sm text-red-600'>Sektörler yüklenirken hata oluştu.</p> : null}
               <div className='grid grid-cols-4 gap-3'>
                 {sectorItems.map((sector) => (
                   <Link
@@ -360,130 +362,147 @@ export function MainHeader() {
             </div>
           </div>
         ) : null}
+      </div>
 
-        {mobileMenuOpen ? (
-          <div className='border-t border-slate-200 bg-white lg:hidden'>
-            <div className='space-y-2 px-4 py-3'>
+      {mobileMenuOpen ? (
+        <>
+          <button
+            aria-label='Menüyü kapat'
+            className='fixed inset-0 z-[80] bg-black/20 lg:hidden'
+            onClick={() => {
+              setMobileMenuOpen(false);
+              setMobileSelectedCategoryId(null);
+              setMobileSelectedGroupId(null);
+            }}
+            type='button'
+          />
+
+          <div className='fixed inset-y-0 left-0 z-[90] flex h-full w-[60vw] max-w-[60vw] flex-col border-r border-slate-200 bg-white shadow-2xl lg:hidden'>
+            <div className='flex items-center gap-3 border-b px-4 py-3'>
               <button
-                className='flex w-full items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800'
-                onClick={() => setMobileCategoryOpen((prev) => !prev)}
+                aria-label='Geri'
+                className='flex h-9 w-9 items-center justify-center rounded-full text-slate-700'
+                onClick={() => {
+                  if (mobileSelectedGroupId) {
+                    setMobileSelectedGroupId(null);
+                    return;
+                  }
+
+                  if (mobileSelectedCategoryId) {
+                    setMobileSelectedCategoryId(null);
+                    return;
+                  }
+
+                  setMobileMenuOpen(false);
+                }}
                 type='button'
               >
-                Kategoriler
-                <span className='material-symbols-outlined text-base'>
-                  {mobileCategoryOpen ? 'expand_less' : 'expand_more'}
-                </span>
+                <span className='material-symbols-outlined text-[20px]'>arrow_back</span>
               </button>
+              <h2 className='text-base font-semibold'>
+                {mobileSelectedCategoryId
+                  ? formatLabel(categoryMenuData.find((c) => c.id === mobileSelectedCategoryId)?.name)
+                  : 'Kategoriler'}
+              </h2>
+            </div>
 
-              {mobileCategoryOpen ? (
-                <div className='space-y-2 rounded-lg border border-slate-100 p-3'>
-                  {categoryRoots.map((root) => (
-                    <div key={root.id} className='space-y-1'>
-                      <Link
-                        href={root.href}
-                        className='text-sm font-semibold text-[#003FB1] hover:underline'
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        {root.name}
-                      </Link>
-                      <div className='flex flex-wrap gap-1.5'>
-                        {root.groups.slice(0, 4).map((item) => (
-                          <Link
-                            key={item.id}
-                            href={item.href}
-                            className='rounded-md bg-slate-50 px-2 py-1 text-xs text-slate-600 hover:bg-[#EEF4FF] hover:text-primary'
-                            onClick={() => setMobileMenuOpen(false)}
-                          >
-                            {item.title}
-                          </Link>
-                        ))}
+            <div className='flex-1 overflow-y-auto'>
+              {!mobileSelectedCategoryId ? (
+                <ul>
+                  {categoryMenuData.map((root) => (
+                    <li key={root.id}>
+                      <div className='flex items-center justify-between border-b px-4 py-3'>
+                        <Link
+                          href={root.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className='text-sm font-medium text-slate-800'
+                        >
+                          {formatLabel(root.name)}
+                        </Link>
+
+                        <button
+                          className='flex h-7 w-7 items-center justify-center rounded-md bg-slate-50'
+                          onClick={() => {
+                            setMobileSelectedCategoryId(root.id);
+                            setMobileSelectedGroupId(null);
+                          }}
+                          type='button'
+                          aria-label={`Alt kategoriler - ${root.name}`}
+                        >
+                          <span className='material-symbols-outlined text-[18px]'>chevron_right</span>
+                        </button>
                       </div>
-                    </div>
+                    </li>
                   ))}
-                </div>
-              ) : null}
+                </ul>
+              ) : !mobileSelectedGroupId ? (
+                // Show groups styled like the main category list (black text, same layout)
+                <ul>
+                  {categoryMenuData.find((c) => c.id === mobileSelectedCategoryId)?.groups.map((group) => (
+                    <li key={group.id}>
+                      <div className='flex items-center justify-between border-b px-4 py-3'>
+                        <Link
+                          href={group.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className='text-sm font-medium text-slate-800'
+                        >
+                          {formatLabel(group.title)}
+                        </Link>
 
-              <button
-                className='flex w-full items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800'
-                onClick={() => setMobileSectorOpen((prev) => !prev)}
-                type='button'
-              >
-                Sektörler
-                <span className='material-symbols-outlined text-base'>
-                  {mobileSectorOpen ? 'expand_less' : 'expand_more'}
-                </span>
-              </button>
-
-              {mobileSectorOpen ? (
-                <div className='grid grid-cols-2 gap-2 rounded-lg border border-slate-100 p-3'>
-                  {sectorItems.map((sector) => (
-                    <Link
-                      key={sector.id}
-                      href={`/sektorler/${sector.slug}`}
-                      className='rounded-md bg-slate-50 px-2 py-1.5 text-xs font-medium text-slate-700'
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      {sector.name}
-                    </Link>
+                        {group.items && group.items.length > 0 ? (
+                          <button
+                            className='flex h-7 w-7 items-center justify-center rounded-md bg-slate-50'
+                            onClick={() => setMobileSelectedGroupId(group.id)}
+                            type='button'
+                            aria-label={`Alt kategori öğeleri - ${group.title}`}
+                          >
+                            <span className='material-symbols-outlined text-[18px]'>chevron_right</span>
+                          </button>
+                        ) : null}
+                      </div>
+                    </li>
                   ))}
-                </div>
-              ) : null}
-
-              <div className='rounded-lg border border-slate-100 bg-white p-3'>
-                <p className='mb-3 text-sm font-semibold text-slate-800'>ToptanNext&apos;te Tedarikçi Ol</p>
-                <div className='space-y-2'>
-                  <Link
-                    className='block rounded-md bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 transition-colors hover:bg-[#EEF4FF] hover:text-primary'
-                    href={supplierDiscoveryHref}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Üretici & Toptancılar
-                  </Link>
-                  <Link
-                    className='block rounded-md bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 transition-colors hover:bg-[#EEF4FF] hover:text-primary'
-                    href={logisticsApplyHref}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Lojistik Partnerler
-                  </Link>
-                </div>
-              </div>
-              <Link
-                className='block rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 transition-colors hover:bg-[#EEF4FF] hover:text-primary'
-                href='/lojistik'
-              >
-                Lojistik Partnerler
-              </Link>
+                </ul>
+              ) : (
+                // Show individual items of the selected group, same styling as main category list
+                <ul>
+                  {categoryMenuData
+                    .find((c) => c.id === mobileSelectedCategoryId)
+                    ?.groups.find((g) => g.id === mobileSelectedGroupId)
+                    ?.items.map((item) => (
+                      <li key={item.id}>
+                        <Link
+                          href={item.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className='block border-b px-4 py-3 text-sm font-medium text-slate-800'
+                        >
+                          {formatLabel(item.name)}
+                        </Link>
+                      </li>
+                    ))}
+                </ul>
+              )}
             </div>
           </div>
-        ) : null}
-      </div>
+        </>
+      ) : null}
 
       <nav
         aria-label='Mobil alt navigasyon'
         className='fixed inset-x-0 bottom-0 z-[70] border-t border-slate-200 bg-white/85 px-2 pb-[calc(env(safe-area-inset-bottom)+0.15rem)] pt-1 shadow-[0_-8px_22px_rgba(15,23,42,0.10)] backdrop-blur lg:hidden'
       >
         <div className='mx-auto grid max-w-md grid-cols-5 items-center gap-1'>
-          <Link
-            className={mobileNavItemClass(isHomeActive)}
-            href='/'
-          >
+          <Link className={mobileNavItemClass(isHomeActive)} href='/'>
             <span className={mobileNavIconClass(isHomeActive)}>home</span>
             <span className={mobileNavLabelClass(isHomeActive)}>Anasayfa</span>
           </Link>
 
-          <Link
-            className={mobileNavItemClass(isCategoriesActive)}
-            href='/kategoriler'
-          >
+          <Link className={mobileNavItemClass(isCategoriesActive)} href='/kategoriler'>
             <span className={mobileNavIconClass(isCategoriesActive)}>category</span>
             <span className={mobileNavLabelClass(isCategoriesActive)}>Kategoriler</span>
           </Link>
 
-          <Link
-            className={mobileNavItemClass(isMessagesActive)}
-            href={messagesHref}
-          >
+          <Link className={mobileNavItemClass(isMessagesActive)} href={messagesHref}>
             <span className='relative inline-flex'>
               <span className={mobileNavIconClass(isMessagesActive)}>forum</span>
               {totalUnreadMessages > 0 ? (
@@ -495,10 +514,7 @@ export function MainHeader() {
             <span className={mobileNavLabelClass(isMessagesActive)}>Mesajlarım</span>
           </Link>
 
-          <Link
-            className={`${mobileNavItemClass(isCartActive)} relative`}
-            href='/sepet'
-          >
+          <Link className={`${mobileNavItemClass(isCartActive)} relative`} href='/sepet'>
             <span className='relative inline-flex'>
               <span className={mobileNavIconClass(isCartActive)}>shopping_cart</span>
               {totalItems > 0 ? (
@@ -510,10 +526,7 @@ export function MainHeader() {
             <span className={mobileNavLabelClass(isCartActive)}>Sepetim</span>
           </Link>
 
-          <Link
-            className={mobileNavItemClass(isProfileActive)}
-            href={profileHref}
-          >
+          <Link className={mobileNavItemClass(isProfileActive)} href={profileHref}>
             <span className={mobileNavIconClass(isProfileActive)}>account_circle</span>
             <span className={mobileNavLabelClass(isProfileActive)}>Hesabım</span>
           </Link>
