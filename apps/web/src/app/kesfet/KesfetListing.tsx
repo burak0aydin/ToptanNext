@@ -175,9 +175,7 @@ export function KesfetListing({ slug }: KesfetListingProps) {
                 </span>
               );
             })
-          ) : (
-            <span className='text-on-surface'>{title}</span>
-          )}
+          ) : null}
           </nav>
 
           <div className='mb-5 flex w-full items-center gap-2 sm:gap-4'>

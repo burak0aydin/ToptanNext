@@ -156,6 +156,7 @@ export function MainHeader() {
     0,
   );
   const isHomeActive = pathname === '/';
+  const showTopNav = isHomeActive || pathname.startsWith('/kesfet');
   const isCategoriesActive =
     pathname.startsWith('/kategori') ||
     pathname.startsWith('/kategoriler') ||
@@ -196,16 +197,17 @@ export function MainHeader() {
     const lower = value.toLocaleLowerCase('tr-TR');
     return lower.charAt(0).toLocaleUpperCase('tr-TR') + lower.slice(1);
   };
+  const mobileBottomNavOffset = 'calc(3.5rem + env(safe-area-inset-bottom))';
 
   return (
     <header
       className={`z-50 bg-white lg:sticky lg:top-0 lg:border-b lg:border-slate-100 lg:shadow-sm ${
-        isHomeActive ? 'sticky top-0 border-b border-slate-100 shadow-sm' : ''
+        showTopNav ? 'sticky top-0 border-b border-slate-100 shadow-sm' : ''
       }`}
     >
       <nav
         className={`relative mx-auto w-full max-w-[1920px] items-center justify-between px-6 py-3 ${
-          isHomeActive ? 'flex' : 'hidden lg:flex'
+          showTopNav ? 'flex' : 'hidden lg:flex'
         }`}
       >
         <button
@@ -380,7 +382,10 @@ export function MainHeader() {
             type='button'
           />
 
-          <div className='fixed inset-y-0 left-0 z-[90] flex h-full w-[60vw] max-w-[60vw] flex-col border-r border-slate-200 bg-white shadow-2xl lg:hidden'>
+          <div
+            className='fixed left-0 top-0 z-[90] flex h-auto w-[60vw] max-w-[60vw] flex-col border-r border-slate-200 bg-white shadow-2xl lg:hidden'
+            style={{ bottom: mobileBottomNavOffset }}
+          >
             <div className='flex items-center gap-3 border-b px-4 py-3'>
               <button
                 aria-label='Geri'
