@@ -1,6 +1,17 @@
 import { z } from "zod";
 
 const adminLoginAlias = "admin01@hotmail.com";
+const passwordAllowedCharactersRegex = /^[A-Za-z0-9!@#$%^&*()_\-+=[\]{};':"\\|,.<>/?`~]+$/;
+
+function hasAtLeastTwoPasswordCharacterGroups(value: string): boolean {
+  const groups = [
+    /[A-Za-z]/.test(value),
+    /\d/.test(value),
+    /[!@#$%^&*()_\-+=[\]{};':"\\|,.<>/?`~]/.test(value),
+  ];
+
+  return groups.filter(Boolean).length >= 2;
+}
 
 const loginIdentifierSchema = z
   .string()
@@ -20,16 +31,22 @@ export const loginDtoSchema = z.object({
   password: z
     .string()
     .min(1, "Şifre zorunludur.")
-    .min(8, "Şifre en az 8 karakter olmalıdır.")
+    .min(6, "Şifre en az 6 karakter olmalıdır.")
     .max(72, "Şifre en fazla 72 karakter olabilir."),
 });
 
 export const registerDtoSchema = z.object({
-  fullName: z
+  firstName: z
     .string()
-    .min(1, "Ad soyad zorunludur.")
-    .min(2, "Ad soyad en az 2 karakter olmalıdır.")
-    .max(120, "Ad soyad en fazla 120 karakter olabilir.")
+    .min(1, "Ad zorunludur.")
+    .min(2, "Ad en az 2 karakter olmalıdır.")
+    .max(60, "Ad en fazla 60 karakter olabilir.")
+    .trim(),
+  lastName: z
+    .string()
+    .min(1, "Soyad zorunludur.")
+    .min(2, "Soyad en az 2 karakter olmalıdır.")
+    .max(60, "Soyad en fazla 60 karakter olabilir.")
     .trim(),
   email: z
     .string()
@@ -39,8 +56,13 @@ export const registerDtoSchema = z.object({
   password: z
     .string()
     .min(1, "Şifre zorunludur.")
-    .min(8, "Şifre en az 8 karakter olmalıdır.")
-    .max(72, "Şifre en fazla 72 karakter olabilir."),
+    .min(6, "Şifreniz 6 ile 20 karakter arasında olmalıdır.")
+    .max(20, "Şifreniz 6 ile 20 karakter arasında olmalıdır.")
+    .regex(passwordAllowedCharactersRegex, "Şifrenizde emoji ve benzeri semboller olmamalıdır.")
+    .refine(
+      hasAtLeastTwoPasswordCharacterGroups,
+      "Şifreniz harf, rakam ve özel karakterlerden en az ikisini içermelidir",
+    ),
   termsAccepted: z.boolean().refine((value) => value, {
     message: "Kullanım koşullarını kabul etmelisiniz.",
   }),

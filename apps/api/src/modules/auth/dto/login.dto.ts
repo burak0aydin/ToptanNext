@@ -14,7 +14,7 @@ export class LoginDto {
   email: string;
 
   @IsString({ message: 'Şifre zorunludur.' })
-  @MinLength(8, { message: 'Şifre en az 8 karakter olmalıdır.' })
+  @MinLength(6, { message: 'Şifre en az 6 karakter olmalıdır.' })
   @MaxLength(72, { message: 'Şifre en fazla 72 karakter olabilir.' })
   password: string;
 }

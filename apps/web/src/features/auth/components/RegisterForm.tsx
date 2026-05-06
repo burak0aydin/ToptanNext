@@ -19,7 +19,8 @@ export function RegisterForm() {
   } = useForm<RegisterDto>({
     resolver: zodResolver(registerDtoSchema),
     defaultValues: {
-      fullName: '',
+      firstName: '',
+      lastName: '',
       email: '',
       password: '',
       termsAccepted: false,
@@ -50,7 +51,7 @@ export function RegisterForm() {
       <form className='space-y-5' onSubmit={handleSubmit(onSubmit)}>
         <div className='space-y-1.5'>
           <label className='text-xs font-semibold uppercase tracking-wider text-on-surface-variant ml-1'>
-            Ad Soyad
+            Ad
           </label>
           <div className='relative'>
             <span className='material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-xl' data-icon='person'>
@@ -58,13 +59,32 @@ export function RegisterForm() {
             </span>
             <input
               className='w-full pl-10 pr-4 py-3 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline/60 text-sm'
-              placeholder='Mehmet Yılmaz'
+              placeholder=''
               type='text'
-              autoComplete='name'
-              {...register('fullName')}
+              autoComplete='given-name'
+              {...register('firstName')}
             />
           </div>
-          {errors.fullName ? <p className='mt-1 text-xs text-red-600'>{errors.fullName.message}</p> : null}
+          {errors.firstName ? <p className='mt-1 text-xs text-red-600'>{errors.firstName.message}</p> : null}
+        </div>
+
+        <div className='space-y-1.5'>
+          <label className='text-xs font-semibold uppercase tracking-wider text-on-surface-variant ml-1'>
+            Soyad
+          </label>
+          <div className='relative'>
+            <span className='material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-xl' data-icon='person'>
+              person
+            </span>
+            <input
+              className='w-full pl-10 pr-4 py-3 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline/60 text-sm'
+              placeholder=''
+              type='text'
+              autoComplete='family-name'
+              {...register('lastName')}
+            />
+          </div>
+          {errors.lastName ? <p className='mt-1 text-xs text-red-600'>{errors.lastName.message}</p> : null}
         </div>
 
         <div className='space-y-1.5'>
@@ -76,7 +96,7 @@ export function RegisterForm() {
               business
             </span>
             <input
-              placeholder='m.yilmaz@sirket.com'
+              placeholder=''
               type='email'
               autoComplete='email'
               className='w-full pl-10 pr-4 py-3 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline/60 text-sm'
@@ -95,7 +115,7 @@ export function RegisterForm() {
               lock
             </span>
             <input
-              placeholder='••••••••'
+              placeholder=''
               type='password'
               autoComplete='new-password'
               className='w-full pl-10 pr-4 py-3 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline/60 text-sm'

@@ -92,6 +92,8 @@ export class UsersService {
   async createUser(input: CreateUsersServiceInput): Promise<UserEntity> {
     return this.usersRepository.create({
       fullName: input.fullName,
+      firstName: input.firstName,
+      lastName: input.lastName,
       email: input.email.toLowerCase(),
       passwordHash: input.passwordHash,
       role: input.role,

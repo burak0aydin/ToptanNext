@@ -62,7 +62,8 @@ describe('AuthService', () => {
     jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed-password' as never);
 
     const result = await service.register({
-      fullName: 'Test User',
+      firstName: 'Test',
+      lastName: 'User',
       email: 'buyer@example.com',
       password: 'Password123',
       termsAccepted: true,
@@ -71,6 +72,8 @@ describe('AuthService', () => {
     expect(usersServiceMock.findByEmailWithPassword).toHaveBeenCalledWith('buyer@example.com');
     expect(usersServiceMock.createUser).toHaveBeenCalledWith({
       fullName: 'Test User',
+      firstName: 'Test',
+      lastName: 'User',
       email: 'buyer@example.com',
       passwordHash: 'hashed-password',
     });
@@ -84,7 +87,8 @@ describe('AuthService', () => {
 
     await expect(
       service.register({
-        fullName: 'Test User',
+        firstName: 'Test',
+        lastName: 'User',
         email: 'buyer@example.com',
         password: 'Password123',
         termsAccepted: true,

@@ -5,6 +5,8 @@ import { UserEntity } from './entities/user.entity';
 
 export type CreateUserInput = {
   fullName?: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   passwordHash: string;
   role?: Role;
@@ -144,6 +146,8 @@ export class UsersRepository {
     const user = await this.prisma.user.create({
       data: {
         fullName: input.fullName,
+        firstName: input.firstName,
+        lastName: input.lastName,
         email: input.email,
         passwordHash: input.passwordHash,
         role: input.role ?? Role.BUYER,

@@ -52,7 +52,8 @@ describe('AuthController', () => {
 
     const result = await controller.register(
       {
-        fullName: 'Test User',
+        firstName: 'Test',
+        lastName: 'User',
         email: 'buyer@example.com',
         password: 'Password123',
         termsAccepted: true,

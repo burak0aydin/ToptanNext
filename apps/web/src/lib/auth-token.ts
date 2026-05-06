@@ -33,22 +33,36 @@ export function getAccessToken(): string | null {
     return localStorageToken;
   }
 
+  const sessionStorageToken = window.sessionStorage.getItem(ACCESS_TOKEN_KEY);
+  if (sessionStorageToken) {
+    return sessionStorageToken;
+  }
+
   return readCookie(ACCESS_TOKEN_KEY);
 }
 
-export function setAccessToken(token: string): void {
+export function setAccessToken(token: string, remember = true): void {
   if (typeof window !== 'undefined') {
-    window.localStorage.setItem(ACCESS_TOKEN_KEY, token);
+    window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+    window.sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+
+    if (remember) {
+      window.localStorage.setItem(ACCESS_TOKEN_KEY, token);
+    } else {
+      window.sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
+    }
   }
 
   if (typeof document !== 'undefined') {
-    document.cookie = `${ACCESS_TOKEN_KEY}=${encodeURIComponent(token)}; path=/; max-age=604800; samesite=lax`;
+    const maxAge = remember ? '; max-age=604800' : '';
+    document.cookie = `${ACCESS_TOKEN_KEY}=${encodeURIComponent(token)}; path=/${maxAge}; samesite=lax`;
   }
 }
 
 export function clearAccessToken(): void {
   if (typeof window !== 'undefined') {
     window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+    window.sessionStorage.removeItem(ACCESS_TOKEN_KEY);
   }
 
   if (typeof document !== 'undefined') {

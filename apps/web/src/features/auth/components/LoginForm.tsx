@@ -52,7 +52,7 @@ export function LoginForm() {
           <span className='mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500'>
             E-posta Adresi
           </span>
-          <Input placeholder='ornek@sirket.com' type='email' autoComplete='email' {...register('email')} />
+          <Input placeholder='' type='email' autoComplete='email' {...register('email')} />
           {errors.email ? <p className='mt-1 text-xs text-red-600'>{errors.email.message}</p> : null}
         </label>
 
@@ -64,7 +64,7 @@ export function LoginForm() {
             </Link>
           </span>
           <Input
-            placeholder='••••••••'
+            placeholder=''
             type='password'
             autoComplete='current-password'
             {...register('password')}
