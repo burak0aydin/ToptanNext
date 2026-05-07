@@ -339,6 +339,17 @@ function findFirstFormErrorMessage(value: unknown): string | null {
   return null;
 }
 
+function filterActiveSectorIds(
+  sectorIds: string[],
+  activeSectors: SectorRecord[],
+): string[] {
+  const activeSectorIds = new Set(activeSectors.map((sector) => sector.id));
+
+  return sectorIds.filter((sectorId) => (
+    sectorId === OTHER_OPTION_VALUE || activeSectorIds.has(sectorId)
+  ));
+}
+
 function parsePendingVariantImageReference(value: string | null): string | null {
   if (!value || !value.startsWith(PENDING_VARIANT_IMAGE_PREFIX)) {
     return null;
@@ -485,7 +496,10 @@ export default function SellerProductUploadPage() {
           return;
         }
 
-        const draftSectorIds = latestEditableDraft.sectors.map((sector) => sector.sectorId);
+        const draftSectorIds = filterActiveSectorIds(
+          latestEditableDraft.sectors.map((sector) => sector.sectorId),
+          sectorsResult.value,
+        );
         const normalizedMinOrderQuantity = Math.max(latestEditableDraft.minOrderQuantity ?? 1, 1);
         const normalizedBasePrice = Math.max(Number(latestEditableDraft.basePrice ?? '0.01'), 0.01);
 
@@ -1471,6 +1485,7 @@ export default function SellerProductUploadPage() {
 
       const stepOnePayload: ProductListingStepOneDto = {
         ...values,
+        sectorIds: filterActiveSectorIds(values.sectorIds ?? [], sectors),
         variantGroups: normalizedVariantGroups,
       };
 

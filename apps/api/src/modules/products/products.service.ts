@@ -1229,17 +1229,13 @@ export class ProductsService {
       const sectors = await this.productsRepository.findManySectorsByIds(
         validatedSectorIds,
       );
-      const activeSectorIds = new Set(
-        sectors.filter((sector) => sector.isActive).map((sector) => sector.id),
+      validatedSectorIds.splice(
+        0,
+        validatedSectorIds.length,
+        ...sectors
+          .filter((sector) => sector.isActive)
+          .map((sector) => sector.id),
       );
-
-      for (const sectorId of validatedSectorIds) {
-        if (!activeSectorIds.has(sectorId)) {
-          throw new UnprocessableEntityException(
-            'Seçilen sektörlerden biri geçersiz veya pasif durumda.',
-          );
-        }
-      }
     }
 
     if (hasOtherSector) {
