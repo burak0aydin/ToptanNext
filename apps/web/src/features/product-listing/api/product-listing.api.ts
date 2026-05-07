@@ -32,7 +32,7 @@ export type ProductListingSectorRecord = {
 
 export type ProductListingPricingTierRecord = {
   minQuantity: number;
-  maxQuantity: number;
+  maxQuantity: number | null;
   unitPrice: number;
 };
 

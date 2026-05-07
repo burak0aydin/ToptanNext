@@ -81,7 +81,7 @@ const periodOptions: Array<{ value: AdminProductListingGrowthPeriod; label: stri
 
 type EditablePricingTier = {
 	minQuantity: string;
-	maxQuantity: string;
+	maxQuantity: string | null;
 	unitPrice: string;
 };
 
@@ -167,10 +167,10 @@ function createInitialForm(listing: ProductListingRecord): ListingEditForm {
 			listing.pricingTiers.length > 0
 				? listing.pricingTiers.map((tier) => ({
 						minQuantity: String(tier.minQuantity),
-						maxQuantity: String(tier.maxQuantity),
+						maxQuantity: tier.maxQuantity === null ? null : String(tier.maxQuantity),
 						unitPrice: String(tier.unitPrice),
 					}))
-				: [{ minQuantity: "1", maxQuantity: "1", unitPrice: "1" }],
+				: [{ minQuantity: "1", maxQuantity: null, unitPrice: "1" }],
 		packageType: listing.packageType ?? "BOX",
 		leadTimeDays: listing.leadTimeDays !== null ? String(listing.leadTimeDays) : "0",
 		shippingTime: listing.shippingTime ?? "ONE_TO_THREE_DAYS",
@@ -366,10 +366,12 @@ export default function AdminProductManagementPage() {
 						tier.minQuantity,
 						`${index + 1}. kademe minimum adedi`,
 					),
-					maxQuantity: parsePositiveInteger(
-						tier.maxQuantity,
-						`${index + 1}. kademe maksimum adedi`,
-					),
+					maxQuantity: index === form.pricingTiers.length - 1
+						? null
+						: parsePositiveInteger(
+							tier.maxQuantity ?? "",
+							`${index + 1}. kademe maksimum adedi`,
+						),
 					unitPrice: parsePositiveNumber(
 						tier.unitPrice,
 						`${index + 1}. kademe birim fiyatı`,
@@ -517,7 +519,14 @@ export default function AdminProductManagementPage() {
 
 			return {
 				...current,
-				pricingTiers: [...current.pricingTiers, { minQuantity: "1", maxQuantity: "1", unitPrice: "1" }],
+				pricingTiers: [
+					...current.pricingTiers.map((tier, index) => (
+						index === current.pricingTiers.length - 1 && tier.maxQuantity === null
+							? { ...tier, maxQuantity: tier.minQuantity }
+							: tier
+					)),
+					{ minQuantity: "1", maxQuantity: null, unitPrice: "1" },
+				],
 			};
 		});
 	}
@@ -530,7 +539,12 @@ export default function AdminProductManagementPage() {
 
 			return {
 				...current,
-				pricingTiers: current.pricingTiers.filter((_, itemIndex) => itemIndex !== index),
+				pricingTiers: current.pricingTiers
+					.filter((_, itemIndex) => itemIndex !== index)
+					.map((tier, tierIndex, tiers) => ({
+						...tier,
+						maxQuantity: tierIndex === tiers.length - 1 ? null : tier.maxQuantity,
+					})),
 			};
 		});
 	}
@@ -1149,16 +1163,22 @@ export default function AdminProductManagementPage() {
 														}
 														className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
 													/>
-													<input
-														type="number"
-														min={1}
-														placeholder="Max"
-														value={tier.maxQuantity}
-														onChange={(event) =>
-															updatePricingTier(index, "maxQuantity", event.target.value)
-														}
-														className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-													/>
+													{index === editForm.pricingTiers.length - 1 ? (
+														<div className="rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm font-semibold text-slate-500">
+															&gt;= {tier.minQuantity}
+														</div>
+													) : (
+														<input
+															type="number"
+															min={1}
+															placeholder="Max"
+															value={tier.maxQuantity ?? ""}
+															onChange={(event) =>
+																updatePricingTier(index, "maxQuantity", event.target.value)
+															}
+															className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+														/>
+													)}
 													<input
 														type="number"
 														min={0.01}

@@ -145,7 +145,7 @@ export type ProductListingSectorRecord = {
 
 export type ProductListingPricingTierRecord = {
   minQuantity: number;
-  maxQuantity: number;
+  maxQuantity: number | null;
   unitPrice: number;
 };
 
@@ -1264,14 +1264,20 @@ export class ProductsRepository {
 
         const typedItem = item as Record<string, unknown>;
         const minQuantity = Number(typedItem.minQuantity);
-        const maxQuantity = Number(typedItem.maxQuantity);
+        const maxQuantity = typedItem.maxQuantity === null || typedItem.maxQuantity === undefined
+          ? null
+          : Number(typedItem.maxQuantity);
         const unitPrice = Number(typedItem.unitPrice);
 
-        if (!Number.isFinite(minQuantity) || !Number.isFinite(maxQuantity) || !Number.isFinite(unitPrice)) {
+        if (
+          !Number.isFinite(minQuantity)
+          || (maxQuantity !== null && !Number.isFinite(maxQuantity))
+          || !Number.isFinite(unitPrice)
+        ) {
           return null;
         }
 
-        if (!Number.isInteger(minQuantity) || !Number.isInteger(maxQuantity)) {
+        if (!Number.isInteger(minQuantity) || (maxQuantity !== null && !Number.isInteger(maxQuantity))) {
           return null;
         }
 

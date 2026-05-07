@@ -272,7 +272,8 @@ export class ProductsService {
     }
 
     const minOrderTier = pricingTiers.find((tier) => (
-      dto.minOrderQuantity >= tier.minQuantity && dto.minOrderQuantity <= tier.maxQuantity
+      dto.minOrderQuantity >= tier.minQuantity
+      && (tier.maxQuantity === null || dto.minOrderQuantity <= tier.maxQuantity)
     ));
 
     if (!minOrderTier) {
@@ -639,7 +640,8 @@ export class ProductsService {
     }
 
     const minOrderTier = pricingTiers.find((tier) => (
-      dto.minOrderQuantity >= tier.minQuantity && dto.minOrderQuantity <= tier.maxQuantity
+      dto.minOrderQuantity >= tier.minQuantity
+      && (tier.maxQuantity === null || dto.minOrderQuantity <= tier.maxQuantity)
     ));
 
     if (!minOrderTier) {
@@ -977,11 +979,13 @@ export class ProductsService {
   }
 
   private normalizePricingTiers(
-    tiers: Array<{ minQuantity: number; maxQuantity: number; unitPrice: number }>,
+    tiers: Array<{ minQuantity: number; maxQuantity: number | null; unitPrice: number }>,
   ): ProductListingPricingTierRecord[] {
     const normalized = tiers.map((tier, index) => ({
       minQuantity: Number(tier.minQuantity),
-      maxQuantity: Number(tier.maxQuantity),
+      maxQuantity: tier.maxQuantity === null || tier.maxQuantity === undefined
+        ? null
+        : Number(tier.maxQuantity),
       unitPrice: Number(tier.unitPrice),
       index,
     }));
@@ -991,11 +995,11 @@ export class ProductsService {
         throw new BadRequestException(`Kademe ${tier.index + 1} minimum adedi geçersiz.`);
       }
 
-      if (!Number.isFinite(tier.maxQuantity) || !Number.isInteger(tier.maxQuantity) || tier.maxQuantity < 1) {
+      if (tier.maxQuantity !== null && (!Number.isFinite(tier.maxQuantity) || !Number.isInteger(tier.maxQuantity) || tier.maxQuantity < 1)) {
         throw new BadRequestException(`Kademe ${tier.index + 1} maksimum adedi geçersiz.`);
       }
 
-      if (tier.maxQuantity < tier.minQuantity) {
+      if (tier.maxQuantity !== null && tier.maxQuantity < tier.minQuantity) {
         throw new BadRequestException(`Kademe ${tier.index + 1} için maksimum adet minimum adetten küçük olamaz.`);
       }
 
@@ -1009,10 +1013,20 @@ export class ProductsService {
       const previous = sorted[index - 1];
       const current = sorted[index];
 
+      if (previous.maxQuantity === null) {
+        throw new BadRequestException('Sadece son fiyat kademesi üst sınırı açık bırakılabilir.');
+      }
+
       if (current.minQuantity <= previous.maxQuantity) {
         throw new BadRequestException('Kademe aralıkları çakışamaz.');
       }
     }
+
+    sorted.forEach((tier, index) => {
+      if (index < sorted.length - 1 && tier.maxQuantity === null) {
+        throw new BadRequestException('Sadece son fiyat kademesi üst sınırı açık bırakılabilir.');
+      }
+    });
 
     return sorted.map(({ minQuantity, maxQuantity, unitPrice }) => ({
       minQuantity,

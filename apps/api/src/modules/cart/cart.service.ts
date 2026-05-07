@@ -92,7 +92,7 @@ type CartSummary = {
 
 type PricingTierRecord = {
   minQuantity: number;
-  maxQuantity: number;
+  maxQuantity: number | null;
   unitPrice: number;
 };
 
@@ -382,7 +382,7 @@ export class CartService {
     }
 
     const matchedTier = parsedPricingTiers.find((tier) => (
-      quantity >= tier.minQuantity && quantity <= tier.maxQuantity
+      quantity >= tier.minQuantity && (tier.maxQuantity === null || quantity <= tier.maxQuantity)
     ));
 
     if (matchedTier) {
@@ -390,7 +390,7 @@ export class CartService {
     }
 
     const lastTier = parsedPricingTiers[parsedPricingTiers.length - 1];
-    if (quantity > lastTier.maxQuantity) {
+    if (lastTier.maxQuantity === null || quantity > lastTier.maxQuantity) {
       return new Prisma.Decimal(lastTier.unitPrice);
     }
 
@@ -410,12 +410,14 @@ export class CartService {
 
         const typedItem = item as Record<string, unknown>;
         const minQuantity = Number(typedItem.minQuantity);
-        const maxQuantity = Number(typedItem.maxQuantity);
+        const maxQuantity = typedItem.maxQuantity === null || typedItem.maxQuantity === undefined
+          ? null
+          : Number(typedItem.maxQuantity);
         const unitPrice = Number(typedItem.unitPrice);
 
         if (
           !Number.isFinite(minQuantity)
-          || !Number.isFinite(maxQuantity)
+          || (maxQuantity !== null && !Number.isFinite(maxQuantity))
           || !Number.isFinite(unitPrice)
         ) {
           return null;

@@ -144,7 +144,7 @@ export function QuoteOfferModal({
                 <div className='mt-1 grid gap-1 text-[11px] text-slate-600'>
                   {product.pricingTiers.slice(0, 3).map((tier) => (
                     <div key={`${tier.minQuantity}-${tier.maxQuantity}`} className='flex justify-between gap-2'>
-                      <span>{tier.minQuantity}-{tier.maxQuantity} adet</span>
+                      <span>{tier.maxQuantity === null ? `>= ${tier.minQuantity} adet` : `${tier.minQuantity}-${tier.maxQuantity} adet`}</span>
                       <span className='font-semibold'>₺{tier.unitPrice.toFixed(2)}</span>
                     </div>
                   ))}

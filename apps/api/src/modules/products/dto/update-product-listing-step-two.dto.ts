@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -17,10 +17,11 @@ export class ProductListingPricingTierDto {
   @Min(1, { message: 'Kademe minimum adedi en az 1 olmalıdır.' })
   minQuantity!: number;
 
-  @Type(() => Number)
+  @Transform(({ value }) => (value === null || value === undefined || value === '' ? null : Number(value)))
+  @ValidateIf((_, value: unknown) => value !== null && value !== undefined)
   @IsInt({ message: 'Kademe maksimum adedi tam sayı olmalıdır.' })
   @Min(1, { message: 'Kademe maksimum adedi en az 1 olmalıdır.' })
-  maxQuantity!: number;
+  maxQuantity!: number | null;
 
   @Type(() => Number)
   @IsNumber({}, { message: 'Kademe birim fiyatı sayısal olmalıdır.' })

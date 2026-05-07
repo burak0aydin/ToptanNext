@@ -335,12 +335,15 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
       return null;
     }
 
-    const matched = sortedPricingTiers.find((tier) => quantity >= tier.minQuantity && quantity <= tier.maxQuantity);
+    const matched = sortedPricingTiers.find((tier) => (
+      quantity >= tier.minQuantity && (tier.maxQuantity === null || quantity <= tier.maxQuantity)
+    ));
     if (matched) {
       return matched;
     }
 
-    if (quantity > sortedPricingTiers[sortedPricingTiers.length - 1].maxQuantity) {
+    const lastTier = sortedPricingTiers[sortedPricingTiers.length - 1];
+    if (lastTier.maxQuantity === null || quantity > lastTier.maxQuantity) {
       return sortedPricingTiers[sortedPricingTiers.length - 1];
     }
 
@@ -613,7 +616,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                   type='button'
                 >
                   <div className={`mb-1 text-[11px] font-medium uppercase tracking-[0.03em] ${isActive ? 'text-primary' : 'text-outline'}`}>
-                    {tier.maxQuantity >= 1_000_000 ? `${tier.minQuantity}+ Adet` : `${tier.minQuantity}-${tier.maxQuantity} Adet`}
+                    {tier.maxQuantity === null ? `>= ${tier.minQuantity} Adet` : `${tier.minQuantity}-${tier.maxQuantity} Adet`}
                   </div>
                   <div className={`text-[1.40rem] font-medium leading-none tracking-[-0.01em] ${isActive ? 'text-primary' : 'text-on-surface'}`}>
                     {formatTryAmount(tier.unitPrice)}

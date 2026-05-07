@@ -71,7 +71,7 @@ const STEP_TWO_DEFAULT_VALUES: ProductListingStepTwoDto = {
   pricingTiers: [
     {
       minQuantity: 1,
-      maxQuantity: 1,
+      maxQuantity: null,
       unitPrice: 0.01,
     },
   ],
@@ -139,6 +139,18 @@ const MAX_TOTAL_IMAGE_COUNT = 6;
 const MAX_GALLERY_IMAGE_COUNT = 5;
 const MAX_VIDEO_COUNT = 1;
 const MAX_PRICE_TIER_COUNT = 6;
+
+const normalizeOpenEndedPricingTiers = (
+  tiers: ProductListingStepTwoDto['pricingTiers'],
+): ProductListingStepTwoDto['pricingTiers'] => tiers.map((tier, index) => ({
+  ...tier,
+  maxQuantity: index === tiers.length - 1 ? null : tier.maxQuantity,
+}));
+
+const isQuantityInPricingTier = (
+  quantity: number,
+  tier: ProductListingStepTwoDto['pricingTiers'][number],
+): boolean => quantity >= tier.minQuantity && (tier.maxQuantity === null || quantity <= tier.maxQuantity);
 const MAX_VARIANT_GROUP_COUNT = 6;
 const MAX_VARIANT_OPTION_COUNT = 30;
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
@@ -504,15 +516,17 @@ export default function SellerProductUploadPage() {
         const normalizedBasePrice = Math.max(Number(latestEditableDraft.basePrice ?? '0.01'), 0.01);
 
         const normalizedPricingTiers = latestEditableDraft.pricingTiers.length > 0
-          ? latestEditableDraft.pricingTiers.map((tier) => ({
+          ? normalizeOpenEndedPricingTiers(latestEditableDraft.pricingTiers.map((tier, index, tiers) => ({
             minQuantity: Math.max(Math.trunc(tier.minQuantity), 1),
-            maxQuantity: Math.max(Math.trunc(tier.maxQuantity), Math.max(Math.trunc(tier.minQuantity), 1)),
+            maxQuantity: index === tiers.length - 1 || tier.maxQuantity === null
+              ? null
+              : Math.max(Math.trunc(tier.maxQuantity), Math.max(Math.trunc(tier.minQuantity), 1)),
             unitPrice: Math.max(Number(tier.unitPrice), 0.01),
-          }))
+          })))
           : [
             {
               minQuantity: normalizedMinOrderQuantity,
-              maxQuantity: normalizedMinOrderQuantity,
+              maxQuantity: null,
               unitPrice: normalizedBasePrice,
             },
           ];
@@ -1359,13 +1373,19 @@ export default function SellerProductUploadPage() {
     }
 
     const lastTier = currentTiers[currentTiers.length - 1];
-    const nextMinQuantity = lastTier ? Math.max(lastTier.maxQuantity + 1, 1) : 1;
+    const lastMaxQuantity = lastTier?.maxQuantity ?? lastTier?.minQuantity ?? 0;
+    const nextMinQuantity = Math.max(lastMaxQuantity + 1, 1);
+    const normalizedCurrentTiers = currentTiers.map((tier, index) => (
+      index === currentTiers.length - 1 && tier.maxQuantity === null
+        ? { ...tier, maxQuantity: Math.max(tier.minQuantity, nextMinQuantity - 1) }
+        : tier
+    ));
 
     stepTwoForm.setValue('pricingTiers', [
-      ...currentTiers,
+      ...normalizedCurrentTiers,
       {
         minQuantity: nextMinQuantity,
-        maxQuantity: nextMinQuantity,
+        maxQuantity: null,
         unitPrice: lastTier?.unitPrice ?? 0.01,
       },
     ], {
@@ -1383,7 +1403,7 @@ export default function SellerProductUploadPage() {
 
     stepTwoForm.setValue(
       'pricingTiers',
-      currentTiers.filter((_, tierIndex) => tierIndex !== index),
+      normalizeOpenEndedPricingTiers(currentTiers.filter((_, tierIndex) => tierIndex !== index)),
       {
         shouldValidate: true,
         shouldDirty: true,
@@ -1621,7 +1641,10 @@ export default function SellerProductUploadPage() {
       setGlobalError(null);
       setSuccessMessage(null);
 
-      const saved = await updateProductListingStepTwo(draftRecord.id, values);
+      const saved = await updateProductListingStepTwo(draftRecord.id, {
+        ...values,
+        pricingTiers: normalizeOpenEndedPricingTiers(values.pricingTiers),
+      });
 
       setDraftRecord(saved);
       goToStep(3);
@@ -1760,9 +1783,7 @@ export default function SellerProductUploadPage() {
     ? watchedStepTwo.minOrderQuantity
     : draftRecord?.minOrderQuantity ?? null;
   const activePricingTierForMinOrder = effectiveMinOrderQuantity
-    ? effectivePricingTiers.find((tier) => (
-      effectiveMinOrderQuantity >= tier.minQuantity && effectiveMinOrderQuantity <= tier.maxQuantity
-    ))
+    ? effectivePricingTiers.find((tier) => isQuantityInPricingTier(effectiveMinOrderQuantity, tier))
     : null;
   const summaryStartingPrice = activePricingTierForMinOrder?.unitPrice
     ?? (draftRecord?.basePrice ? Number(draftRecord.basePrice) : null);
@@ -2732,12 +2753,12 @@ export default function SellerProductUploadPage() {
                           </thead>
                           <tbody className='divide-y divide-outline-variant/60 bg-white'>
                             {watchedPricingTiers.map((tier, index) => {
+                              const isLastTier = index === watchedPricingTiers.length - 1;
                               const threshold = watchedStepTwo.isNegotiationEnabled
                                 ? watchedStepTwo.negotiationThreshold
                                 : null;
                               const isThresholdCovered = typeof threshold === 'number'
-                                && threshold >= tier.minQuantity
-                                && threshold <= tier.maxQuantity;
+                                && isQuantityInPricingTier(threshold, tier);
 
                               return (
                                 <tr
@@ -2754,15 +2775,23 @@ export default function SellerProductUploadPage() {
                                           valueAsNumber: true,
                                         })}
                                       />
-                                      <span className='text-on-surface-variant'>-</span>
-                                      <input
-                                        className='w-24 rounded-md border border-outline-variant px-2 py-1.5 text-center text-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary'
-                                        type='number'
-                                        min='1'
-                                        {...stepTwoForm.register(`pricingTiers.${index}.maxQuantity` as const, {
-                                          valueAsNumber: true,
-                                        })}
-                                      />
+                                      {!isLastTier ? (
+                                        <span className='text-on-surface-variant'>-</span>
+                                      ) : null}
+                                      {isLastTier ? (
+                                        <span className='text-sm font-semibold text-on-surface-variant'>
+                                          ve üzeri
+                                        </span>
+                                      ) : (
+                                        <input
+                                          className='w-24 rounded-md border border-outline-variant px-2 py-1.5 text-center text-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary'
+                                          type='number'
+                                          min='1'
+                                          {...stepTwoForm.register(`pricingTiers.${index}.maxQuantity` as const, {
+                                            valueAsNumber: true,
+                                          })}
+                                        />
+                                      )}
                                     </div>
                                     {isThresholdCovered ? (
                                       <p className='mt-1 text-[11px] font-medium text-primary'>Teklif eşiği bu aralıkta.</p>

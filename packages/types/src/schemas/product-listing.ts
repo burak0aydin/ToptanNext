@@ -220,16 +220,27 @@ export const productListingPricingTierSchema = z
       .number()
       .int('Kademe minimum adedi tam sayı olmalıdır.')
       .min(1, 'Kademe minimum adedi en az 1 olmalıdır.'),
-    maxQuantity: z.coerce
+    maxQuantity: z.preprocess((value) => {
+      if (value === null || value === undefined) {
+        return null;
+      }
+
+      if (typeof value === 'string' && value.trim().length === 0) {
+        return null;
+      }
+
+      return Number(value);
+    }, z
       .number()
       .int('Kademe maksimum adedi tam sayı olmalıdır.')
-      .min(1, 'Kademe maksimum adedi en az 1 olmalıdır.'),
+      .min(1, 'Kademe maksimum adedi en az 1 olmalıdır.')
+      .nullable()),
     unitPrice: z.coerce
       .number()
       .min(0.01, 'Kademe birim fiyatı 0 değerinden büyük olmalıdır.'),
   })
   .superRefine((value, context) => {
-    if (value.maxQuantity < value.minQuantity) {
+    if (value.maxQuantity !== null && value.maxQuantity < value.minQuantity) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['maxQuantity'],
@@ -271,11 +282,30 @@ export const productListingStepTwoSchema = z.object({
     .max(6, 'En fazla 6 kademe tanımlayabilirsiniz.'),
 }).superRefine((value, context) => {
   value.pricingTiers.forEach((currentTier, index) => {
+    const isLastTier = index === value.pricingTiers.length - 1;
+
+    if (!isLastTier && currentTier.maxQuantity === null) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['pricingTiers', index, 'maxQuantity'],
+        message: 'Sadece son kademe üst sınırı boş bırakılabilir.',
+      });
+    }
+
     if (index === 0) {
       return;
     }
 
     const previousTier = value.pricingTiers[index - 1];
+    if (previousTier.maxQuantity === null) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['pricingTiers', index - 1, 'maxQuantity'],
+        message: 'Sadece son kademe üst sınırı boş bırakılabilir.',
+      });
+      return;
+    }
+
     if (currentTier.minQuantity <= previousTier.maxQuantity) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -286,7 +316,8 @@ export const productListingStepTwoSchema = z.object({
   });
 
   const minOrderCovered = value.pricingTiers.some((tier) => (
-    value.minOrderQuantity >= tier.minQuantity && value.minOrderQuantity <= tier.maxQuantity
+    value.minOrderQuantity >= tier.minQuantity
+    && (tier.maxQuantity === null || value.minOrderQuantity <= tier.maxQuantity)
   ));
 
   if (!minOrderCovered) {
