@@ -4,6 +4,7 @@ import { type MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import DOMPurify from 'dompurify';
 import { MainFooter } from '@/app/components/MainFooter';
 import { MainHeader } from '@/app/components/MainHeader';
 import { ProductChatDrawer } from '@/components/chat/ProductChatDrawer';
@@ -322,6 +323,10 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
   const sortedPricingTiers = useMemo(
     () => [...(listing?.pricingTiers ?? [])].sort((left, right) => left.minQuantity - right.minQuantity),
     [listing?.pricingTiers],
+  );
+  const sanitizedDescription = useMemo(
+    () => (listing?.description ? DOMPurify.sanitize(listing.description) : ''),
+    [listing?.description],
   );
 
   const minOrderQuantity = listing?.minOrderQuantity ?? sortedPricingTiers[0]?.minQuantity ?? 1;
@@ -1089,9 +1094,17 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                       <span className='text-sm font-semibold text-on-surface'>Tedarikçi Beyanı</span>
                     </div>
                   </div>
-                  <div className='text-sm leading-relaxed text-on-surface-variant'>
-                    {listing.description}
-                  </div>
+                  {sanitizedDescription ? (
+                    <div
+                      className='text-sm leading-7 text-on-surface-variant [&_p]:mb-3 [&_p:empty]:hidden [&_strong]:font-bold [&_strong]:text-on-surface [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 [&_li>p]:mb-0'
+                      // eslint-disable-next-line react/no-danger
+                      dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
+                    />
+                  ) : (
+                    <p className='text-sm leading-relaxed text-on-surface-variant'>
+                      Bu ürün için henüz açıklama girilmedi.
+                    </p>
+                  )}
                 </div>
               </section>
 
