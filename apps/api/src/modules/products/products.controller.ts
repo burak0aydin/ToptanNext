@@ -29,6 +29,7 @@ import { MulterError } from 'multer';
 import { diskStorage } from 'multer';
 import { extname, isAbsolute, join } from 'path';
 import { createReadStream, existsSync, mkdirSync } from 'fs';
+import { unlink } from 'fs/promises';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { CreateProductListingStepOneDto } from './dto/create-product-listing-step-one.dto';
@@ -40,6 +41,7 @@ import { UpdateProductListingStepThreeDto } from './dto/update-product-listing-s
 import { UpdateProductListingStepTwoDto } from './dto/update-product-listing-step-two.dto';
 import { ProductsService } from './products.service';
 import { UploadedProductListingMedia } from './products.service';
+import { UploadsService } from '../uploads/uploads.service';
 
 type AuthenticatedRequest = Request & {
   user: JwtPayload;
@@ -142,7 +144,10 @@ const productMediaUploadOptions = {
 
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly uploadsService: UploadsService,
+  ) {}
 
   @Get()
   async getAll() {
@@ -350,8 +355,13 @@ export class ProductsController {
   async getListingMedia(
     @Param('mediaId') mediaId: string,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<StreamableFile> {
+  ): Promise<StreamableFile | void> {
     const media = await this.productsService.getListingMediaById(mediaId);
+    if (this.isRemoteMediaUrl(media.filePath)) {
+      response.redirect(media.filePath);
+      return;
+    }
+
     const absolutePath = this.resolveMediaAbsolutePath(media.filePath);
 
     if (!existsSync(absolutePath)) {
@@ -595,7 +605,7 @@ export class ProductsController {
       >
     >,
   ) {
-    const uploadedMedia = this.normalizeUploadedMedia(files);
+    const uploadedMedia = await this.normalizeUploadedMedia(req.user.sub, files);
     const data = await this.productsService.uploadMyListingMedia(
       req.user.sub,
       req.user.role,
@@ -652,7 +662,8 @@ export class ProductsController {
     };
   }
 
-  private normalizeUploadedMedia(
+  private async normalizeUploadedMedia(
+    supplierId: string,
     files: Partial<
       Record<
         typeof PRODUCT_MEDIA_UPLOAD_FIELD,
@@ -665,14 +676,32 @@ export class ProductsController {
         }>
       >
     >,
-  ): UploadedProductListingMedia[] {
+  ): Promise<UploadedProductListingMedia[]> {
     const uploaded = files[PRODUCT_MEDIA_UPLOAD_FIELD] ?? [];
 
-    return uploaded.map((file) => ({
-      originalName: file.originalname,
-      mimeType: file.mimetype,
-      fileSize: file.size,
-      filePath: file.path,
+    if (!this.uploadsService.isProductMediaObjectStorageEnabled()) {
+      return uploaded.map((file) => ({
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        fileSize: file.size,
+        filePath: file.path,
+      }));
+    }
+
+    return Promise.all(uploaded.map(async (file) => {
+      const fileUrl = await this.uploadsService.uploadProductListingMediaFromDisk(
+        file as Express.Multer.File,
+        supplierId,
+      );
+
+      await unlink(file.path).catch(() => undefined);
+
+      return {
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        fileSize: file.size,
+        filePath: fileUrl,
+      };
     }));
   }
 
@@ -711,6 +740,10 @@ export class ProductsController {
     );
 
     return foundCandidate ?? candidates[0];
+  }
+
+  private isRemoteMediaUrl(value: string): boolean {
+    return value.startsWith('http://') || value.startsWith('https://');
   }
 
   private ensureAdmin(role: Role): void {

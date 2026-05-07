@@ -8,6 +8,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
+import { createReadStream } from 'fs';
 import { GetPresignedUrlDto } from './dto/get-presigned-url.dto';
 
 const ALLOWED_MIME_TYPES = new Set([
@@ -19,6 +20,14 @@ const ALLOWED_MIME_TYPES = new Set([
   'text/plain',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]);
+
+const ALLOWED_PRODUCT_MEDIA_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'video/mp4',
+  'video/webm',
 ]);
 
 @Injectable()
@@ -107,6 +116,52 @@ export class UploadsService {
     };
   }
 
+  isProductMediaObjectStorageEnabled(): boolean {
+    const explicitDriver = this.configService.get<string>('PRODUCT_MEDIA_STORAGE_DRIVER')?.trim().toLowerCase();
+    if (explicitDriver) {
+      return explicitDriver !== 'local' && explicitDriver !== 'disk';
+    }
+
+    const uploadProvider = process.env.UPLOAD_PROVIDER?.trim().toLowerCase();
+    return Boolean(uploadProvider && uploadProvider !== 'local' && uploadProvider !== 'disk');
+  }
+
+  async uploadProductListingMediaFromDisk(
+    file: Express.Multer.File,
+    supplierId: string,
+  ): Promise<string> {
+    if (!ALLOWED_PRODUCT_MEDIA_MIME_TYPES.has(file.mimetype)) {
+      throw new BadRequestException('Desteklenmeyen ürün medya türü.');
+    }
+
+    const provider = this.resolveProductMediaProvider();
+    const bucket = this.configService.get<string>(
+      'PRODUCT_MEDIA_UPLOAD_BUCKET',
+      this.configService.get<string>(
+        'UPLOAD_BUCKET',
+        provider === 'minio' ? 'toptannext-uploads' : 'toptannext-uploads-prod',
+      ),
+    );
+    const objectKey = this.buildProductMediaObjectKey(file.originalname, supplierId);
+    const s3Client = this.createS3Client(provider);
+
+    if (provider === 'minio') {
+      await this.ensureBucketExists(s3Client, bucket);
+    }
+
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: objectKey,
+        Body: createReadStream(file.path),
+        ContentType: file.mimetype,
+        ContentLength: file.size,
+      }),
+    );
+
+    return this.resolvePublicFileUrl(provider, bucket, objectKey);
+  }
+
   private validateInput(dto: GetPresignedUrlDto): void {
     if (!ALLOWED_MIME_TYPES.has(dto.mimeType)) {
       throw new BadRequestException('Desteklenmeyen dosya türü.');
@@ -125,6 +180,26 @@ export class UploadsService {
 
     const datePrefix = new Date().toISOString().slice(0, 10);
     return `chat-attachments/${datePrefix}/${randomUUID()}-${sanitized}`;
+  }
+
+  private buildProductMediaObjectKey(fileName: string, supplierId: string): string {
+    const sanitized = fileName
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-zA-Z0-9._-]/g, '_');
+    const safeSupplierId = supplierId.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const datePrefix = new Date().toISOString().slice(0, 10);
+
+    return `product-listings/${safeSupplierId}/${datePrefix}/${randomUUID()}-${sanitized}`;
+  }
+
+  private resolveProductMediaProvider(): string {
+    const driver = this.configService.get<string>('PRODUCT_MEDIA_STORAGE_DRIVER')?.trim().toLowerCase();
+    if (driver && driver !== 'object') {
+      return driver;
+    }
+
+    return this.configService.get<string>('UPLOAD_PROVIDER', 'minio').toLowerCase();
   }
 
   private createS3Client(provider: string): S3Client {

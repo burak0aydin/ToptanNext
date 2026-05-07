@@ -1,6 +1,7 @@
 "use client";
 
 import Link from 'next/link';
+import { useState } from 'react';
 
 type ProductCardProps = {
   title: string;
@@ -17,14 +18,17 @@ function ProductCardBody({
   minOrderQuantity,
   imageUrl,
 }: Omit<ProductCardProps, 'href' | 'className'>) {
+  const [imageFailed, setImageFailed] = useState(false);
+
   return (
     <>
       <div className='aspect-square overflow-hidden bg-slate-50'>
-        {imageUrl ? (
+        {imageUrl && !imageFailed ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             alt={title}
             className='h-full w-full object-cover transition-transform duration-500 group-hover:scale-105'
+            onError={() => setImageFailed(true)}
             src={imageUrl}
           />
         ) : (

@@ -31,6 +31,34 @@ type PublicProductDetailViewProps = {
   id: string;
 };
 
+type ProductMediaImageProps = {
+  src: string;
+  alt: string;
+  className: string;
+};
+
+function ProductMediaImage({ src, alt, className }: ProductMediaImageProps) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div className='flex h-full w-full items-center justify-center bg-slate-50 text-slate-400'>
+        <span className='material-symbols-outlined text-5xl'>inventory_2</span>
+      </div>
+    );
+  }
+
+  // eslint-disable-next-line @next/next/no-img-element
+  return (
+    <img
+      alt={alt}
+      className={className}
+      onError={() => setFailed(true)}
+      src={src}
+    />
+  );
+}
+
 function formatTryAmount(value: number): string {
   return new Intl.NumberFormat('tr-TR', {
     style: 'currency',
@@ -582,8 +610,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                           type='button'
                         >
                           {group.displayType === 'image' && option.imageUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
+                            <ProductMediaImage
                               alt={option.label}
                               className='h-5 w-5 rounded-full border border-outline-variant/30 object-cover'
                               src={resolveVariantOptionImageUrl(option.imageUrl) ?? ''}
@@ -871,8 +898,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                           +Video
                         </div>
                       ) : null}
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+                      <ProductMediaImage
                         alt={media.originalName}
                         className={`h-full w-full object-cover ${media.mediaType === 'VIDEO' ? 'opacity-50' : ''}`}
                         src={resolveProductListingMediaUrl(media.id)}
@@ -891,8 +917,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                       src={resolveProductListingMediaUrl(selectedMedia.id)}
                     />
                   ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <ProductMediaImage
                       alt={listing.name}
                       className='h-full w-full object-contain'
                       src={resolveProductListingMediaUrl(selectedMedia.id)}
@@ -982,8 +1007,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                         +Video
                       </div>
                     ) : null}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <ProductMediaImage
                       alt={media.originalName}
                       className={`h-full w-full object-cover ${media.mediaType === 'VIDEO' ? 'opacity-50' : ''}`}
                       src={resolveProductListingMediaUrl(media.id)}
@@ -1201,8 +1225,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                       <div className='grid grid-cols-2 gap-3 md:grid-cols-3'>
                         {imageMedia.slice(0, 3).map((media) => (
                           <div key={media.id} className='aspect-video overflow-hidden rounded-lg bg-slate-100'>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
+                            <ProductMediaImage
                               alt={media.originalName}
                               className='h-full w-full object-cover'
                               src={resolveProductListingMediaUrl(media.id)}
