@@ -474,7 +474,7 @@ export default function SellerProductsPage() {
                             <span className="material-symbols-outlined text-[20px]">visibility</span>
                           </button>
                           <Link
-                            href="/satici-panelim/urun-yukle"
+                            href={`/satici-panelim/urun-yukle?edit=${row.id}`}
                             className="text-slate-400 transition-colors hover:text-primary"
                             title="Düzenle"
                           >

@@ -76,6 +76,7 @@ export type AdminProductListingManagementQuery = {
 const LISTING_EDITABLE_STATUSES: ProductListingStatus[] = [
   ProductListingStatus.DRAFT,
   ProductListingStatus.REJECTED,
+  ProductListingStatus.APPROVED,
 ];
 
 const MAX_LISTING_IMAGE_COUNT = 6;
@@ -1090,7 +1091,7 @@ export class ProductsService {
   private ensureListingEditable(status: ProductListingStatus): void {
     if (!LISTING_EDITABLE_STATUSES.includes(status)) {
       throw new BadRequestException(
-        'Bu taslak mevcut durumunda düzenlenemez. Lütfen admin değerlendirmesini bekleyiniz.',
+        'Bu ürün mevcut durumunda düzenlenemez. Lütfen admin değerlendirmesini bekleyiniz.',
       );
     }
   }

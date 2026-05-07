@@ -27,6 +27,7 @@ import {
   createProductListingStepOne,
   deleteProductListingMedia,
   fetchCategoriesTree,
+  fetchMyProductListingById,
   fetchMyProductListingDrafts,
   fetchSectors,
   submitProductListing,
@@ -399,6 +400,8 @@ export default function SellerProductUploadPage() {
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [forceNewListing, setForceNewListing] = useState(false);
+  const [editListingId, setEditListingId] = useState<string | null>(null);
+  const [routeParamsReady, setRouteParamsReady] = useState(false);
   const coverImageInputRef = useRef<HTMLInputElement | null>(null);
   const galleryImageInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
@@ -409,7 +412,10 @@ export default function SellerProductUploadPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    setForceNewListing(params.get('new') === '1');
+    const isNewListing = params.get('new') === '1';
+    setForceNewListing(isNewListing);
+    setEditListingId(isNewListing ? null : params.get('edit'));
+    setRouteParamsReady(true);
   }, []);
 
   const stepOneForm = useForm<ProductListingStepOneDto>({
@@ -450,6 +456,10 @@ export default function SellerProductUploadPage() {
   const watchedStepThree = stepThreeForm.watch();
 
   useEffect(() => {
+    if (!routeParamsReady) {
+      return;
+    }
+
     let isMounted = true;
 
     const loadMeta = async () => {
@@ -457,14 +467,18 @@ export default function SellerProductUploadPage() {
         setIsLoadingMeta(true);
         setGlobalError(null);
 
-        const listingsPromise = forceNewListing
-          ? Promise.resolve([] as ProductListingRecord[])
-          : fetchMyProductListingDrafts();
+        const editableListingPromise: Promise<ProductListingRecord | null> = forceNewListing
+          ? Promise.resolve(null)
+          : editListingId
+            ? fetchMyProductListingById(editListingId)
+            : fetchMyProductListingDrafts().then((records) => records.find(
+              (listing) => listing.status === 'DRAFT' || listing.status === 'REJECTED',
+            ) ?? null);
 
-        const [categoryResult, sectorsResult, listingsResult] = await Promise.allSettled([
+        const [categoryResult, sectorsResult, editableListingResult] = await Promise.allSettled([
           fetchCategoriesTree(),
           fetchSectors(),
-          listingsPromise,
+          editableListingPromise,
         ]);
 
         if (!isMounted) {
@@ -493,30 +507,31 @@ export default function SellerProductUploadPage() {
           return;
         }
 
-        if (listingsResult.status !== 'fulfilled') {
+        if (editableListingResult.status !== 'fulfilled') {
+          setDraftRecord(null);
+          throw new Error(editListingId
+            ? 'Seçilen ürün bilgileri yüklenemedi.'
+            : 'Düzenlenebilir ürün bilgileri yüklenemedi.');
+        }
+
+        const editableListing = editableListingResult.value;
+
+        if (!editableListing) {
           setDraftRecord(null);
           return;
         }
 
-        const latestEditableDraft = listingsResult.value.find(
-          (listing) => listing.status === 'DRAFT' || listing.status === 'REJECTED',
-        ) ?? null;
-
-        setDraftRecord(latestEditableDraft);
-
-        if (!latestEditableDraft) {
-          return;
-        }
+        setDraftRecord(editableListing);
 
         const draftSectorIds = filterActiveSectorIds(
-          latestEditableDraft.sectors.map((sector) => sector.sectorId),
+          editableListing.sectors.map((sector) => sector.sectorId),
           sectorsResult.value,
         );
-        const normalizedMinOrderQuantity = Math.max(latestEditableDraft.minOrderQuantity ?? 1, 1);
-        const normalizedBasePrice = Math.max(Number(latestEditableDraft.basePrice ?? '0.01'), 0.01);
+        const normalizedMinOrderQuantity = Math.max(editableListing.minOrderQuantity ?? 1, 1);
+        const normalizedBasePrice = Math.max(Number(editableListing.basePrice ?? '0.01'), 0.01);
 
-        const normalizedPricingTiers = latestEditableDraft.pricingTiers.length > 0
-          ? normalizeOpenEndedPricingTiers(latestEditableDraft.pricingTiers.map((tier, index, tiers) => ({
+        const normalizedPricingTiers = editableListing.pricingTiers.length > 0
+          ? normalizeOpenEndedPricingTiers(editableListing.pricingTiers.map((tier, index, tiers) => ({
             minQuantity: Math.max(Math.trunc(tier.minQuantity), 1),
             maxQuantity: index === tiers.length - 1 || tier.maxQuantity === null
               ? null
@@ -532,14 +547,14 @@ export default function SellerProductUploadPage() {
           ];
 
         stepOneForm.reset({
-          name: latestEditableDraft.name,
-          sku: latestEditableDraft.sku,
-          categoryId: latestEditableDraft.categoryId,
+          name: editableListing.name,
+          sku: editableListing.sku,
+          categoryId: editableListing.categoryId,
           sectorIds: draftSectorIds,
-          featuredFeatures: latestEditableDraft.featuredFeatures,
-          isCustomizable: latestEditableDraft.isCustomizable,
-          customizationNote: latestEditableDraft.customizationNote ?? '',
-          variantGroups: (latestEditableDraft.variantGroups ?? []).map((group) => ({
+          featuredFeatures: editableListing.featuredFeatures,
+          isCustomizable: editableListing.isCustomizable,
+          customizationNote: editableListing.customizationNote ?? '',
+          variantGroups: (editableListing.variantGroups ?? []).map((group) => ({
             groupName: group.groupName,
             displayType: group.displayType,
             options: group.options.map((option) => {
@@ -552,30 +567,30 @@ export default function SellerProductUploadPage() {
               };
             }),
           })),
-          description: latestEditableDraft.description,
+          description: editableListing.description,
         });
 
         stepTwoForm.reset({
           minOrderQuantity: normalizedMinOrderQuantity,
-          stock: Math.max(latestEditableDraft.stock ?? 0, 0),
-          isNegotiationEnabled: latestEditableDraft.isNegotiationEnabled,
-          negotiationThreshold: latestEditableDraft.negotiationThreshold,
+          stock: Math.max(editableListing.stock ?? 0, 0),
+          isNegotiationEnabled: editableListing.isNegotiationEnabled,
+          negotiationThreshold: editableListing.negotiationThreshold,
           pricingTiers: normalizedPricingTiers,
         });
 
         stepThreeForm.reset({
-          packageType: latestEditableDraft.packageType ?? STEP_THREE_DEFAULT_VALUES.packageType,
-          leadTimeDays: Math.max(latestEditableDraft.leadTimeDays ?? 0, 0),
-          shippingTime: latestEditableDraft.shippingTime ?? STEP_THREE_DEFAULT_VALUES.shippingTime,
-          deliveryMethods: latestEditableDraft.deliveryMethods,
-          dynamicFreightAgreement: latestEditableDraft.dynamicFreightAgreement,
-          packageLengthCm: Math.max(Number(latestEditableDraft.packageLengthCm ?? '0'), 0),
-          packageWidthCm: Math.max(Number(latestEditableDraft.packageWidthCm ?? '0'), 0),
-          packageHeightCm: Math.max(Number(latestEditableDraft.packageHeightCm ?? '0'), 0),
-          packageWeightKg: Math.max(Number(latestEditableDraft.packageWeightKg ?? '0'), 0),
+          packageType: editableListing.packageType ?? STEP_THREE_DEFAULT_VALUES.packageType,
+          leadTimeDays: Math.max(editableListing.leadTimeDays ?? 0, 0),
+          shippingTime: editableListing.shippingTime ?? STEP_THREE_DEFAULT_VALUES.shippingTime,
+          deliveryMethods: editableListing.deliveryMethods,
+          dynamicFreightAgreement: editableListing.dynamicFreightAgreement,
+          packageLengthCm: Math.max(Number(editableListing.packageLengthCm ?? '0'), 0),
+          packageWidthCm: Math.max(Number(editableListing.packageWidthCm ?? '0'), 0),
+          packageHeightCm: Math.max(Number(editableListing.packageHeightCm ?? '0'), 0),
+          packageWeightKg: Math.max(Number(editableListing.packageWeightKg ?? '0'), 0),
         });
 
-        const categoryPath = findCategoryPath(categoryResult.value, latestEditableDraft.categoryId);
+        const categoryPath = findCategoryPath(categoryResult.value, editableListing.categoryId);
         if (categoryPath) {
           setMainCategoryId(categoryPath.mainId);
           setSubCategoryId(categoryPath.subId);
@@ -602,7 +617,7 @@ export default function SellerProductUploadPage() {
     return () => {
       isMounted = false;
     };
-  }, [forceNewListing, stepOneForm, stepTwoForm, stepThreeForm]);
+  }, [editListingId, forceNewListing, routeParamsReady, stepOneForm, stepTwoForm, stepThreeForm]);
 
   const activeCategoryPath = useMemo(() => {
     const categoryId = watchedStepOne.categoryId || draftRecord?.categoryId;
@@ -1818,9 +1833,13 @@ export default function SellerProductUploadPage() {
   return (
     <div ref={pageTopRef} className='space-y-8'>
       <header className='space-y-3'>
-        <h2 className='text-2xl font-bold tracking-tight text-on-surface'>Ürün Yükle</h2>
+        <h2 className='text-2xl font-bold tracking-tight text-on-surface'>
+          {editListingId ? 'Ürün Düzenle' : 'Ürün Yükle'}
+        </h2>
         <p className='text-sm text-on-surface-variant'>
-          Ürününüzü 3 adımda ekleyin ve onay sürecine gönderin.
+          {editListingId
+            ? 'Ürün bilgilerinizi 3 adımda güncelleyin ve onay sürecine gönderin.'
+            : 'Ürününüzü 3 adımda ekleyin ve onay sürecine gönderin.'}
         </p>
       </header>
 
