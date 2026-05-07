@@ -15,7 +15,7 @@ import {
   type ProductListingVariantDisplayType,
   type ProductListingVariantGroup,
 } from '@toptannext/types';
-import { type ChangeEvent, type DragEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import ReactCrop, {
   centerCrop,
@@ -23,6 +23,7 @@ import ReactCrop, {
   type Crop,
   type PixelCrop,
 } from 'react-image-crop';
+import { useSearchParams } from 'next/navigation';
 import {
   createProductListingStepOne,
   deleteProductListingMedia,
@@ -372,6 +373,7 @@ function parsePendingVariantImageReference(value: string | null): string | null 
 }
 
 export default function SellerProductUploadPage() {
+  const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState<WizardStep>(1);
   const [draftRecord, setDraftRecord] = useState<ProductListingRecord | null>(null);
   const [categoryTree, setCategoryTree] = useState<CategoryTreeNode[]>([]);
@@ -411,12 +413,11 @@ export default function SellerProductUploadPage() {
   const hasMountedStepRef = useRef(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const isNewListing = params.get('new') === '1';
+    const isNewListing = searchParams.get('new') === '1';
     setForceNewListing(isNewListing);
-    setEditListingId(isNewListing ? null : params.get('edit'));
+    setEditListingId(isNewListing ? null : searchParams.get('edit'));
     setRouteParamsReady(true);
-  }, []);
+  }, [searchParams]);
 
   const stepOneForm = useForm<ProductListingStepOneDto>({
     resolver: zodResolver(
@@ -454,6 +455,34 @@ export default function SellerProductUploadPage() {
   const watchedStepOne = stepOneForm.watch();
   const watchedStepTwo = stepTwoForm.watch();
   const watchedStepThree = stepThreeForm.watch();
+
+  const resetWizardForNewListing = useCallback(() => {
+    setCurrentStep(1);
+    setDraftRecord(null);
+    setMainCategoryId('');
+    setSubCategoryId('');
+    setSectorInput('');
+    setPendingCoverImage(null);
+    setPendingGalleryImages([]);
+    setVariantOptionInputs({});
+    setVariantImagePickerTarget(null);
+    setPendingVideoFile(null);
+    setIsValidatingVideo(false);
+    setCropQueue([]);
+    setActiveCropItem(null);
+    setCropImageSrc(null);
+    setCropValue(undefined);
+    setCompletedCropValue(null);
+    setCropError(null);
+    setIsApplyingCrop(false);
+    setSubmitConfirmed(false);
+    setIsCompleted(false);
+    setGlobalError(null);
+    setSuccessMessage(null);
+    stepOneForm.reset(STEP_ONE_DEFAULT_VALUES);
+    stepTwoForm.reset(STEP_TWO_DEFAULT_VALUES);
+    stepThreeForm.reset(STEP_THREE_DEFAULT_VALUES);
+  }, [stepOneForm, stepThreeForm, stepTwoForm]);
 
   useEffect(() => {
     if (!routeParamsReady) {
@@ -498,12 +527,7 @@ export default function SellerProductUploadPage() {
         }
 
         if (forceNewListing) {
-          setDraftRecord(null);
-          setMainCategoryId('');
-          setSubCategoryId('');
-          stepOneForm.reset(STEP_ONE_DEFAULT_VALUES);
-          stepTwoForm.reset(STEP_TWO_DEFAULT_VALUES);
-          stepThreeForm.reset(STEP_THREE_DEFAULT_VALUES);
+          resetWizardForNewListing();
           return;
         }
 
@@ -617,7 +641,15 @@ export default function SellerProductUploadPage() {
     return () => {
       isMounted = false;
     };
-  }, [editListingId, forceNewListing, routeParamsReady, stepOneForm, stepTwoForm, stepThreeForm]);
+  }, [
+    editListingId,
+    forceNewListing,
+    resetWizardForNewListing,
+    routeParamsReady,
+    stepOneForm,
+    stepTwoForm,
+    stepThreeForm,
+  ]);
 
   const activeCategoryPath = useMemo(() => {
     const categoryId = watchedStepOne.categoryId || draftRecord?.categoryId;
