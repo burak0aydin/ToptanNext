@@ -574,7 +574,7 @@ export class ProductsController {
   @UseFilters(ProductListingMediaUploadExceptionFilter)
   @UseInterceptors(
     FileFieldsInterceptor(
-      [{ name: PRODUCT_MEDIA_UPLOAD_FIELD, maxCount: 5 }],
+      [{ name: PRODUCT_MEDIA_UPLOAD_FIELD, maxCount: 7 }],
       productMediaUploadOptions,
     ),
   )
@@ -607,6 +607,27 @@ export class ProductsController {
       success: true,
       data,
       message: 'Ürün medyaları başarıyla yüklendi.',
+    };
+  }
+
+  @Delete('me/listings/:id/media/:mediaId')
+  @UseGuards(AuthGuard('jwt'))
+  async deleteMyListingMedia(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('mediaId') mediaId: string,
+  ) {
+    const data = await this.productsService.deleteMyListingMedia(
+      req.user.sub,
+      req.user.role,
+      id,
+      mediaId,
+    );
+
+    return {
+      success: true,
+      data,
+      message: 'Ürün medyası kaldırıldı.',
     };
   }
 

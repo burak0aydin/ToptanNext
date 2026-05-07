@@ -115,6 +115,28 @@ export const productListingFeaturedFeatureSchema = z.object({
     .max(140, 'Özellik açıklaması en fazla 140 karakter olabilir.'),
 });
 
+const productListingFeaturedFeaturesSchema = z.preprocess((value) => {
+  if (!Array.isArray(value)) {
+    return value;
+  }
+
+  return value.filter((item) => {
+    if (!item || typeof item !== 'object') {
+      return true;
+    }
+
+    const maybeFeature = item as { title?: unknown; description?: unknown };
+    const title = typeof maybeFeature.title === 'string' ? maybeFeature.title.trim() : '';
+    const description = typeof maybeFeature.description === 'string'
+      ? maybeFeature.description.trim()
+      : '';
+
+    return title.length > 0 || description.length > 0;
+  });
+}, z
+  .array(productListingFeaturedFeatureSchema)
+  .default([]));
+
 const normalizeRichTextToPlainText = (value: string): string => {
   return value
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
@@ -150,9 +172,7 @@ export const productListingStepOneSchema = z
       .array(z.string().trim().min(1, 'Sektör bilgisi boş olamaz.'))
       .max(12, 'En fazla 12 sektör seçebilirsiniz.')
       .default([]),
-    featuredFeatures: z
-      .array(productListingFeaturedFeatureSchema)
-      .default([]),
+    featuredFeatures: productListingFeaturedFeaturesSchema,
     isCustomizable: z.boolean().default(false),
     customizationNote: optionalTrimmedString,
     variantGroups: z

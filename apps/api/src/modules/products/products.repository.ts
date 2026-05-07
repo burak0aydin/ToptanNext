@@ -1054,6 +1054,12 @@ export class ProductsRepository {
     });
   }
 
+  async deleteProductListingMedia(id: string): Promise<void> {
+    await this.prisma.productListingMedia.delete({
+      where: { id },
+    });
+  }
+
   async updateProductListingStepTwo(
     id: string,
     input: UpdateProductListingStepTwoInput,

@@ -611,6 +611,21 @@ export async function uploadProductListingMedia(
   return normalizeProductListingRecord(record);
 }
 
+export async function deleteProductListingMedia(
+  listingId: string,
+  mediaId: string,
+): Promise<ProductListingRecord> {
+  const record = await requestJson<ProductListingRecord>(
+    `/products/me/listings/${listingId}/media/${mediaId}`,
+    {
+      method: 'DELETE',
+      auth: true,
+    },
+  );
+
+  return normalizeProductListingRecord(record);
+}
+
 export async function submitProductListing(
   listingId: string,
   payload: ProductListingSubmitDto,

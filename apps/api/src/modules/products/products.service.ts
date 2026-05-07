@@ -507,6 +507,26 @@ export class ProductsService {
     return media;
   }
 
+  async deleteMyListingMedia(
+    supplierId: string,
+    role: Role,
+    listingId: string,
+    mediaId: string,
+  ): Promise<ProductListingRecord> {
+    this.ensureSupplierRole(role);
+    const listing = await this.getOwnedListingOrThrow(supplierId, listingId);
+    this.ensureListingEditable(listing.status);
+
+    const media = listing.media.find((item) => item.id === mediaId);
+    if (!media) {
+      throw new NotFoundException('Medya bulunamadı.');
+    }
+
+    await this.productsRepository.deleteProductListingMedia(media.id);
+
+    return this.getOwnedListingOrThrow(supplierId, listing.id);
+  }
+
   async createMyListingStepOne(
     supplierId: string,
     role: Role,
