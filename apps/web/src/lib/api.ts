@@ -130,6 +130,8 @@ export async function requestJson<TData, TBody = unknown>(
         _retryAfterRefresh: true,
       });
     }
+
+    throw new Error("Oturum süreniz doldu. Lütfen tekrar giriş yapın.");
   }
 
   if (!response.ok || !payload || !("success" in payload) || !payload.success) {

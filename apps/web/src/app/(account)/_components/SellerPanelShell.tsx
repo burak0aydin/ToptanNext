@@ -138,9 +138,5 @@ export function SellerPanelShell({ children }: SellerPanelShellProps) {
     </div>
   );
 
-  if (isMessagesSurface) {
-    return <RequireAuth>{shell}</RequireAuth>;
-  }
-
-  return shell;
+  return <RequireAuth>{shell}</RequireAuth>;
 }
