@@ -169,59 +169,58 @@ export function FeaturedSectorsCarousel() {
 
   return (
     <section
-      className='bg-white pb-10 pt-6'
+      className='bg-white pb-4 pt-3 md:pb-6 md:pt-4'
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      <div className='container mx-auto px-6'>
-        <div className='mb-4 flex items-center justify-end'>
-          <div className='flex items-center gap-2'>
+      <div className='container mx-auto px-4 sm:px-6'>
+        {isLoading ? <p className='text-sm text-slate-500'>Sektörler yükleniyor...</p> : null}
+        {isError ? <p className='text-sm text-red-600'>Sektörler yüklenirken hata oluştu.</p> : null}
+
+        {!isLoading && !isError ? (
+          <div className='relative'>
             <button
               aria-label='Sektörleri sola kaydır'
-              className='flex h-10 w-10 items-center justify-center rounded-full border border-outline-variant transition-colors hover:bg-slate-50'
+              className='absolute left-0 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-outline-variant bg-white/95 text-on-surface shadow-sm transition-colors hover:bg-slate-50 md:flex'
               onClick={() => scrollByOneCard('left')}
               type='button'
             >
               <span className='material-symbols-outlined'>chevron_left</span>
             </button>
+
+            <div
+              ref={sliderRef}
+              className='hide-scrollbar flex gap-5 overflow-x-auto overflow-y-visible px-1 pb-3 pt-4 scroll-smooth md:gap-8 md:px-14 md:pb-5 md:pt-5'
+            >
+              {sectors.map((sector) => (
+                <Link
+                  key={sector.id}
+                  className='group relative flex w-[96px] min-w-[96px] shrink-0 origin-center flex-col items-center gap-2 transition-transform duration-200 hover:z-10 hover:scale-110 md:w-[calc((100%-14rem)/8)] md:min-w-[112px] md:gap-3 md:hover:scale-125'
+                  data-sector-card
+                  href={`/sektorler/${sector.slug}`}
+                >
+                  <div className='h-16 w-16 overflow-hidden rounded-full border-2 border-transparent bg-surface-container-low shadow-sm transition-all group-hover:border-primary md:h-20 md:w-20'>
+                    <img
+                      className='h-full w-full object-cover'
+                      src={getSectorImage(sector.slug)}
+                      alt={sector.name}
+                    />
+                  </div>
+                  <span className='text-center text-[11px] font-semibold text-on-surface group-hover:text-primary md:text-xs'>
+                    {sector.name}
+                  </span>
+                </Link>
+              ))}
+            </div>
+
             <button
               aria-label='Sektörleri sağa kaydır'
-              className='flex h-10 w-10 items-center justify-center rounded-full border border-outline-variant transition-colors hover:bg-slate-50'
+              className='absolute right-0 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-outline-variant bg-white/95 text-on-surface shadow-sm transition-colors hover:bg-slate-50 md:flex'
               onClick={() => scrollByOneCard('right')}
               type='button'
             >
               <span className='material-symbols-outlined'>chevron_right</span>
             </button>
-          </div>
-        </div>
-
-        {isLoading ? <p className='text-sm text-slate-500'>Sektörler yükleniyor...</p> : null}
-        {isError ? <p className='text-sm text-red-600'>Sektörler yüklenirken hata oluştu.</p> : null}
-
-        {!isLoading && !isError ? (
-          <div
-            ref={sliderRef}
-            className='hide-scrollbar flex gap-8 overflow-x-auto overflow-y-visible px-1 pb-7 pt-7 pr-3 scroll-smooth'
-          >
-            {sectors.map((sector) => (
-              <Link
-                key={sector.id}
-                className='group relative flex w-[calc((100%-14rem)/8)] min-w-[112px] shrink-0 origin-center flex-col items-center gap-3 transition-transform duration-200 hover:z-10 hover:scale-125 last:mr-2'
-                data-sector-card
-                href={`/sektorler/${sector.slug}`}
-              >
-                <div className='h-20 w-20 overflow-hidden rounded-full border-2 border-transparent bg-surface-container-low shadow-sm transition-all group-hover:border-primary'>
-                  <img
-                    className='h-full w-full object-cover'
-                    src={getSectorImage(sector.slug)}
-                    alt={sector.name}
-                  />
-                </div>
-                <span className='text-center text-xs font-semibold text-on-surface group-hover:text-primary'>
-                  {sector.name}
-                </span>
-              </Link>
-            ))}
           </div>
         ) : null}
       </div>

@@ -111,7 +111,7 @@ export function HomeProductFeed() {
   ]);
 
   return (
-    <section className='bg-[#F8FAFC] py-10 md:py-16'>
+    <section className='bg-[#F8FAFC] pb-8 pt-5 md:pb-12 md:pt-7'>
       <div className='container mx-auto px-4 sm:px-6'>
         <div className='grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4 xl:grid-cols-5'>
           {isLoading
