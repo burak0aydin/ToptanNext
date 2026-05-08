@@ -19,7 +19,7 @@ export const personalMenuItems: AccountMenuLeafItem[] = [
 export const sellerMenuItems: AccountMenuLeafItem[] = [
   { label: "Genel Bakış", href: "/satici-panelim" },
   { label: "Ürünlerim", href: "/satici-panelim/urunlerim" },
-  { label: "Ürün Yükle", href: "/satici-panelim/urun-yukle" },
+  { label: "Ürün Yükle", href: "/satici-panelim/urun-yukle?new=1" },
   { label: "Siparişler", href: "/satici-panelim/siparisler" },
   { label: "Mesajlar", href: "/satici-panelim/mesajlar" },
   { label: "Finans", href: "/satici-panelim/finans" },
@@ -28,10 +28,11 @@ export const sellerMenuItems: AccountMenuLeafItem[] = [
 ];
 
 export function normalizePath(pathname: string): string {
+  const pathnameWithoutQuery = pathname.split("?")[0] ?? pathname;
   const normalizedPath =
-    pathname.length > 1 && pathname.endsWith("/")
-      ? pathname.slice(0, -1)
-      : pathname;
+    pathnameWithoutQuery.length > 1 && pathnameWithoutQuery.endsWith("/")
+      ? pathnameWithoutQuery.slice(0, -1)
+      : pathnameWithoutQuery;
 
   if (normalizedPath === "/satici-panelim/genel-bakis") {
     return "/satici-panelim";

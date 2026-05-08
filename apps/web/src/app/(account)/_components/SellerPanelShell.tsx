@@ -14,7 +14,7 @@ const sellerNavItems = [
   { href: "/satici-panelim/mesajlar", icon: "mail", label: "Mesajlar" },
   { href: "/satici-panelim/teklif-merkezi", icon: "local_offer", label: "Teklif Merkezi" },
   { href: "/satici-panelim/urunlerim", icon: "inventory_2", label: "Ürünlerim" },
-  { href: "/satici-panelim/urun-yukle", icon: "add_box", label: "Yeni Ürün Yükle" },
+  { href: "/satici-panelim/urun-yukle?new=1", icon: "add_box", label: "Yeni Ürün Yükle" },
   { href: "/satici-panelim/siparisler", icon: "shopping_cart", label: "Siparişler" },
   { href: "/satici-panelim/lojistik-sevkiyat", icon: "local_shipping", label: "Lojistik ve Sevkiyat" },
   { href: "/satici-panelim/cuzdan", icon: "account_balance_wallet", label: "Cüzdan ve Hakedişler" },
@@ -29,15 +29,17 @@ const bottomNavItems = [
 ] as const;
 
 function isActivePath(pathname: string, href: string): boolean {
-  if (href === "/satici-panelim/mesajlar") {
+  const hrefPathname = href.split("?")[0] ?? href;
+
+  if (hrefPathname === "/satici-panelim/mesajlar") {
     return pathname === "/satici-panelim" || pathname.startsWith("/satici-panelim/mesajlar");
   }
 
-  if (href === "/satici-panelim/genel-bakis") {
+  if (hrefPathname === "/satici-panelim/genel-bakis") {
     return pathname.startsWith("/satici-panelim/genel-bakis");
   }
 
-  return pathname === href || pathname.startsWith(`${href}/`);
+  return pathname === hrefPathname || pathname.startsWith(`${hrefPathname}/`);
 }
 
 export function SellerPanelShell({ children }: SellerPanelShellProps) {

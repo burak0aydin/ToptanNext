@@ -23,7 +23,7 @@ import ReactCrop, {
   type Crop,
   type PixelCrop,
 } from 'react-image-crop';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   createProductListingStepOne,
   deleteProductListingMedia,
@@ -373,7 +373,9 @@ function parsePendingVariantImageReference(value: string | null): string | null 
 }
 
 export default function SellerProductUploadPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
+  const searchParamString = searchParams.toString();
   const [currentStep, setCurrentStep] = useState<WizardStep>(1);
   const [draftRecord, setDraftRecord] = useState<ProductListingRecord | null>(null);
   const [categoryTree, setCategoryTree] = useState<CategoryTreeNode[]>([]);
@@ -417,7 +419,7 @@ export default function SellerProductUploadPage() {
     setForceNewListing(isNewListing);
     setEditListingId(isNewListing ? null : searchParams.get('edit'));
     setRouteParamsReady(true);
-  }, [searchParams]);
+  }, [searchParamString, searchParams]);
 
   const stepOneForm = useForm<ProductListingStepOneDto>({
     resolver: zodResolver(
@@ -1746,6 +1748,7 @@ export default function SellerProductUploadPage() {
       stepOneForm.reset(STEP_ONE_DEFAULT_VALUES);
       stepTwoForm.reset(STEP_TWO_DEFAULT_VALUES);
       stepThreeForm.reset(STEP_THREE_DEFAULT_VALUES);
+      router.replace('/satici-panelim/urun-yukle?new=1', { scroll: false });
 
       goToStep(1);
       setSuccessMessage('Ürün başarıyla onaya gönderildi. Form temizlendi, yeni ürün girişi yapabilirsiniz.');

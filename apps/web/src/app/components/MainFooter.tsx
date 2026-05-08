@@ -8,9 +8,9 @@ export function MainFooter() {
               <span className='material-symbols-outlined text-3xl'>gpp_good</span>
             </div>
             <div>
-              <h4 className='mb-2 text-xl font-bold'>Guvenli Odeme</h4>
+              <h4 className='mb-2 text-xl font-bold'>Güvenli Ödeme</h4>
               <p className='text-sm leading-relaxed text-white/70'>
-                Tum islemleriniz ToptanNext guvencesi altinda %100 korumali gerceklesir.
+                Tüm işlemleriniz ToptanNext güvencesi altında %100 korumalı gerçekleşir.
               </p>
             </div>
           </div>
@@ -19,9 +19,9 @@ export function MainFooter() {
               <span className='material-symbols-outlined text-3xl'>local_shipping</span>
             </div>
             <div>
-              <h4 className='mb-2 text-xl font-bold'>Lojistik Destegi</h4>
+              <h4 className='mb-2 text-xl font-bold'>Lojistik Desteği</h4>
               <p className='text-sm leading-relaxed text-white/70'>
-                Kapidan kapiya teslimat ve gumrukleme sureclerinde tam operasyonel destek.
+                Kapıdan kapıya teslimat ve gümrükleme süreçlerinde tam operasyonel destek.
               </p>
             </div>
           </div>
@@ -30,9 +30,9 @@ export function MainFooter() {
               <span className='material-symbols-outlined text-3xl'>support_agent</span>
             </div>
             <div>
-              <h4 className='mb-2 text-xl font-bold'>7/24 Musteri Hizmetleri</h4>
+              <h4 className='mb-2 text-xl font-bold'>7/24 Müşteri Hizmetleri</h4>
               <p className='text-sm leading-relaxed text-white/70'>
-                Uzman ekibimiz sorularinizi yanitlamak ve surecleri yonetmek icin her an hazir.
+                Uzman ekibimiz sorularınızı yanıtlamak ve süreçleri yönetmek için her an hazır.
               </p>
             </div>
           </div>
@@ -47,33 +47,33 @@ export function MainFooter() {
                 Toptan<span className='text-[#FF5A1F]'>Next</span>
               </span>
               <p className='mb-6 text-sm leading-relaxed'>
-                Turkiye&#39;nin lider B2B pazaryeri platformu. Ticaretin dijital mimari.
+                Türkiye&#39;nin lider B2B pazaryeri platformu. Ticaretin dijital mimarı.
               </p>
             </div>
             <div>
               <h5 className='mb-6 font-bold text-white'>Kurumsal</h5>
               <ul className='space-y-4 text-sm'>
-                <li>Hakkimizda</li>
+                <li>Hakkımızda</li>
                 <li>Kariyer</li>
-                <li>Yatirimci Iliskileri</li>
-                <li>Basin Bultenleri</li>
+                <li>Yatırımcı İlişkileri</li>
+                <li>Basın Bültenleri</li>
               </ul>
             </div>
             <div>
               <h5 className='mb-6 font-bold text-white'>Destek</h5>
               <ul className='space-y-4 text-sm'>
-                <li>Yardim Merkezi</li>
-                <li>Islem Rehberi</li>
-                <li>Iade Politikasi</li>
-                <li>Guvenli Alisveris</li>
+                <li>Yardım Merkezi</li>
+                <li>İşlem Rehberi</li>
+                <li>İade Politikası</li>
+                <li>Güvenli Alışveriş</li>
               </ul>
             </div>
             <div>
-              <h5 className='mb-6 font-bold text-white'>Iletisim</h5>
+              <h5 className='mb-6 font-bold text-white'>İletişim</h5>
               <ul className='space-y-4 text-sm'>
                 <li>info@toptannext.com</li>
                 <li>0850 000 00 00</li>
-                <li>Istanbul, Turkiye</li>
+                <li>İstanbul, Türkiye</li>
               </ul>
             </div>
           </div>
