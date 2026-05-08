@@ -31,7 +31,10 @@ import { randomUUID } from 'crypto';
 import { extname, isAbsolute, join } from 'path';
 import { createReadStream, existsSync } from 'fs';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
-import { cloudinary, configureCloudinary } from '../../config/cloudinary.config';
+import {
+  cloudinary,
+  configureCloudinary,
+} from '../../config/cloudinary.config';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { CreateProductListingStepOneDto } from './dto/create-product-listing-step-one.dto';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -142,9 +145,7 @@ const productMediaUploadOptions = {
 
 @Controller('products')
 export class ProductsController {
-  constructor(
-    private readonly productsService: ProductsService,
-  ) {}
+  constructor(private readonly productsService: ProductsService) {}
 
   @Get()
   async getAll() {
@@ -196,9 +197,7 @@ export class ProductsController {
   }
 
   @Get('public/listings/:id')
-  async getPublicListingById(
-    @Param('id') id: string,
-  ) {
+  async getPublicListingById(@Param('id') id: string) {
     const data = await this.productsService.getPublicListingById(id);
 
     return {
@@ -273,7 +272,10 @@ export class ProductsController {
   ) {
     this.ensureAdmin(req.user.role);
 
-    const data = await this.productsService.getListingByAdmin(req.user.role, id);
+    const data = await this.productsService.getListingByAdmin(
+      req.user.role,
+      id,
+    );
 
     return {
       success: true,
@@ -602,7 +604,10 @@ export class ProductsController {
       >
     >,
   ) {
-    const uploadedMedia = await this.normalizeUploadedMedia(req.user.sub, files);
+    const uploadedMedia = await this.normalizeUploadedMedia(
+      req.user.sub,
+      files,
+    );
     const data = await this.productsService.uploadMyListingMedia(
       req.user.sub,
       req.user.role,
@@ -712,8 +717,23 @@ export class ProductsController {
     const relativeTail = normalized.slice(markerIndex + marker.length);
     const candidates = [
       join(process.cwd(), 'uploads', 'product-listings', relativeTail),
-      join(process.cwd(), 'apps', 'api', 'uploads', 'product-listings', relativeTail),
-      join(process.cwd(), '..', 'apps', 'api', 'uploads', 'product-listings', relativeTail),
+      join(
+        process.cwd(),
+        'apps',
+        'api',
+        'uploads',
+        'product-listings',
+        relativeTail,
+      ),
+      join(
+        process.cwd(),
+        '..',
+        'apps',
+        'api',
+        'uploads',
+        'product-listings',
+        relativeTail,
+      ),
     ];
 
     const foundCandidate = candidates.find((candidatePath) =>
@@ -794,9 +814,9 @@ export class ProductsController {
     value: string | undefined,
   ): 'ANY' | 'RANGE_1_100' | 'RANGE_100_500' | 'RANGE_500_PLUS' {
     if (
-      value === 'RANGE_1_100'
-      || value === 'RANGE_100_500'
-      || value === 'RANGE_500_PLUS'
+      value === 'RANGE_1_100' ||
+      value === 'RANGE_100_500' ||
+      value === 'RANGE_500_PLUS'
     ) {
       return value;
     }

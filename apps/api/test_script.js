@@ -1,14 +1,18 @@
-const { PrismaClient } = require('@prisma/client');
-const { JwtService } = require('@nestjs/jwt');
-require('dotenv').config({ path: '.env' });
-
 async function main() {
+  const [{ PrismaClient }, { JwtService }, dotenv] = await Promise.all([
+    import('@prisma/client'),
+    import('@nestjs/jwt'),
+    import('dotenv'),
+  ]);
+
+  dotenv.config({ path: '.env' });
+
   const prisma = new PrismaClient();
   const jwtService = new JwtService({ secret: process.env.JWT_SECRET });
-  
+
   try {
     const admin = await prisma.user.findFirst({
-      where: { role: 'ADMIN' }
+      where: { role: 'ADMIN' },
     });
 
     if (!admin) {
@@ -17,7 +21,7 @@ async function main() {
     }
 
     const application = await prisma.supplierApplication.findFirst({
-      include: { documents: true }
+      include: { documents: true },
     });
 
     if (!application) {
@@ -32,8 +36,8 @@ async function main() {
       try {
         const res = await fetch(url, {
           headers: {
-            'Authorization': `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         });
         const contentType = res.headers.get('content-type');
         let errorBody = '';
@@ -41,9 +45,12 @@ async function main() {
           const text = await res.text();
           errorBody = text.substring(0, 200);
         }
-        console.log(`Type: ${doc.type}, Status: ${res.status}, Content-Type: ${contentType}${errorBody ? ', Error: ' + errorBody : ''}`);
+        console.log(
+          `Type: ${doc.type}, Status: ${res.status}, Content-Type: ${contentType}${errorBody ? ', Error: ' + errorBody : ''}`,
+        );
       } catch (err) {
-        console.error(`Fetch error for ${doc.type}: ${err.message}`);
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`Fetch error for ${doc.type}: ${message}`);
       }
     }
   } catch (err) {

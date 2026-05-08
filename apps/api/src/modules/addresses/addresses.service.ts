@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Address } from '@prisma/client';
 
@@ -18,13 +23,16 @@ export interface CreateAddressDto {
   isETaxPayer?: boolean;
 }
 
-export interface UpdateAddressDto extends Partial<CreateAddressDto> {}
+export type UpdateAddressDto = Partial<CreateAddressDto>;
 
 @Injectable()
 export class AddressesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createAddress(userId: string, data: CreateAddressDto): Promise<Address> {
+  async createAddress(
+    userId: string,
+    data: CreateAddressDto,
+  ): Promise<Address> {
     if (!data.title?.trim()) {
       throw new BadRequestException('Adres başlığı boş olamaz');
     }
@@ -46,7 +54,9 @@ export class AddressesService {
         throw new BadRequestException('Kurumsal seçildi: VKN/TCKN boş olamaz');
       }
       if (!data.taxOffice?.trim()) {
-        throw new BadRequestException('Kurumsal seçildi: Vergi Dairesi boş olamaz');
+        throw new BadRequestException(
+          'Kurumsal seçildi: Vergi Dairesi boş olamaz',
+        );
       }
       if (!data.companyName?.trim()) {
         throw new BadRequestException('Kurumsal seçildi: Firma Adı boş olamaz');
@@ -109,14 +119,16 @@ export class AddressesService {
     userId: string,
     data: UpdateAddressDto,
   ): Promise<Address> {
-    const address = await this.getAddressById(addressId, userId);
+    await this.getAddressById(addressId, userId);
 
     if (data.invoiceType === 'corporate') {
       if (!data.taxId?.trim()) {
         throw new BadRequestException('Kurumsal seçildi: VKN/TCKN boş olamaz');
       }
       if (!data.taxOffice?.trim()) {
-        throw new BadRequestException('Kurumsal seçildi: Vergi Dairesi boş olamaz');
+        throw new BadRequestException(
+          'Kurumsal seçildi: Vergi Dairesi boş olamaz',
+        );
       }
       if (!data.companyName?.trim()) {
         throw new BadRequestException('Kurumsal seçildi: Firma Adı boş olamaz');
@@ -144,23 +156,24 @@ export class AddressesService {
   }
 
   async deleteAddress(addressId: string, userId: string): Promise<Address> {
-    const address = await this.getAddressById(addressId, userId);
+    await this.getAddressById(addressId, userId);
 
     return this.prisma.address.delete({
       where: { id: addressId },
     });
   }
 
-  async setSelectedAddress(addressId: string, userId: string): Promise<Address> {
-    const address = await this.getAddressById(addressId, userId);
+  async setSelectedAddress(
+    addressId: string,
+    userId: string,
+  ): Promise<Address> {
+    await this.getAddressById(addressId, userId);
 
-    // Deselectează alle adresele utilizatorului
     await this.prisma.address.updateMany({
       where: { userId },
       data: { isSelected: false },
     });
 
-    // Selectează noul adres
     return this.prisma.address.update({
       where: { id: addressId },
       data: { isSelected: true },
