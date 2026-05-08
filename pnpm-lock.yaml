@@ -74,12 +74,18 @@ importers:
       class-validator:
         specifier: ^0.15.1
         version: 0.15.1
+      cloudinary:
+        specifier: ^2.10.0
+        version: 2.10.0
       ioredis:
         specifier: ^5.6.1
         version: 5.10.1
       multer:
         specifier: ^2.1.1
         version: 2.1.1
+      multer-storage-cloudinary:
+        specifier: ^4.0.0
+        version: 4.0.0(cloudinary@2.10.0)
       nodemailer:
         specifier: ^7.0.3
         version: 7.0.13
@@ -4835,6 +4841,13 @@ packages:
     engines: {node: '>=0.8'}
     dev: true
 
+  /cloudinary@2.10.0:
+    resolution: {integrity: sha512-sY09kYg7wprkndAOjZBAYqFZqwL+SxnEGcAvksOvFA+5upnFn949UjkEkHKNSwkBtW/xRDd0p6NgbSXZcxkI3w==}
+    engines: {node: '>=9'}
+    dependencies:
+      lodash: 4.18.1
+    dev: false
+
   /cluster-key-slot@1.1.2:
     resolution: {integrity: sha512-RMr0FhtfXemyinomL4hrWcYJxmX6deFdCxpJzhDttxgO1+bcCnkk+9drydLVDmAMG7NE6aN/fl4F7ucU/90gAA==}
     engines: {node: '>=0.10.0'}
@@ -7976,6 +7989,14 @@ packages:
     resolution: {integrity: sha512-UjkUHN0yqp9RWKy0Lplhh+wlpdt9oQBYgULZOiFhV3VclSF1JnSQWZ5r9gORQlNYaUKQoR8itv7g7z1xDDuACA==}
     optionalDependencies:
       msgpackr-extract: 3.0.3
+    dev: false
+
+  /multer-storage-cloudinary@4.0.0(cloudinary@2.10.0):
+    resolution: {integrity: sha512-25lm9R6o5dWrHLqLvygNX+kBOxprzpmZdnVKH4+r68WcfCt8XV6xfQaMuAg+kUE5Xmr8mJNA4gE0AcBj9FJyWA==}
+    peerDependencies:
+      cloudinary: ^1.21.0
+    dependencies:
+      cloudinary: 2.10.0
     dev: false
 
   /multer@2.0.2:

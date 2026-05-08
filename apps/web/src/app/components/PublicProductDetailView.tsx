@@ -403,7 +403,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
     ?? 'Onaylı Tedarikçi';
   const favoriteCategory = categoryTrail[categoryTrail.length - 1] ?? null;
   const favoriteImageUrl = imageMedia.length > 0
-    ? resolveProductListingMediaUrl(imageMedia[0].id)
+    ? resolveProductListingMediaUrl(imageMedia[0])
     : null;
   const favoritePriceLabel = listing ? buildListingPriceLabel(listing) : 'Fiyat sorunuz';
   useEffect(() => {
@@ -557,7 +557,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
     const matchedMedia = findMediaForVariantImage(value);
 
     if (matchedMedia) {
-      return resolveProductListingMediaUrl(matchedMedia.id);
+      return resolveProductListingMediaUrl(matchedMedia);
     }
 
     return resolveProductListingAssetUrl(value);
@@ -901,7 +901,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                       <ProductMediaImage
                         alt={media.originalName}
                         className={`h-full w-full object-cover ${media.mediaType === 'VIDEO' ? 'opacity-50' : ''}`}
-                        src={resolveProductListingMediaUrl(media.id)}
+                        src={resolveProductListingMediaUrl(media)}
                       />
                     </button>
                   ))}
@@ -914,13 +914,13 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                     <video
                       className='h-full w-full object-contain'
                       controls
-                      src={resolveProductListingMediaUrl(selectedMedia.id)}
+                      src={resolveProductListingMediaUrl(selectedMedia)}
                     />
                   ) : (
                     <ProductMediaImage
                       alt={listing.name}
                       className='h-full w-full object-contain'
-                      src={resolveProductListingMediaUrl(selectedMedia.id)}
+                      src={resolveProductListingMediaUrl(selectedMedia)}
                     />
                   )
                 ) : (
@@ -1010,7 +1010,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                     <ProductMediaImage
                       alt={media.originalName}
                       className={`h-full w-full object-cover ${media.mediaType === 'VIDEO' ? 'opacity-50' : ''}`}
-                      src={resolveProductListingMediaUrl(media.id)}
+                      src={resolveProductListingMediaUrl(media)}
                     />
                   </button>
                 ))}
@@ -1228,7 +1228,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                             <ProductMediaImage
                               alt={media.originalName}
                               className='h-full w-full object-cover'
-                              src={resolveProductListingMediaUrl(media.id)}
+                              src={resolveProductListingMediaUrl(media)}
                             />
                           </div>
                         ))}

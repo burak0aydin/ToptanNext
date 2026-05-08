@@ -122,7 +122,7 @@ export function QuoteOfferModal({
                   <img
                     alt={product?.name ?? 'Ürün'}
                     className='h-full w-full object-cover'
-                    src={resolveProductListingMediaUrl(productImage.id)}
+                    src={resolveProductListingMediaUrl(productImage)}
                   />
                 ) : (
                   <span className='material-symbols-outlined text-[20px]'>inventory_2</span>

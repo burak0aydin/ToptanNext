@@ -26,11 +26,12 @@ import { AuthGuard } from '@nestjs/passport';
 import { Role } from '@prisma/client';
 import { Request, Response } from 'express';
 import { MulterError } from 'multer';
-import { diskStorage } from 'multer';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import { randomUUID } from 'crypto';
 import { extname, isAbsolute, join } from 'path';
-import { createReadStream, existsSync, mkdirSync } from 'fs';
-import { unlink } from 'fs/promises';
+import { createReadStream, existsSync } from 'fs';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { cloudinary, configureCloudinary } from '../../config/cloudinary.config';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { CreateProductListingStepOneDto } from './dto/create-product-listing-step-one.dto';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -41,17 +42,11 @@ import { UpdateProductListingStepThreeDto } from './dto/update-product-listing-s
 import { UpdateProductListingStepTwoDto } from './dto/update-product-listing-step-two.dto';
 import { ProductsService } from './products.service';
 import { UploadedProductListingMedia } from './products.service';
-import { UploadsService } from '../uploads/uploads.service';
 
 type AuthenticatedRequest = Request & {
   user: JwtPayload;
 };
 
-const PRODUCT_MEDIA_UPLOAD_ROOT = join(
-  process.cwd(),
-  'uploads',
-  'product-listings',
-);
 const PRODUCT_MEDIA_UPLOAD_FIELD = 'mediaFiles';
 const MAX_MEDIA_FILE_SIZE_BYTES = 15 * 1024 * 1024;
 const ALLOWED_MEDIA_MIME_TYPES = new Set([
@@ -91,33 +86,36 @@ class ProductListingMediaUploadExceptionFilter implements ExceptionFilter {
 const sanitizeFilenamePart = (value: string): string =>
   value.replace(/[^a-zA-Z0-9._-]/g, '_');
 
-const productMediaUploadOptions = {
-  storage: diskStorage({
-    destination: (
-      req: Request,
-      _file: { fieldname: string },
-      cb: (error: Error | null, destination: string) => void,
-    ) => {
-      const userId = (req as AuthenticatedRequest).user?.sub;
-      const destinationPath = userId
-        ? join(PRODUCT_MEDIA_UPLOAD_ROOT, userId)
-        : PRODUCT_MEDIA_UPLOAD_ROOT;
+const ensureCloudinaryEnvironment = (): void => {
+  if (
+    !process.env.CLOUDINARY_CLOUD_NAME ||
+    !process.env.CLOUDINARY_API_KEY ||
+    !process.env.CLOUDINARY_API_SECRET
+  ) {
+    throw new BadRequestException('Cloudinary ortam değişkenleri eksik.');
+  }
+};
 
-      mkdirSync(destinationPath, { recursive: true });
-      cb(null, destinationPath);
-    },
-    filename: (
-      _req: Request,
-      file: { fieldname: string; originalname: string },
-      cb: (error: Error | null, filename: string) => void,
-    ) => {
+const productMediaUploadOptions = {
+  storage: new CloudinaryStorage({
+    cloudinary,
+    params: (req: Request, file: Express.Multer.File) => {
+      ensureCloudinaryEnvironment();
+      configureCloudinary();
+
+      const userId = (req as AuthenticatedRequest).user?.sub ?? 'anonymous';
+      const safeUserId = sanitizeFilenamePart(userId);
       const extension = extname(file.originalname).toLowerCase();
       const originalBaseName = sanitizeFilenamePart(
         file.originalname.replace(extension, ''),
       );
 
-      const nextFilename = `${file.fieldname}-${Date.now()}-${Math.round(Math.random() * 1_000_000)}-${originalBaseName}${extension}`;
-      cb(null, nextFilename);
+      return {
+        folder: `toptannext/product-listings/${safeUserId}`,
+        public_id: `${file.fieldname}-${Date.now()}-${randomUUID()}-${originalBaseName}`,
+        resource_type: 'auto',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'mp4', 'webm'],
+      };
     },
   }),
   limits: {
@@ -146,7 +144,6 @@ const productMediaUploadOptions = {
 export class ProductsController {
   constructor(
     private readonly productsService: ProductsService,
-    private readonly uploadsService: UploadsService,
   ) {}
 
   @Get()
@@ -663,7 +660,7 @@ export class ProductsController {
   }
 
   private async normalizeUploadedMedia(
-    supplierId: string,
+    _supplierId: string,
     files: Partial<
       Record<
         typeof PRODUCT_MEDIA_UPLOAD_FIELD,
@@ -679,30 +676,14 @@ export class ProductsController {
   ): Promise<UploadedProductListingMedia[]> {
     const uploaded = files[PRODUCT_MEDIA_UPLOAD_FIELD] ?? [];
 
-    if (!this.uploadsService.isProductMediaObjectStorageEnabled()) {
-      return uploaded.map((file) => ({
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-        fileSize: file.size,
-        filePath: file.path,
-      }));
-    }
-
-    return Promise.all(uploaded.map(async (file) => {
-      const fileUrl = await this.uploadsService.uploadProductListingMediaFromDisk(
-        file as Express.Multer.File,
-        supplierId,
-      );
-
-      await unlink(file.path).catch(() => undefined);
-
+    return uploaded.map((file) => {
       return {
         originalName: file.originalname,
         mimeType: file.mimetype,
         fileSize: file.size,
-        filePath: fileUrl,
+        filePath: file.path,
       };
-    }));
+    });
   }
 
   private resolveMediaAbsolutePath(filePath: string): string {

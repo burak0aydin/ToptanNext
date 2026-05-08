@@ -126,7 +126,7 @@ function getDisplayStatus(status: ReturnType<typeof resolveStatusLabel>): string
 
 function getCoverImage(listing: ProductListingRecord): string | null {
   const cover = listing.media.find((media) => media.mediaType === "IMAGE");
-  return cover ? resolveProductListingMediaUrl(cover.id) : null;
+  return cover ? resolveProductListingMediaUrl(cover) : null;
 }
 
 export default function SellerProductsPage() {
@@ -238,7 +238,7 @@ export default function SellerProductsPage() {
     ? previewListing.media
         .filter((media) => media.mediaType === "IMAGE")
         .sort((a, b) => a.displayOrder - b.displayOrder)
-        .map((media) => resolveProductListingMediaUrl(media.id))
+        .map((media) => resolveProductListingMediaUrl(media))
     : [];
   const previewMainImage = previewImages[previewImageIndex] ?? null;
   const previewDescription = previewListing

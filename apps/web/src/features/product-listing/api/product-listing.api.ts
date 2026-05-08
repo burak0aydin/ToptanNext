@@ -469,9 +469,24 @@ export async function updateAdminProductListingStepThree(
   return normalizeProductListingRecord(record);
 }
 
-export function resolveProductListingMediaUrl(mediaId: string): string {
+export function resolveProductListingMediaUrl(media: ProductListingMediaRecord | string): string {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
-  return `${baseUrl}/products/media/${mediaId}`;
+
+  if (typeof media !== 'string') {
+    const filePath = media.filePath.trim();
+
+    if (
+      filePath.startsWith('http://') ||
+      filePath.startsWith('https://') ||
+      filePath.startsWith('data:')
+    ) {
+      return resolveProductListingAssetUrl(filePath);
+    }
+
+    return `${baseUrl}/products/media/${media.id}`;
+  }
+
+  return `${baseUrl}/products/media/${media}`;
 }
 
 export function resolveProductListingAssetUrl(pathOrUrl: string): string {

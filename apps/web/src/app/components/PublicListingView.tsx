@@ -72,7 +72,7 @@ function getCoverImageUrl(listing: ProductListingRecord): string | null {
     .filter((item) => item.mediaType === 'IMAGE')
     .sort((left, right) => left.displayOrder - right.displayOrder)[0];
 
-  return media ? resolveProductListingMediaUrl(media.id) : null;
+  return media ? resolveProductListingMediaUrl(media) : null;
 }
 
 function formatTryAmount(value: number): string {
