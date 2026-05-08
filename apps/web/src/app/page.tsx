@@ -1,6 +1,7 @@
 import { MainFooter } from './components/MainFooter';
-import { HomeHeroSlider } from './components/HomeHeroSlider';
+import { FeaturedSectorsCarousel } from './components/FeaturedSectorsCarousel';
 import { HomeProductFeed } from './components/HomeProductFeed';
+import { HomeHeroSlider } from './components/HomeHeroSlider';
 import { MainHeader } from './components/MainHeader';
 
 export default function Home() {
@@ -11,7 +12,10 @@ export default function Home() {
       <main className='flex-1 pb-24 lg:pb-0'>
         <HomeHeroSlider />
 
+        <FeaturedSectorsCarousel />
+
         <HomeProductFeed />
+
       </main>
 
       <MainFooter />

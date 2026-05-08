@@ -51,126 +51,105 @@ function buildPriceRange(listing: ProductListingRecord): string {
 }
 
 export function HomeProductFeed() {
-  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  const listingsQuery = useInfiniteQuery({
-    queryKey: ['home', 'published-products'],
-    initialPageParam: 1,
+  const productsQuery = useInfiniteQuery({
+    queryKey: ['home', 'public-product-listings'],
     queryFn: ({ pageParam }) => fetchPublicProductListings({
       page: pageParam,
       limit: PAGE_SIZE,
       sort: 'LATEST',
     }),
-    getNextPageParam: (lastPage) => (
-      lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined
-    ),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined,
   });
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isError,
+    isFetchingNextPage,
+    isLoading,
+  } = productsQuery;
 
   const products = useMemo(
-    () => listingsQuery.data?.pages.flatMap((page) => page.items) ?? [],
-    [listingsQuery.data?.pages],
+    () => data?.pages.flatMap((page) => page.items) ?? [],
+    [data],
   );
 
   useEffect(() => {
-    const target = loadMoreRef.current;
-    if (!target || !listingsQuery.hasNextPage) {
+    const sentinel = sentinelRef.current;
+
+    if (!sentinel || !hasNextPage) {
       return;
     }
 
     const observer = new IntersectionObserver(
       (entries) => {
+        const [entry] = entries;
         if (
-          entries[0]?.isIntersecting &&
-          listingsQuery.hasNextPage &&
-          !listingsQuery.isFetchingNextPage
+          entry?.isIntersecting &&
+          hasNextPage &&
+          !isFetchingNextPage
         ) {
-          void listingsQuery.fetchNextPage();
+          void fetchNextPage();
         }
       },
       {
-        rootMargin: '640px 0px',
+        rootMargin: '600px 0px',
       },
     );
 
-    observer.observe(target);
+    observer.observe(sentinel);
 
     return () => observer.disconnect();
   }, [
-    listingsQuery.fetchNextPage,
-    listingsQuery.hasNextPage,
-    listingsQuery.isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   ]);
-
-  if (listingsQuery.isLoading) {
-    return (
-      <section className='bg-[#F8FAFC] py-10 md:py-16'>
-        <div className='container mx-auto px-4 sm:px-6'>
-          <div className='grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4 xl:grid-cols-5'>
-            {Array.from({ length: 10 }).map((_, index) => (
-              <div
-                key={index}
-                className='aspect-[3/4] animate-pulse rounded-lg bg-slate-200 shadow-sm md:rounded-xl'
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  if (listingsQuery.isError) {
-    return (
-      <section className='bg-[#F8FAFC] py-10 md:py-16'>
-        <div className='container mx-auto px-4 sm:px-6'>
-          <div className='rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700'>
-            Ürünler yüklenirken bir sorun oluştu.
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  if (products.length === 0) {
-    return (
-      <section className='bg-[#F8FAFC] py-8'>
-        <div className='container mx-auto px-4 sm:px-6'>
-          <div className='rounded-xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500'>
-            Şu anda yayında ürün bulunmuyor.
-          </div>
-        </div>
-      </section>
-    );
-  }
 
   return (
     <section className='bg-[#F8FAFC] py-10 md:py-16'>
       <div className='container mx-auto px-4 sm:px-6'>
         <div className='grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4 xl:grid-cols-5'>
-          {products.map((product) => (
-            <ProductCard
-              key={product.id}
-              className='bg-surface-container-lowest'
-              href={`/urun/${product.id}`}
-              imageUrl={getCoverImageUrl(product)}
-              minOrderQuantity={product.minOrderQuantity}
-              priceLabel={buildPriceRange(product)}
-              title={product.name}
-            />
-          ))}
-        </div>
-
-        {listingsQuery.hasNextPage ? (
-          <div ref={loadMoreRef} className='h-12' aria-hidden='true' />
-        ) : null}
-
-        {listingsQuery.isFetchingNextPage ? (
-          <div className='mt-6 grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4 xl:grid-cols-5'>
-            {Array.from({ length: 5 }).map((_, index) => (
+          {isLoading
+            ? Array.from({ length: 10 }).map((_, index) => (
               <div
                 key={index}
                 className='aspect-[3/4] animate-pulse rounded-lg bg-slate-200 shadow-sm md:rounded-xl'
               />
+            ))
+            : products.map((product) => (
+              <ProductCard
+                key={product.id}
+                href={`/urun/${product.id}`}
+                imageUrl={getCoverImageUrl(product)}
+                minOrderQuantity={product.minOrderQuantity}
+                priceLabel={buildPriceRange(product)}
+                title={product.name}
+              />
             ))}
+        </div>
+
+        {isError && products.length === 0 ? (
+          <div className='rounded-xl border border-red-200 bg-red-50 px-4 py-8 text-center text-sm text-red-700'>
+            Ürünler yüklenirken bir sorun oluştu.
+          </div>
+        ) : null}
+
+        {!isLoading && !isError && products.length === 0 ? (
+          <div className='rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500'>
+            Yayında ürün bulunamadı.
+          </div>
+        ) : null}
+
+        {hasNextPage ? (
+          <div ref={sentinelRef} className='flex h-20 items-center justify-center'>
+            {isFetchingNextPage ? (
+              <span className='text-sm font-medium text-slate-500'>Ürünler yükleniyor...</span>
+            ) : null}
           </div>
         ) : null}
       </div>

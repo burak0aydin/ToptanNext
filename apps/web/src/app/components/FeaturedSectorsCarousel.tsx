@@ -174,8 +174,7 @@ export function FeaturedSectorsCarousel() {
       onMouseLeave={() => setIsPaused(false)}
     >
       <div className='container mx-auto px-6'>
-        <div className='mb-4 flex items-center justify-between'>
-          <h2 className='text-2xl font-bold text-on-surface'>Öne Çıkan Sektörler</h2>
+        <div className='mb-4 flex items-center justify-end'>
           <div className='flex items-center gap-2'>
             <button
               aria-label='Sektörleri sola kaydır'
