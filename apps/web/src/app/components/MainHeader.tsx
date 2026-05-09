@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { requestJson } from '@/lib/api';
 import { hasAccessToken } from '@/lib/auth-token';
 import { fetchCart } from '@/features/cart/api/cart.api';
@@ -41,6 +41,7 @@ async function fetchSectors(): Promise<SectorItem[]> {
 
 export function MainHeader() {
   const pathname = usePathname();
+  const router = useRouter();
   const [desktopMenu, setDesktopMenu] = useState<'categories' | 'sectors' | null>(null);
   const [activeSectorId, setActiveSectorId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -48,6 +49,8 @@ export function MainHeader() {
   const [mobileSectorOpen, setMobileSectorOpen] = useState(false);
   const [mobileSelectedCategoryId, setMobileSelectedCategoryId] = useState<string | null>(null);
   const [mobileSelectedGroupId, setMobileSelectedGroupId] = useState<string | null>(null);
+  const [searchValue, setSearchValue] = useState('');
+  const [isMobileSearchReady, setIsMobileSearchReady] = useState(false);
   const totalItems = useCartStore((state) => state.totalItems);
   const setTotalItems = useCartStore((state) => state.setTotalItems);
   const toast = useCartStore((state) => state.toast);
@@ -127,6 +130,20 @@ export function MainHeader() {
     };
   }, [clearToast, toast]);
 
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setIsMobileSearchReady(true);
+    }, 450);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, []);
+
+  useEffect(() => {
+    setSearchValue(new URLSearchParams(window.location.search).get('search') ?? '');
+  }, [pathname]);
+
   const supplierApplyHref = '/satici-ol';
   const supplierDiscoveryHref = '/uretici-toptancilar';
   const logisticsApplyHref = '/lojistik/basvuru';
@@ -199,6 +216,19 @@ export function MainHeader() {
   };
   const mobileBottomNavOffset = 'calc(3.5rem + env(safe-area-inset-bottom))';
 
+  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const normalizedSearch = searchValue.trim();
+    const nextHref =
+      normalizedSearch.length > 0
+        ? `/kesfet?search=${encodeURIComponent(normalizedSearch)}`
+        : '/kesfet';
+
+    setMobileMenuOpen(false);
+    router.push(nextHref);
+  };
+
   return (
     <header
       className={`z-50 bg-white lg:sticky lg:top-0 lg:border-b lg:border-slate-100 lg:shadow-sm ${
@@ -219,18 +249,62 @@ export function MainHeader() {
           <span className='material-symbols-outlined text-[22px] leading-none'>menu</span>
         </button>
 
-        <Link className='text-2xl font-bold tracking-tighter text-[#003FB1]' href='/'>
+        <Link className='hidden text-2xl font-bold tracking-tighter text-[#003FB1] lg:block' href='/'>
           Toptan<span className='text-[#FF5A1F]'>Next</span>
         </Link>
 
-        <div className='mx-12 hidden max-w-3xl flex-1 items-center gap-1 rounded-xl border border-outline-variant/30 bg-surface-container-low px-4 py-2 lg:flex'>
+        <div className='flex min-w-0 flex-1 items-center justify-center lg:hidden'>
+          <Link
+            aria-label='ToptanNext ana sayfa'
+            className={`shrink-0 overflow-hidden text-xl font-bold tracking-tighter text-[#003FB1] transition-all duration-700 ease-out ${
+              isMobileSearchReady ? 'w-0 -translate-x-4 opacity-0' : 'w-[74px] opacity-100'
+            }`}
+            href='/'
+          >
+            Toptan
+          </Link>
+
+          <form
+            className={`mx-2 flex min-w-0 items-center gap-1 rounded-xl border border-outline-variant/30 bg-surface-container-low px-3 py-2 transition-all duration-700 ease-out ${
+              isMobileSearchReady ? 'w-full opacity-100' : 'w-0 px-0 opacity-0'
+            }`}
+            onSubmit={handleSearchSubmit}
+          >
+            <span className='material-symbols-outlined text-[20px] text-outline'>search</span>
+            <input
+              aria-label='Ürün ara'
+              className='min-w-0 flex-1 border-none bg-transparent text-sm text-on-surface-variant outline-none placeholder:text-slate-400 focus:ring-0'
+              onChange={(event) => setSearchValue(event.target.value)}
+              placeholder='Ara...'
+              type='search'
+              value={searchValue}
+            />
+          </form>
+
+          <Link
+            aria-label='ToptanNext ana sayfa'
+            className={`shrink-0 overflow-hidden text-xl font-bold tracking-tighter text-[#FF5A1F] transition-all duration-700 ease-out ${
+              isMobileSearchReady ? 'w-0 translate-x-4 opacity-0' : 'w-[42px] opacity-100'
+            }`}
+            href='/'
+          >
+            Next
+          </Link>
+        </div>
+
+        <form
+          className='mx-12 hidden max-w-3xl flex-1 items-center gap-1 rounded-xl border border-outline-variant/30 bg-surface-container-low px-4 py-2 lg:flex'
+          onSubmit={handleSearchSubmit}
+        >
           <span className='material-symbols-outlined text-outline'>search</span>
           <input
             className='w-full border-none bg-transparent text-sm text-on-surface-variant focus:ring-0'
+            onChange={(event) => setSearchValue(event.target.value)}
             placeholder='Ürün, kategori veya marka ara...'
-            type='text'
+            type='search'
+            value={searchValue}
           />
-        </div>
+        </form>
 
         <div className='flex items-center gap-5'>
           <Link

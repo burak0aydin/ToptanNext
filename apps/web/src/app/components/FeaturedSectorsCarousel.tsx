@@ -181,7 +181,7 @@ export function FeaturedSectorsCarousel() {
           <div className='relative'>
             <button
               aria-label='Sektörleri sola kaydır'
-              className='absolute left-0 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-outline-variant bg-white/95 text-on-surface shadow-sm transition-colors hover:bg-slate-50 md:flex'
+              className='absolute left-3 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-outline-variant bg-white/95 text-on-surface shadow-sm transition-colors hover:bg-slate-50 md:flex'
               onClick={() => scrollByOneCard('left')}
               type='button'
             >
@@ -215,7 +215,7 @@ export function FeaturedSectorsCarousel() {
 
             <button
               aria-label='Sektörleri sağa kaydır'
-              className='absolute right-0 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-outline-variant bg-white/95 text-on-surface shadow-sm transition-colors hover:bg-slate-50 md:flex'
+              className='absolute right-3 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-outline-variant bg-white/95 text-on-surface shadow-sm transition-colors hover:bg-slate-50 md:flex'
               onClick={() => scrollByOneCard('right')}
               type='button'
             >

@@ -61,6 +61,7 @@ export type PublicProductListingQuery = {
   maxPrice?: number;
   msmRange?: PublicProductListingMsmRange;
   sort?: PublicProductListingSort;
+  search?: string;
 };
 
 type AdminProductListingGrowthPeriod = 'DAILY' | 'WEEKLY' | 'MONTHLY';
@@ -134,17 +135,18 @@ export class ProductsService {
     const period = query.period ?? 'WEEKLY';
     const status = query.status ?? 'ALL';
 
-    const [summary, listResult, growth, categoryDistribution] = await Promise.all([
-      this.productsRepository.countProductListingsForAdmin(),
-      this.productsRepository.findProductListingsForAdminManagement({
-        status,
-        categoryId: query.categoryId,
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      this.buildAdminGrowth(period),
-      this.productsRepository.getAdminCategoryDistribution(5),
-    ]);
+    const [summary, listResult, growth, categoryDistribution] =
+      await Promise.all([
+        this.productsRepository.countProductListingsForAdmin(),
+        this.productsRepository.findProductListingsForAdminManagement({
+          status,
+          categoryId: query.categoryId,
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        this.buildAdminGrowth(period),
+        this.productsRepository.getAdminCategoryDistribution(5),
+      ]);
 
     return {
       summary,
@@ -177,7 +179,8 @@ export class ProductsService {
   ): Promise<ProductListingRecord> {
     this.ensureAdminRole(role);
 
-    const listing = await this.productsRepository.findProductListingById(listingId);
+    const listing =
+      await this.productsRepository.findProductListingById(listingId);
     if (!listing) {
       throw new NotFoundException('Ürün başvurusu bulunamadı.');
     }
@@ -221,22 +224,24 @@ export class ProductsService {
     const variantGroups = this.normalizeVariantGroups(dto.variantGroups ?? []);
     const stepOneRefs = await this.resolveStepOneReferences(dto);
 
-    const duplicateSku = await this.productsRepository.findProductListingBySupplierAndSku(
-      listing.supplierId,
-      sku,
-    );
+    const duplicateSku =
+      await this.productsRepository.findProductListingBySupplierAndSku(
+        listing.supplierId,
+        sku,
+      );
 
     if (duplicateSku && duplicateSku.id !== listing.id) {
       throw new BadRequestException('Bu SKU zaten kullanılıyor.');
     }
 
-    const slug = listing.name === name
-      ? listing.slug
-      : await this.generateUniqueListingSlug(
-        listing.supplierId,
-        name,
-        listing.id,
-      );
+    const slug =
+      listing.name === name
+        ? listing.slug
+        : await this.generateUniqueListingSlug(
+            listing.supplierId,
+            name,
+            listing.id,
+          );
 
     const input: UpdateProductListingStepOneInput = {
       name,
@@ -245,13 +250,18 @@ export class ProductsService {
       description,
       categoryId: stepOneRefs.categoryId,
       sectorIds: stepOneRefs.sectorIds,
-      featuredFeatures: this.serializeFeaturedFeatures(dto.featuredFeatures ?? []),
+      featuredFeatures: this.serializeFeaturedFeatures(
+        dto.featuredFeatures ?? [],
+      ),
       isCustomizable: dto.isCustomizable ?? false,
       customizationNote: this.normalizeOptionalText(dto.customizationNote),
       variantGroups,
     };
 
-    return this.productsRepository.updateProductListingStepOne(listing.id, input);
+    return this.productsRepository.updateProductListingStepOne(
+      listing.id,
+      input,
+    );
   }
 
   async updateListingStepTwoByAdmin(
@@ -269,31 +279,40 @@ export class ProductsService {
     }
 
     if (pricingTiers.length > MAX_PRICING_TIER_COUNT) {
-      throw new BadRequestException('En fazla 6 fiyat kademesi tanımlayabilirsiniz.');
+      throw new BadRequestException(
+        'En fazla 6 fiyat kademesi tanımlayabilirsiniz.',
+      );
     }
 
-    const minOrderTier = pricingTiers.find((tier) => (
-      dto.minOrderQuantity >= tier.minQuantity
-      && (tier.maxQuantity === null || dto.minOrderQuantity <= tier.maxQuantity)
-    ));
+    const minOrderTier = pricingTiers.find(
+      (tier) =>
+        dto.minOrderQuantity >= tier.minQuantity &&
+        (tier.maxQuantity === null || dto.minOrderQuantity <= tier.maxQuantity),
+    );
 
     if (!minOrderTier) {
-      throw new BadRequestException('Minimum sipariş adedi, tanımlanan bir kademe aralığında olmalıdır.');
+      throw new BadRequestException(
+        'Minimum sipariş adedi, tanımlanan bir kademe aralığında olmalıdır.',
+      );
     }
 
     const normalizedNegotiationThreshold = dto.isNegotiationEnabled
-      ? dto.negotiationThreshold ?? null
+      ? (dto.negotiationThreshold ?? null)
       : null;
 
     if (dto.isNegotiationEnabled && normalizedNegotiationThreshold === null) {
-      throw new BadRequestException('Pazarlık eşiği aktifse pazarlık sınırı zorunludur.');
+      throw new BadRequestException(
+        'Pazarlık eşiği aktifse pazarlık sınırı zorunludur.',
+      );
     }
 
     if (
       normalizedNegotiationThreshold !== null &&
       normalizedNegotiationThreshold < dto.minOrderQuantity
     ) {
-      throw new BadRequestException('Pazarlık sınırı, minimum sipariş adedinden küçük olamaz.');
+      throw new BadRequestException(
+        'Pazarlık sınırı, minimum sipariş adedinden küçük olamaz.',
+      );
     }
 
     return this.productsRepository.updateProductListingStepTwo(listing.id, {
@@ -330,19 +349,28 @@ export class ProductsService {
   }
 
   async create(dto: CreateProductDto): Promise<ProductRecord> {
-    const normalizedName = this.normalizeRequiredText(dto.name, 'Ürün adı boş olamaz.');
+    const normalizedName = this.normalizeRequiredText(
+      dto.name,
+      'Ürün adı boş olamaz.',
+    );
 
-    const category = await this.productsRepository.findCategoryById(dto.categoryId);
+    const category = await this.productsRepository.findCategoryById(
+      dto.categoryId,
+    );
     if (!category) {
       throw new NotFoundException('Kategori bulunamadı.');
     }
 
     if (category.level !== 3) {
-      throw new UnprocessableEntityException('Ürün sadece level 3 kategoriye eklenebilir.');
+      throw new UnprocessableEntityException(
+        'Ürün sadece level 3 kategoriye eklenebilir.',
+      );
     }
 
     if (!category.isActive) {
-      throw new UnprocessableEntityException('Pasif kategoriye ürün eklenemez.');
+      throw new UnprocessableEntityException(
+        'Pasif kategoriye ürün eklenemez.',
+      );
     }
 
     let sectorId: string | null = null;
@@ -354,13 +382,17 @@ export class ProductsService {
       }
 
       if (!sector.isActive) {
-        throw new UnprocessableEntityException('Pasif sektör ürün için seçilemez.');
+        throw new UnprocessableEntityException(
+          'Pasif sektör ürün için seçilemez.',
+        );
       }
 
       sectorId = sector.id;
     }
 
-    const preferredSlug = dto.slug ? this.normalizeRequiredText(dto.slug, 'Slug boş olamaz.') : normalizedName;
+    const preferredSlug = dto.slug
+      ? this.normalizeRequiredText(dto.slug, 'Slug boş olamaz.')
+      : normalizedName;
     const uniqueSlug = await this.generateUniqueSlug(preferredSlug);
 
     const input: CreateProductInput = {
@@ -373,7 +405,10 @@ export class ProductsService {
     return this.productsRepository.create(input);
   }
 
-  async getMyListings(supplierId: string, role: Role): Promise<ProductListingRecord[]> {
+  async getMyListings(
+    supplierId: string,
+    role: Role,
+  ): Promise<ProductListingRecord[]> {
     this.ensureSupplierRole(role);
     return this.productsRepository.findProductListingsBySupplier(supplierId);
   }
@@ -382,11 +417,13 @@ export class ProductsService {
     supplierId: string,
     role: Role,
     query: ProductListingManagementQuery,
-  ): Promise<ProductListingManagementResult & {
-    page: number;
-    limit: number;
-    totalPages: number;
-  }> {
+  ): Promise<
+    ProductListingManagementResult & {
+      page: number;
+      limit: number;
+      totalPages: number;
+    }
+  > {
     this.ensureSupplierRole(role);
 
     const page = Math.max(1, query.page);
@@ -408,21 +445,32 @@ export class ProductsService {
     };
   }
 
-  async getPublicListingManagement(
-    query: PublicProductListingQuery,
-  ): Promise<PublicProductListingResult & {
-    page: number;
-    limit: number;
-    totalPages: number;
-  }> {
+  async getPublicListingManagement(query: PublicProductListingQuery): Promise<
+    PublicProductListingResult & {
+      page: number;
+      limit: number;
+      totalPages: number;
+    }
+  > {
     const page = Math.max(1, query.page);
     const limit = Math.min(Math.max(query.limit, 8), 60);
-    const normalizedCategoryIds = this.normalizeStringArray(query.categoryIds ?? []);
+    const normalizedCategoryIds = this.normalizeStringArray(
+      query.categoryIds ?? [],
+    );
     const normalizedSectorId = query.sectorId?.trim();
+    const normalizedSearch = query.search?.trim();
 
     const result = await this.productsRepository.findPublicProductListings({
-      categoryIds: normalizedCategoryIds.length > 0 ? normalizedCategoryIds : undefined,
-      sectorId: normalizedSectorId && normalizedSectorId.length > 0 ? normalizedSectorId : undefined,
+      categoryIds:
+        normalizedCategoryIds.length > 0 ? normalizedCategoryIds : undefined,
+      sectorId:
+        normalizedSectorId && normalizedSectorId.length > 0
+          ? normalizedSectorId
+          : undefined,
+      search:
+        normalizedSearch && normalizedSearch.length > 0
+          ? normalizedSearch
+          : undefined,
       minPrice: query.minPrice,
       maxPrice: query.maxPrice,
       msmRange: query.msmRange ?? 'ANY',
@@ -439,12 +487,9 @@ export class ProductsService {
     };
   }
 
-  async getPublicListingById(
-    listingId: string,
-  ): Promise<ProductListingRecord> {
-    const listing = await this.productsRepository.findPublicProductListingById(
-      listingId,
-    );
+  async getPublicListingById(listingId: string): Promise<ProductListingRecord> {
+    const listing =
+      await this.productsRepository.findPublicProductListingById(listingId);
 
     if (!listing) {
       throw new NotFoundException('Yayınlanmış ürün bulunamadı.');
@@ -501,7 +546,8 @@ export class ProductsService {
   async getListingMediaById(
     mediaId: string,
   ): Promise<{ filePath: string; mimeType: string; originalName: string }> {
-    const media = await this.productsRepository.findProductListingMediaById(mediaId);
+    const media =
+      await this.productsRepository.findProductListingMediaById(mediaId);
     if (!media) {
       throw new NotFoundException('Medya bulunamadı.');
     }
@@ -545,10 +591,11 @@ export class ProductsService {
     const variantGroups = this.normalizeVariantGroups(dto.variantGroups ?? []);
     const stepOneRefs = await this.resolveStepOneReferences(dto);
 
-    const duplicateSku = await this.productsRepository.findProductListingBySupplierAndSku(
-      supplierId,
-      sku,
-    );
+    const duplicateSku =
+      await this.productsRepository.findProductListingBySupplierAndSku(
+        supplierId,
+        sku,
+      );
     if (duplicateSku) {
       throw new BadRequestException('Bu SKU zaten kullanılıyor.');
     }
@@ -563,7 +610,9 @@ export class ProductsService {
       description,
       categoryId: stepOneRefs.categoryId,
       sectorIds: stepOneRefs.sectorIds,
-      featuredFeatures: this.serializeFeaturedFeatures(dto.featuredFeatures ?? []),
+      featuredFeatures: this.serializeFeaturedFeatures(
+        dto.featuredFeatures ?? [],
+      ),
       isCustomizable: dto.isCustomizable ?? false,
       customizationNote: this.normalizeOptionalText(dto.customizationNote),
       variantGroups,
@@ -591,18 +640,20 @@ export class ProductsService {
     const variantGroups = this.normalizeVariantGroups(dto.variantGroups ?? []);
     const stepOneRefs = await this.resolveStepOneReferences(dto);
 
-    const duplicateSku = await this.productsRepository.findProductListingBySupplierAndSku(
-      supplierId,
-      sku,
-    );
+    const duplicateSku =
+      await this.productsRepository.findProductListingBySupplierAndSku(
+        supplierId,
+        sku,
+      );
 
     if (duplicateSku && duplicateSku.id !== listing.id) {
       throw new BadRequestException('Bu SKU zaten kullanılıyor.');
     }
 
-    const slug = listing.name === name
-      ? listing.slug
-      : await this.generateUniqueListingSlug(supplierId, name, listing.id);
+    const slug =
+      listing.name === name
+        ? listing.slug
+        : await this.generateUniqueListingSlug(supplierId, name, listing.id);
 
     const input: UpdateProductListingStepOneInput = {
       name,
@@ -611,13 +662,18 @@ export class ProductsService {
       description,
       categoryId: stepOneRefs.categoryId,
       sectorIds: stepOneRefs.sectorIds,
-      featuredFeatures: this.serializeFeaturedFeatures(dto.featuredFeatures ?? []),
+      featuredFeatures: this.serializeFeaturedFeatures(
+        dto.featuredFeatures ?? [],
+      ),
       isCustomizable: dto.isCustomizable ?? false,
       customizationNote: this.normalizeOptionalText(dto.customizationNote),
       variantGroups,
     };
 
-    return this.productsRepository.updateProductListingStepOne(listing.id, input);
+    return this.productsRepository.updateProductListingStepOne(
+      listing.id,
+      input,
+    );
   }
 
   async updateMyListingStepTwo(
@@ -637,31 +693,40 @@ export class ProductsService {
     }
 
     if (pricingTiers.length > MAX_PRICING_TIER_COUNT) {
-      throw new BadRequestException('En fazla 6 fiyat kademesi tanımlayabilirsiniz.');
+      throw new BadRequestException(
+        'En fazla 6 fiyat kademesi tanımlayabilirsiniz.',
+      );
     }
 
-    const minOrderTier = pricingTiers.find((tier) => (
-      dto.minOrderQuantity >= tier.minQuantity
-      && (tier.maxQuantity === null || dto.minOrderQuantity <= tier.maxQuantity)
-    ));
+    const minOrderTier = pricingTiers.find(
+      (tier) =>
+        dto.minOrderQuantity >= tier.minQuantity &&
+        (tier.maxQuantity === null || dto.minOrderQuantity <= tier.maxQuantity),
+    );
 
     if (!minOrderTier) {
-      throw new BadRequestException('Minimum sipariş adedi, tanımlanan bir kademe aralığında olmalıdır.');
+      throw new BadRequestException(
+        'Minimum sipariş adedi, tanımlanan bir kademe aralığında olmalıdır.',
+      );
     }
 
     const normalizedNegotiationThreshold = dto.isNegotiationEnabled
-      ? dto.negotiationThreshold ?? null
+      ? (dto.negotiationThreshold ?? null)
       : null;
 
     if (dto.isNegotiationEnabled && normalizedNegotiationThreshold === null) {
-      throw new BadRequestException('Pazarlık eşiği aktifse pazarlık sınırı zorunludur.');
+      throw new BadRequestException(
+        'Pazarlık eşiği aktifse pazarlık sınırı zorunludur.',
+      );
     }
 
     if (
       normalizedNegotiationThreshold !== null &&
       normalizedNegotiationThreshold < dto.minOrderQuantity
     ) {
-      throw new BadRequestException('Pazarlık sınırı, minimum sipariş adedinden küçük olamaz.');
+      throw new BadRequestException(
+        'Pazarlık sınırı, minimum sipariş adedinden küçük olamaz.',
+      );
     }
 
     return this.productsRepository.updateProductListingStepTwo(listing.id, {
@@ -725,12 +790,16 @@ export class ProductsService {
 
       if (mediaType === ProductListingMediaType.IMAGE) {
         if (file.fileSize > MAX_IMAGE_FILE_SIZE_BYTES) {
-          throw new BadRequestException('Görsel boyutu maksimum 5 MB olabilir.');
+          throw new BadRequestException(
+            'Görsel boyutu maksimum 5 MB olabilir.',
+          );
         }
 
         existingImageCount += 1;
         if (existingImageCount > MAX_LISTING_IMAGE_COUNT) {
-          throw new BadRequestException('Toplamda 1 kapak ve en fazla 5 galeri görseli yükleyebilirsiniz.');
+          throw new BadRequestException(
+            'Toplamda 1 kapak ve en fazla 5 galeri görseli yükleyebilirsiniz.',
+          );
         }
 
         continue;
@@ -748,15 +817,17 @@ export class ProductsService {
 
     const existingCount = listing.media.length;
 
-    const createInputs: CreateProductListingMediaInput[] = files.map((file, index) => ({
-      productListingId: listing.id,
-      mediaType: this.resolveMediaType(file.mimeType),
-      filePath: file.filePath,
-      originalName: file.originalName,
-      mimeType: file.mimeType,
-      fileSize: file.fileSize,
-      displayOrder: existingCount + index,
-    }));
+    const createInputs: CreateProductListingMediaInput[] = files.map(
+      (file, index) => ({
+        productListingId: listing.id,
+        mediaType: this.resolveMediaType(file.mimeType),
+        filePath: file.filePath,
+        originalName: file.originalName,
+        mimeType: file.mimeType,
+        fileSize: file.fileSize,
+        displayOrder: existingCount + index,
+      }),
+    );
 
     await this.productsRepository.createProductListingMedia(createInputs);
 
@@ -806,7 +877,9 @@ export class ProductsService {
   }
 
   private normalizeStringArray(values: string[]): string[] {
-    const normalized = values.map((value) => value.trim()).filter((value) => value.length > 0);
+    const normalized = values
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0);
     return [...new Set(normalized)];
   }
 
@@ -828,16 +901,17 @@ export class ProductsService {
         }
 
         const title = typeof item.title === 'string' ? item.title.trim() : '';
-        const description = typeof item.description === 'string'
-          ? item.description.trim()
-          : '';
+        const description =
+          typeof item.description === 'string' ? item.description.trim() : '';
 
         return {
           title,
           description,
         };
       })
-      .filter((item): item is { title: string; description: string } => item !== null)
+      .filter(
+        (item): item is { title: string; description: string } => item !== null,
+      )
       .filter((item) => item.title.length > 0 && item.description.length > 0);
 
     const unique = new Map<string, { title: string; description: string }>();
@@ -848,11 +922,13 @@ export class ProductsService {
       }
     });
 
-    return Array.from(unique.values()).map((item) => JSON.stringify({
-      v: FEATURED_FEATURE_ENCODING_VERSION,
-      title: item.title,
-      description: item.description,
-    }));
+    return Array.from(unique.values()).map((item) =>
+      JSON.stringify({
+        v: FEATURED_FEATURE_ENCODING_VERSION,
+        title: item.title,
+        description: item.description,
+      }),
+    );
   }
 
   private normalizeVariantGroups(
@@ -863,7 +939,9 @@ export class ProductsService {
     }>,
   ): ProductListingVariantGroupRecord[] {
     if (groups.length > 6) {
-      throw new BadRequestException('En fazla 6 varyant grubu ekleyebilirsiniz.');
+      throw new BadRequestException(
+        'En fazla 6 varyant grubu ekleyebilirsiniz.',
+      );
     }
 
     const normalizedGroups = groups.map((group, groupIndex) => {
@@ -873,15 +951,21 @@ export class ProductsService {
       );
 
       if (group.displayType !== 'image' && group.displayType !== 'text') {
-        throw new BadRequestException(`Varyant grup ${groupIndex + 1} görünüm tipi geçersiz.`);
+        throw new BadRequestException(
+          `Varyant grup ${groupIndex + 1} görünüm tipi geçersiz.`,
+        );
       }
 
       if (!Array.isArray(group.options) || group.options.length === 0) {
-        throw new BadRequestException(`Varyant grup ${groupIndex + 1} için en az 1 seçenek eklemelisiniz.`);
+        throw new BadRequestException(
+          `Varyant grup ${groupIndex + 1} için en az 1 seçenek eklemelisiniz.`,
+        );
       }
 
       if (group.options.length > 30) {
-        throw new BadRequestException(`Varyant grup ${groupIndex + 1} için en fazla 30 seçenek ekleyebilirsiniz.`);
+        throw new BadRequestException(
+          `Varyant grup ${groupIndex + 1} için en fazla 30 seçenek ekleyebilirsiniz.`,
+        );
       }
 
       const optionLabelSet = new Set<string>();
@@ -893,14 +977,18 @@ export class ProductsService {
         const normalizedLabel = label.toLocaleLowerCase('tr-TR');
 
         if (optionLabelSet.has(normalizedLabel)) {
-          throw new BadRequestException(`Varyant grup ${groupIndex + 1} içinde seçenek etiketleri benzersiz olmalıdır.`);
+          throw new BadRequestException(
+            `Varyant grup ${groupIndex + 1} içinde seçenek etiketleri benzersiz olmalıdır.`,
+          );
         }
 
         optionLabelSet.add(normalizedLabel);
 
         const normalizedImageUrl = option.imageUrl?.trim() || null;
         if (group.displayType === 'image' && !normalizedImageUrl) {
-          throw new BadRequestException(`Varyant grup ${groupIndex + 1} içinde her seçenek için görsel seçmelisiniz.`);
+          throw new BadRequestException(
+            `Varyant grup ${groupIndex + 1} içinde her seçenek için görsel seçmelisiniz.`,
+          );
         }
 
         return {
@@ -920,7 +1008,9 @@ export class ProductsService {
     for (const group of normalizedGroups) {
       const normalizedGroupName = group.groupName.toLocaleLowerCase('tr-TR');
       if (groupNameSet.has(normalizedGroupName)) {
-        throw new BadRequestException('Varyant grup adları benzersiz olmalıdır.');
+        throw new BadRequestException(
+          'Varyant grup adları benzersiz olmalıdır.',
+        );
       }
 
       groupNameSet.add(normalizedGroupName);
@@ -961,16 +1051,17 @@ export class ProductsService {
         const currentWeekStart = new Date(today);
         currentWeekStart.setDate(today.getDate() + mondayOffset);
         start = new Date(currentWeekStart);
-        start.setDate(currentWeekStart.getDate() - (index * 7));
+        start.setDate(currentWeekStart.getDate() - index * 7);
         end = new Date(start);
         end.setDate(start.getDate() + 7);
         label = `${start.getDate()}.${start.getMonth() + 1}`;
       }
 
-      const value = await this.productsRepository.countProductListingsCreatedBetween(
-        start,
-        end,
-      );
+      const value =
+        await this.productsRepository.countProductListingsCreatedBetween(
+          start,
+          end,
+        );
 
       labels.push(label);
       values.push(value);
@@ -980,42 +1071,68 @@ export class ProductsService {
   }
 
   private normalizePricingTiers(
-    tiers: Array<{ minQuantity: number; maxQuantity: number | null; unitPrice: number }>,
+    tiers: Array<{
+      minQuantity: number;
+      maxQuantity: number | null;
+      unitPrice: number;
+    }>,
   ): ProductListingPricingTierRecord[] {
     const normalized = tiers.map((tier, index) => ({
       minQuantity: Number(tier.minQuantity),
-      maxQuantity: tier.maxQuantity === null || tier.maxQuantity === undefined
-        ? null
-        : Number(tier.maxQuantity),
+      maxQuantity:
+        tier.maxQuantity === null || tier.maxQuantity === undefined
+          ? null
+          : Number(tier.maxQuantity),
       unitPrice: Number(tier.unitPrice),
       index,
     }));
 
     for (const tier of normalized) {
-      if (!Number.isFinite(tier.minQuantity) || !Number.isInteger(tier.minQuantity) || tier.minQuantity < 1) {
-        throw new BadRequestException(`Kademe ${tier.index + 1} minimum adedi geçersiz.`);
+      if (
+        !Number.isFinite(tier.minQuantity) ||
+        !Number.isInteger(tier.minQuantity) ||
+        tier.minQuantity < 1
+      ) {
+        throw new BadRequestException(
+          `Kademe ${tier.index + 1} minimum adedi geçersiz.`,
+        );
       }
 
-      if (tier.maxQuantity !== null && (!Number.isFinite(tier.maxQuantity) || !Number.isInteger(tier.maxQuantity) || tier.maxQuantity < 1)) {
-        throw new BadRequestException(`Kademe ${tier.index + 1} maksimum adedi geçersiz.`);
+      if (
+        tier.maxQuantity !== null &&
+        (!Number.isFinite(tier.maxQuantity) ||
+          !Number.isInteger(tier.maxQuantity) ||
+          tier.maxQuantity < 1)
+      ) {
+        throw new BadRequestException(
+          `Kademe ${tier.index + 1} maksimum adedi geçersiz.`,
+        );
       }
 
       if (tier.maxQuantity !== null && tier.maxQuantity < tier.minQuantity) {
-        throw new BadRequestException(`Kademe ${tier.index + 1} için maksimum adet minimum adetten küçük olamaz.`);
+        throw new BadRequestException(
+          `Kademe ${tier.index + 1} için maksimum adet minimum adetten küçük olamaz.`,
+        );
       }
 
       if (!Number.isFinite(tier.unitPrice) || tier.unitPrice <= 0) {
-        throw new BadRequestException(`Kademe ${tier.index + 1} birim fiyatı 0'dan büyük olmalıdır.`);
+        throw new BadRequestException(
+          `Kademe ${tier.index + 1} birim fiyatı 0'dan büyük olmalıdır.`,
+        );
       }
     }
 
-    const sorted = [...normalized].sort((a, b) => a.minQuantity - b.minQuantity);
+    const sorted = [...normalized].sort(
+      (a, b) => a.minQuantity - b.minQuantity,
+    );
     for (let index = 1; index < sorted.length; index += 1) {
       const previous = sorted[index - 1];
       const current = sorted[index];
 
       if (previous.maxQuantity === null) {
-        throw new BadRequestException('Sadece son fiyat kademesi üst sınırı açık bırakılabilir.');
+        throw new BadRequestException(
+          'Sadece son fiyat kademesi üst sınırı açık bırakılabilir.',
+        );
       }
 
       if (current.minQuantity <= previous.maxQuantity) {
@@ -1025,7 +1142,9 @@ export class ProductsService {
 
     sorted.forEach((tier, index) => {
       if (index < sorted.length - 1 && tier.maxQuantity === null) {
-        throw new BadRequestException('Sadece son fiyat kademesi üst sınırı açık bırakılabilir.');
+        throw new BadRequestException(
+          'Sadece son fiyat kademesi üst sınırı açık bırakılabilir.',
+        );
       }
     });
 
@@ -1064,10 +1183,11 @@ export class ProductsService {
     supplierId: string,
     listingId: string,
   ): Promise<ProductListingRecord> {
-    const listing = await this.productsRepository.findProductListingBySupplierAndId(
-      supplierId,
-      listingId,
-    );
+    const listing =
+      await this.productsRepository.findProductListingBySupplierAndId(
+        supplierId,
+        listingId,
+      );
 
     if (!listing) {
       throw new NotFoundException('Ürün taslağı bulunamadı.');
@@ -1079,7 +1199,8 @@ export class ProductsService {
   private async getListingForAdminOrThrow(
     listingId: string,
   ): Promise<ProductListingRecord> {
-    const listing = await this.productsRepository.findProductListingById(listingId);
+    const listing =
+      await this.productsRepository.findProductListingById(listingId);
 
     if (!listing) {
       throw new NotFoundException('Ürün başvurusu bulunamadı.');
@@ -1101,14 +1222,20 @@ export class ProductsService {
       return ProductListingMediaType.VIDEO;
     }
 
-    if (mimeType === 'image/jpeg' || mimeType === 'image/png' || mimeType === 'image/webp') {
+    if (
+      mimeType === 'image/jpeg' ||
+      mimeType === 'image/png' ||
+      mimeType === 'image/webp'
+    ) {
       return ProductListingMediaType.IMAGE;
     }
 
     throw new BadRequestException('Desteklenmeyen medya formatı.');
   }
 
-  private validateListingReadyForSubmission(listing: ProductListingRecord): void {
+  private validateListingReadyForSubmission(
+    listing: ProductListingRecord,
+  ): void {
     if (listing.basePrice === null) {
       throw new BadRequestException('Birim fiyat bilgisi zorunludur.');
     }
@@ -1122,11 +1249,15 @@ export class ProductsService {
     }
 
     if (listing.pricingTiers.length === 0) {
-      throw new BadRequestException('Kademeli fiyatlandırma bilgisi zorunludur.');
+      throw new BadRequestException(
+        'Kademeli fiyatlandırma bilgisi zorunludur.',
+      );
     }
 
     if (listing.isNegotiationEnabled && listing.negotiationThreshold === null) {
-      throw new BadRequestException('Pazarlık eşiği aktifse pazarlık sınırı zorunludur.');
+      throw new BadRequestException(
+        'Pazarlık eşiği aktifse pazarlık sınırı zorunludur.',
+      );
     }
 
     if (listing.leadTimeDays === null) {
@@ -1151,7 +1282,9 @@ export class ProductsService {
       listing.packageHeightCm === null ||
       listing.packageWeightKg === null
     ) {
-      throw new BadRequestException('Paket ölçüleri ve ağırlık bilgisi zorunludur.');
+      throw new BadRequestException(
+        'Paket ölçüleri ve ağırlık bilgisi zorunludur.',
+      );
     }
 
     const imageCount = listing.media.filter(
@@ -1184,10 +1317,11 @@ export class ProductsService {
     let index = 2;
 
     while (true) {
-      const existing = await this.productsRepository.findProductListingBySupplierAndSlug(
-        supplierId,
-        candidate,
-      );
+      const existing =
+        await this.productsRepository.findProductListingBySupplierAndSlug(
+          supplierId,
+          candidate,
+        );
       if (!existing || existing.id === skipListingId) {
         return candidate;
       }
@@ -1216,7 +1350,9 @@ export class ProductsService {
   private async resolveStepOneReferences(
     dto: CreateProductListingStepOneDto,
   ): Promise<{ categoryId: string; sectorIds: string[] }> {
-    let category = await this.productsRepository.findCategoryById(dto.categoryId);
+    let category = await this.productsRepository.findCategoryById(
+      dto.categoryId,
+    );
 
     if (dto.categoryId === OTHER_OPTION_VALUE) {
       category = await this.productsRepository.ensureHiddenOtherCategory();
@@ -1227,11 +1363,15 @@ export class ProductsService {
     }
 
     if (category.level !== 3) {
-      throw new UnprocessableEntityException('Ürün sadece level 3 kategoriye eklenebilir.');
+      throw new UnprocessableEntityException(
+        'Ürün sadece level 3 kategoriye eklenebilir.',
+      );
     }
 
     if (!category.isActive && dto.categoryId !== OTHER_OPTION_VALUE) {
-      throw new UnprocessableEntityException('Pasif kategoriye ürün eklenemez.');
+      throw new UnprocessableEntityException(
+        'Pasif kategoriye ürün eklenemez.',
+      );
     }
 
     const normalizedSectorIds = this.normalizeStringArray(dto.sectorIds ?? []);
@@ -1241,9 +1381,8 @@ export class ProductsService {
     );
 
     if (validatedSectorIds.length > 0) {
-      const sectors = await this.productsRepository.findManySectorsByIds(
-        validatedSectorIds,
-      );
+      const sectors =
+        await this.productsRepository.findManySectorsByIds(validatedSectorIds);
       validatedSectorIds.splice(
         0,
         validatedSectorIds.length,
@@ -1254,7 +1393,8 @@ export class ProductsService {
     }
 
     if (hasOtherSector) {
-      const otherSector = await this.productsRepository.ensureHiddenOtherSector();
+      const otherSector =
+        await this.productsRepository.ensureHiddenOtherSector();
       validatedSectorIds.push(otherSector.id);
     }
 

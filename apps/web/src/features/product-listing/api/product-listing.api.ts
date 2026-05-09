@@ -137,6 +137,7 @@ export type PublicProductListingQuery = {
   maxPrice?: number;
   msmRange?: PublicProductListingMsmRange;
   sort?: PublicProductListingSort;
+  search?: string;
 };
 
 export type PublicProductListingResult = {
@@ -270,6 +271,10 @@ export async function fetchPublicProductListings(
 
   if (query.sort) {
     searchParams.set('sort', query.sort);
+  }
+
+  if (query.search) {
+    searchParams.set('search', query.search);
   }
 
   if (query.minPrice !== undefined) {

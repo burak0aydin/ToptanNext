@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { type MouseEvent, useEffect, useMemo, useState } from 'react';
+import { type MouseEvent, type TouchEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FAVORITES_UPDATED_EVENT,
   isFavoriteProduct,
@@ -46,6 +46,8 @@ function ProductCardBody({
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [imageFailed, setImageFailed] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const didSwipeImageRef = useRef(false);
   const activeImageUrl = images[activeImageIndex] ?? null;
   const hasMultipleImages = images.length > 1;
 
@@ -84,6 +86,58 @@ function ProductCardBody({
     });
   };
 
+  const changeImage = (direction: 'previous' | 'next') => {
+    setImageFailed(false);
+    setActiveImageIndex((current) => {
+      if (direction === 'previous') {
+        return current === 0 ? images.length - 1 : current - 1;
+      }
+
+      return current === images.length - 1 ? 0 : current + 1;
+    });
+  };
+
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    if (!hasMultipleImages) {
+      return;
+    }
+
+    setTouchStartX(event.touches[0]?.clientX ?? null);
+  };
+
+  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    if (!hasMultipleImages || touchStartX === null) {
+      return;
+    }
+
+    const touchEndX = event.changedTouches[0]?.clientX;
+    setTouchStartX(null);
+
+    if (touchEndX === undefined) {
+      return;
+    }
+
+    const deltaX = touchEndX - touchStartX;
+    if (Math.abs(deltaX) < 36) {
+      return;
+    }
+
+    didSwipeImageRef.current = true;
+    window.setTimeout(() => {
+      didSwipeImageRef.current = false;
+    }, 350);
+    changeImage(deltaX > 0 ? 'previous' : 'next');
+  };
+
+  const handleImageLinkClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (!didSwipeImageRef.current) {
+      return;
+    }
+
+    event.preventDefault();
+    didSwipeImageRef.current = false;
+  };
+
   const handleFavoriteClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
@@ -107,9 +161,18 @@ function ProductCardBody({
 
   return (
     <>
-      <div className='relative aspect-square overflow-hidden bg-slate-50'>
+      <div
+        className='relative aspect-square overflow-hidden bg-slate-50'
+        onTouchEnd={handleTouchEnd}
+        onTouchStart={handleTouchStart}
+      >
         {href ? (
-          <Link aria-label={`${title} detayına git`} className='absolute inset-0 z-10' href={href} />
+          <Link
+            aria-label={`${title} detayına git`}
+            className='absolute inset-0 z-10'
+            href={href}
+            onClick={handleImageLinkClick}
+          />
         ) : null}
 
         {activeImageUrl && !imageFailed ? (
@@ -129,12 +192,14 @@ function ProductCardBody({
         {productId ? (
           <button
             aria-label={isFavorited ? 'Favorilerden kaldır' : 'Favorilere ekle'}
-            className='absolute right-2 top-2 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/95 text-slate-800 opacity-100 shadow-sm transition md:opacity-0 md:group-hover:opacity-100'
+            className='absolute right-1.5 top-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-white/70 bg-white/95 text-slate-800 opacity-100 shadow-sm transition md:right-2 md:top-2 md:h-9 md:w-9 md:opacity-0 md:group-hover:opacity-100'
             onClick={handleFavoriteClick}
             type='button'
           >
             <span
-              className='material-symbols-outlined text-[20px]'
+              className={`material-symbols-outlined text-[16px] md:text-[20px] ${
+                isFavorited ? 'text-[#FF5A1F]' : 'text-slate-800'
+              }`}
               style={{
                 fontVariationSettings: isFavorited
                   ? "'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24"
@@ -150,7 +215,7 @@ function ProductCardBody({
           <>
             <button
               aria-label='Önceki ürün görseli'
-              className='absolute left-2 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/95 text-slate-800 opacity-100 shadow-sm transition md:opacity-0 md:group-hover:opacity-100'
+              className='absolute left-2 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/95 text-slate-800 opacity-100 shadow-sm transition md:flex md:opacity-0 md:group-hover:opacity-100'
               onClick={(event) => goToImage(event, 'previous')}
               type='button'
             >
@@ -158,7 +223,7 @@ function ProductCardBody({
             </button>
             <button
               aria-label='Sonraki ürün görseli'
-              className='absolute right-2 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/95 text-slate-800 opacity-100 shadow-sm transition md:opacity-0 md:group-hover:opacity-100'
+              className='absolute right-2 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/95 text-slate-800 opacity-100 shadow-sm transition md:flex md:opacity-0 md:group-hover:opacity-100'
               onClick={(event) => goToImage(event, 'next')}
               type='button'
             >
@@ -185,18 +250,18 @@ function ProductCardBody({
         </Link>
       ) : (
         <div className='flex flex-1 flex-col p-3 md:p-4'>
-        <h3 className='mb-1 line-clamp-2 text-xs font-medium leading-tight text-on-surface md:mb-2 md:text-sm'>{title}</h3>
+          <h3 className='mb-1 line-clamp-2 text-xs font-medium leading-tight text-on-surface md:mb-2 md:text-sm'>{title}</h3>
 
-        <div className='mt-auto'>
-          <div className='mb-1 flex items-baseline gap-1 md:mb-2'>
-            <span className='whitespace-nowrap text-sm font-medium text-on-surface md:text-lg'>
-              {priceLabel}
+          <div className='mt-auto'>
+            <div className='mb-1 flex items-baseline gap-1 md:mb-2'>
+              <span className='whitespace-nowrap text-sm font-medium text-on-surface md:text-lg'>
+                {priceLabel}
+              </span>
+            </div>
+            <span className='inline-flex rounded-xl bg-[#ECEFF3] px-2 py-1 text-[10px] font-medium text-slate-700 md:px-3 md:py-2 md:text-[11px]'>
+              MSM: {minOrderQuantity ?? 1} Adet
             </span>
           </div>
-          <span className='inline-flex rounded-xl bg-[#ECEFF3] px-2 py-1 text-[10px] font-medium text-slate-700 md:px-3 md:py-2 md:text-[11px]'>
-            MSM: {minOrderQuantity ?? 1} Adet
-          </span>
-        </div>
         </div>
       )}
     </>

@@ -168,6 +168,7 @@ export class ProductsController {
     @Query('maxPrice') maxPrice?: string,
     @Query('msmRange') msmRange?: string,
     @Query('sort') sort?: string,
+    @Query('search') search?: string,
   ) {
     const numericPage = Number(page);
     const numericLimit = Number(limit);
@@ -187,6 +188,7 @@ export class ProductsController {
       maxPrice: Number.isFinite(numericMaxPrice) ? numericMaxPrice : undefined,
       msmRange: this.normalizePublicListingMsmRange(msmRange),
       sort: this.normalizePublicListingSort(sort),
+      search: search?.trim() || undefined,
     });
 
     return {

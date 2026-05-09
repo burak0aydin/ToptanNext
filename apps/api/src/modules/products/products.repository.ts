@@ -1,6 +1,4 @@
-import {
-  Injectable,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   Prisma,
   ProductListingDeliveryMethod,
@@ -250,6 +248,7 @@ export type PublicProductListingFilters = {
   minPrice?: number;
   maxPrice?: number;
   msmRange?: PublicProductListingMsmRange;
+  search?: string;
   skip: number;
   take: number;
   sort: PublicProductListingSort;
@@ -604,31 +603,37 @@ export class ProductsRepository {
     supplierId: string,
     sku: string,
   ): Promise<ProductListingRecord | null> {
-    return this.prisma.productListing.findFirst({
-      where: {
-        supplierId,
-        sku,
-        deletedAt: null,
-      },
-      select: productListingSelect,
-    }).then((record) => this.mapListingRecordOrNull(record));
+    return this.prisma.productListing
+      .findFirst({
+        where: {
+          supplierId,
+          sku,
+          deletedAt: null,
+        },
+        select: productListingSelect,
+      })
+      .then((record) => this.mapListingRecordOrNull(record));
   }
 
   async findProductListingBySupplierAndSlug(
     supplierId: string,
     slug: string,
   ): Promise<ProductListingRecord | null> {
-    return this.prisma.productListing.findFirst({
-      where: {
-        supplierId,
-        slug,
-        deletedAt: null,
-      },
-      select: productListingSelect,
-    }).then((record) => this.mapListingRecordOrNull(record));
+    return this.prisma.productListing
+      .findFirst({
+        where: {
+          supplierId,
+          slug,
+          deletedAt: null,
+        },
+        select: productListingSelect,
+      })
+      .then((record) => this.mapListingRecordOrNull(record));
   }
 
-  async createProductListing(input: CreateProductListingInput): Promise<ProductListingRecord> {
+  async createProductListing(
+    input: CreateProductListingInput,
+  ): Promise<ProductListingRecord> {
     const created = await this.prisma.$transaction(async (tx) => {
       const listing = await tx.productListing.create({
         data: {
@@ -792,6 +797,32 @@ export class ProductsRepository {
           sectorId: input.sectorId,
         },
       };
+    }
+
+    const search = input.search?.trim();
+    if (search && search.length > 0) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { sku: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { category: { name: { contains: search, mode: 'insensitive' } } },
+        { supplier: { fullName: { contains: search, mode: 'insensitive' } } },
+        {
+          supplier: { companyName: { contains: search, mode: 'insensitive' } },
+        },
+        {
+          sectors: {
+            some: {
+              sector: {
+                name: {
+                  contains: search,
+                  mode: 'insensitive',
+                },
+              },
+            },
+          },
+        },
+      ];
     }
 
     if (input.minPrice !== undefined || input.maxPrice !== undefined) {
@@ -976,7 +1007,9 @@ export class ProductsRepository {
       },
     });
 
-    const categoryMap = new Map(categories.map((category) => [category.id, category.name]));
+    const categoryMap = new Map(
+      categories.map((category) => [category.id, category.name]),
+    );
 
     return grouped.map((item) => ({
       categoryId: item.categoryId,
@@ -1041,9 +1074,11 @@ export class ProductsRepository {
     return this.mapListingRecord(updated);
   }
 
-  async findProductListingMediaById(
-    id: string,
-  ): Promise<{ filePath: string; mimeType: string; originalName: string } | null> {
+  async findProductListingMediaById(id: string): Promise<{
+    filePath: string;
+    mimeType: string;
+    originalName: string;
+  } | null> {
     return this.prisma.productListingMedia.findUnique({
       where: { id },
       select: {
@@ -1223,16 +1258,16 @@ export class ProductsRepository {
   ): ProductListingRecord {
     const pricingTiers = this.parsePricingTiers(listing.pricingTiers);
     const variantGroups = this.parseVariantGroups(listing.variantGroups);
-    const featuredFeatures = this.parseFeaturedFeatures(listing.featuredFeatures);
+    const featuredFeatures = this.parseFeaturedFeatures(
+      listing.featuredFeatures,
+    );
     const { category, supplier, ...restListing } = listing;
-    const supplierName = [
-      supplier.firstName?.trim(),
-      supplier.lastName?.trim(),
-    ]
-      .filter((item): item is string => Boolean(item && item.length > 0))
-      .join(' ')
-      || supplier.fullName?.trim()
-      || null;
+    const supplierName =
+      [supplier.firstName?.trim(), supplier.lastName?.trim()]
+        .filter((item): item is string => Boolean(item && item.length > 0))
+        .join(' ') ||
+      supplier.fullName?.trim() ||
+      null;
 
     return {
       ...restListing,
@@ -1251,7 +1286,9 @@ export class ProductsRepository {
     };
   }
 
-  private parsePricingTiers(value: Prisma.JsonValue): ProductListingPricingTierRecord[] {
+  private parsePricingTiers(
+    value: Prisma.JsonValue,
+  ): ProductListingPricingTierRecord[] {
     if (!Array.isArray(value)) {
       return [];
     }
@@ -1264,20 +1301,24 @@ export class ProductsRepository {
 
         const typedItem = item as Record<string, unknown>;
         const minQuantity = Number(typedItem.minQuantity);
-        const maxQuantity = typedItem.maxQuantity === null || typedItem.maxQuantity === undefined
-          ? null
-          : Number(typedItem.maxQuantity);
+        const maxQuantity =
+          typedItem.maxQuantity === null || typedItem.maxQuantity === undefined
+            ? null
+            : Number(typedItem.maxQuantity);
         const unitPrice = Number(typedItem.unitPrice);
 
         if (
-          !Number.isFinite(minQuantity)
-          || (maxQuantity !== null && !Number.isFinite(maxQuantity))
-          || !Number.isFinite(unitPrice)
+          !Number.isFinite(minQuantity) ||
+          (maxQuantity !== null && !Number.isFinite(maxQuantity)) ||
+          !Number.isFinite(unitPrice)
         ) {
           return null;
         }
 
-        if (!Number.isInteger(minQuantity) || (maxQuantity !== null && !Number.isInteger(maxQuantity))) {
+        if (
+          !Number.isInteger(minQuantity) ||
+          (maxQuantity !== null && !Number.isInteger(maxQuantity))
+        ) {
           return null;
         }
 
@@ -1290,24 +1331,34 @@ export class ProductsRepository {
       .filter((tier): tier is ProductListingPricingTierRecord => tier !== null);
   }
 
-  private parseVariantGroups(value: Prisma.JsonValue): ProductListingVariantGroupRecord[] {
+  private parseVariantGroups(
+    value: Prisma.JsonValue,
+  ): ProductListingVariantGroupRecord[] {
     if (!Array.isArray(value)) {
       return [];
     }
 
     return value
       .map((groupItem) => {
-        if (!groupItem || typeof groupItem !== 'object' || Array.isArray(groupItem)) {
+        if (
+          !groupItem ||
+          typeof groupItem !== 'object' ||
+          Array.isArray(groupItem)
+        ) {
           return null;
         }
 
         const typedGroup = groupItem as Record<string, unknown>;
-        const groupName = typeof typedGroup.groupName === 'string'
-          ? typedGroup.groupName.trim()
-          : '';
+        const groupName =
+          typeof typedGroup.groupName === 'string'
+            ? typedGroup.groupName.trim()
+            : '';
         const displayType = typedGroup.displayType;
 
-        if (groupName.length === 0 || (displayType !== 'image' && displayType !== 'text')) {
+        if (
+          groupName.length === 0 ||
+          (displayType !== 'image' && displayType !== 'text')
+        ) {
           return null;
         }
 
@@ -1317,28 +1368,39 @@ export class ProductsRepository {
 
         const options = typedGroup.options
           .map((optionItem) => {
-            if (!optionItem || typeof optionItem !== 'object' || Array.isArray(optionItem)) {
+            if (
+              !optionItem ||
+              typeof optionItem !== 'object' ||
+              Array.isArray(optionItem)
+            ) {
               return null;
             }
 
             const typedOption = optionItem as Record<string, unknown>;
-            const label = typeof typedOption.label === 'string' ? typedOption.label.trim() : '';
+            const label =
+              typeof typedOption.label === 'string'
+                ? typedOption.label.trim()
+                : '';
 
             if (label.length === 0) {
               return null;
             }
 
             const rawImageUrl = typedOption.imageUrl;
-            const imageUrl = typeof rawImageUrl === 'string' && rawImageUrl.trim().length > 0
-              ? rawImageUrl.trim()
-              : null;
+            const imageUrl =
+              typeof rawImageUrl === 'string' && rawImageUrl.trim().length > 0
+                ? rawImageUrl.trim()
+                : null;
 
             return {
               label,
               imageUrl,
             };
           })
-          .filter((option): option is ProductListingVariantOptionRecord => option !== null);
+          .filter(
+            (option): option is ProductListingVariantOptionRecord =>
+              option !== null,
+          );
 
         if (options.length === 0) {
           return null;
@@ -1350,7 +1412,9 @@ export class ProductsRepository {
           options,
         };
       })
-      .filter((group): group is ProductListingVariantGroupRecord => group !== null);
+      .filter(
+        (group): group is ProductListingVariantGroupRecord => group !== null,
+      );
   }
 
   private parseFeaturedFeatures(
@@ -1379,10 +1443,10 @@ export class ProductsRepository {
           };
 
           if (
-            parsed
-            && parsed.v === 'ffv1'
-            && typeof parsed.title === 'string'
-            && typeof parsed.description === 'string'
+            parsed &&
+            parsed.v === 'ffv1' &&
+            typeof parsed.title === 'string' &&
+            typeof parsed.description === 'string'
           ) {
             const title = parsed.title.trim();
             const description = parsed.description.trim();
@@ -1402,7 +1466,10 @@ export class ProductsRepository {
           description: '',
         };
       })
-      .filter((feature): feature is ProductListingFeaturedFeatureRecord => feature !== null);
+      .filter(
+        (feature): feature is ProductListingFeaturedFeatureRecord =>
+          feature !== null,
+      );
 
     const unique = new Map<string, ProductListingFeaturedFeatureRecord>();
     parsedValues.forEach((feature) => {

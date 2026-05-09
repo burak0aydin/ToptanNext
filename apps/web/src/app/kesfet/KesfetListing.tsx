@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { MainFooter } from '@/app/components/MainFooter';
@@ -20,6 +20,7 @@ const PAGE_SIZE = 24;
 
 type KesfetListingProps = {
   slug?: string | null;
+  search?: string | null;
 };
 
 function getCoverImageUrl(listing: ProductListingRecord): string | null {
@@ -94,7 +95,7 @@ function findCategoryTrailBySlug(nodes: CategoryTreeNode[], slug: string): Categ
   return [];
 }
 
-export function KesfetListing({ slug }: KesfetListingProps) {
+export function KesfetListing({ slug, search }: KesfetListingProps) {
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<PublicProductListingSort>('LATEST');
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
@@ -106,6 +107,7 @@ export function KesfetListing({ slug }: KesfetListingProps) {
   const normalizedMaxPriceInput = maxPriceInput.trim();
   const parsedMinPrice = normalizedMinPriceInput.length > 0 ? Number(normalizedMinPriceInput) : null;
   const parsedMaxPrice = normalizedMaxPriceInput.length > 0 ? Number(normalizedMaxPriceInput) : null;
+  const searchTerm = search?.trim() ?? '';
 
   const categoriesQuery = useQuery({
     queryKey: ['public', 'categories'],
@@ -129,6 +131,10 @@ export function KesfetListing({ slug }: KesfetListingProps) {
     return findCategoryTrailBySlug(categoriesQuery.data ?? [], slug);
   }, [categoriesQuery.data, slug]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, slug]);
+
   const listQuery = useQuery({
     queryKey: [
       'public',
@@ -139,6 +145,7 @@ export function KesfetListing({ slug }: KesfetListingProps) {
       minPriceInput,
       maxPriceInput,
       msmRange,
+      searchTerm,
     ],
     queryFn: () => fetchPublicProductListings({
       page,
@@ -152,11 +159,11 @@ export function KesfetListing({ slug }: KesfetListingProps) {
         ? parsedMaxPrice
         : undefined,
       msmRange,
+      search: searchTerm.length > 0 ? searchTerm : undefined,
     }),
   });
 
   const items = listQuery.data?.items ?? [];
-  const title = selectedCategory?.name ?? 'Keşfet';
 
   return (
     <div className='bg-surface text-on-surface'>
