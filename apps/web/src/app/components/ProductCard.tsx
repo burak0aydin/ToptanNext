@@ -44,7 +44,7 @@ function ProductCardBody({
   }, [imageUrl, imageUrls]);
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [imageFailed, setImageFailed] = useState(false);
+  const [failedImageUrls, setFailedImageUrls] = useState<Set<string>>(() => new Set());
   const [isFavorited, setIsFavorited] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const didSwipeImageRef = useRef(false);
@@ -53,7 +53,7 @@ function ProductCardBody({
 
   useEffect(() => {
     setActiveImageIndex(0);
-    setImageFailed(false);
+    setFailedImageUrls(new Set());
   }, [images]);
 
   useEffect(() => {
@@ -76,7 +76,6 @@ function ProductCardBody({
   const goToImage = (event: MouseEvent<HTMLButtonElement>, direction: 'previous' | 'next') => {
     event.preventDefault();
     event.stopPropagation();
-    setImageFailed(false);
     setActiveImageIndex((current) => {
       if (direction === 'previous') {
         return current === 0 ? images.length - 1 : current - 1;
@@ -86,8 +85,13 @@ function ProductCardBody({
     });
   };
 
+  const goToImageIndex = (event: MouseEvent<HTMLButtonElement>, index: number) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setActiveImageIndex(index);
+  };
+
   const changeImage = (direction: 'previous' | 'next') => {
-    setImageFailed(false);
     setActiveImageIndex((current) => {
       if (direction === 'previous') {
         return current === 0 ? images.length - 1 : current - 1;
@@ -175,14 +179,35 @@ function ProductCardBody({
           />
         ) : null}
 
-        {activeImageUrl && !imageFailed ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            alt={title}
-            className='h-full w-full object-cover transition-transform duration-500 group-hover:scale-105'
-            onError={() => setImageFailed(true)}
-            src={activeImageUrl}
-          />
+        {images.length > 0 ? (
+          <div
+            className='flex h-full transition-transform duration-500 ease-out group-hover:scale-[1.02]'
+            style={{ transform: `translateX(-${activeImageIndex * 100}%)` }}
+          >
+            {images.map((item, index) => (
+              <div className='h-full w-full shrink-0' key={`${item}-${index}`}>
+                {!failedImageUrls.has(item) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    alt={title}
+                    className='h-full w-full object-cover'
+                    onError={() => {
+                      setFailedImageUrls((current) => {
+                        const next = new Set(current);
+                        next.add(item);
+                        return next;
+                      });
+                    }}
+                    src={item}
+                  />
+                ) : (
+                  <div className='flex h-full items-center justify-center text-slate-400'>
+                    <span className='material-symbols-outlined text-5xl'>inventory_2</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         ) : (
           <div className='flex h-full items-center justify-center text-slate-400'>
             <span className='material-symbols-outlined text-5xl'>inventory_2</span>
@@ -230,6 +255,24 @@ function ProductCardBody({
               <span className='material-symbols-outlined text-[22px]'>chevron_right</span>
             </button>
           </>
+        ) : null}
+
+        {hasMultipleImages ? (
+          <div className='pointer-events-none absolute bottom-2 left-0 right-0 z-20 flex items-center justify-center gap-1.5'>
+            {images.map((item, index) => (
+              <button
+                aria-label={`${index + 1}. ürün görseline git`}
+                className={`pointer-events-auto h-1.5 rounded-full transition-all duration-200 ${
+                  index === activeImageIndex
+                    ? 'w-4 bg-white shadow-sm'
+                    : 'w-1.5 bg-white/65'
+                }`}
+                key={`${item}-dot-${index}`}
+                onClick={(event) => goToImageIndex(event, index)}
+                type='button'
+              />
+            ))}
+          </div>
         ) : null}
       </div>
 

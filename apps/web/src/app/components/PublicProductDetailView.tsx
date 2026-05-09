@@ -1,6 +1,6 @@
 'use client';
 
-import { type MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type MouseEvent, type TouchEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -131,6 +131,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [selectedMediaId, setSelectedMediaId] = useState<string | null>(null);
+  const [mediaTouchStartX, setMediaTouchStartX] = useState<number | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [variantSelections, setVariantSelections] = useState<Record<string, string>>({});
   const [activeDetailSection, setActiveDetailSection] = useState<'description' | 'reviews' | 'company'>('description');
@@ -255,7 +256,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
     }
 
     const orderedSectionIds: Array<'description' | 'reviews' | 'company'> = ['description', 'reviews', 'company'];
-    const activationOffset = 210;
+    const activationOffset = window.innerWidth < 1024 ? 96 : 210;
     const releaseScrollLock = () => {
       if (scrollLockTimeoutRef.current !== null) {
         window.clearTimeout(scrollLockTimeoutRef.current);
@@ -322,6 +323,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
   );
 
   const canNavigateMedia = allMedia.length > 1;
+  const activeMediaIndex = selectedMediaIndex >= 0 ? selectedMediaIndex : 0;
 
   const selectMediaByIndex = (nextIndex: number) => {
     if (allMedia.length === 0) {
@@ -346,6 +348,39 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
     }
 
     selectMediaByIndex(selectedMediaIndex + 1);
+  };
+
+  const handleMediaTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    if (!canNavigateMedia) {
+      return;
+    }
+
+    setMediaTouchStartX(event.touches[0]?.clientX ?? null);
+  };
+
+  const handleMediaTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    if (!canNavigateMedia || mediaTouchStartX === null) {
+      return;
+    }
+
+    const touchEndX = event.changedTouches[0]?.clientX;
+    setMediaTouchStartX(null);
+
+    if (touchEndX === undefined) {
+      return;
+    }
+
+    const deltaX = touchEndX - mediaTouchStartX;
+    if (Math.abs(deltaX) < 36) {
+      return;
+    }
+
+    if (deltaX > 0) {
+      goToPreviousMedia();
+      return;
+    }
+
+    goToNextMedia();
   };
 
   const sortedPricingTiers = useMemo(
@@ -802,7 +837,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
       return;
     }
 
-    const topOffset = 160;
+    const topOffset = window.innerWidth < 1024 ? 76 : 160;
     const nextTop = target.getBoundingClientRect().top + window.scrollY - topOffset;
 
     if (scrollLockTimeoutRef.current !== null) {
@@ -908,21 +943,34 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                 </div>
               ) : null}
 
-              <div className='relative aspect-square overflow-hidden rounded-xl border border-outline-variant/30 bg-white'>
-                {selectedMedia ? (
-                  selectedMedia.mediaType === 'VIDEO' ? (
-                    <video
-                      className='h-full w-full object-contain'
-                      controls
-                      src={resolveProductListingMediaUrl(selectedMedia)}
-                    />
-                  ) : (
-                    <ProductMediaImage
-                      alt={listing.name}
-                      className='h-full w-full object-contain'
-                      src={resolveProductListingMediaUrl(selectedMedia)}
-                    />
-                  )
+              <div
+                className='relative aspect-square overflow-hidden rounded-xl border border-outline-variant/30 bg-white'
+                onTouchEnd={handleMediaTouchEnd}
+                onTouchStart={handleMediaTouchStart}
+              >
+                {allMedia.length > 0 ? (
+                  <div
+                    className='flex h-full transition-transform duration-500 ease-out'
+                    style={{ transform: `translateX(-${activeMediaIndex * 100}%)` }}
+                  >
+                    {allMedia.map((media) => (
+                      <div className='h-full w-full shrink-0' key={media.id}>
+                        {media.mediaType === 'VIDEO' ? (
+                          <video
+                            className='h-full w-full object-contain'
+                            controls
+                            src={resolveProductListingMediaUrl(media)}
+                          />
+                        ) : (
+                          <ProductMediaImage
+                            alt={listing.name}
+                            className='h-full w-full object-contain'
+                            src={resolveProductListingMediaUrl(media)}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 ) : (
                   <div className='flex h-full items-center justify-center text-slate-400'>
                     <span className='material-symbols-outlined text-6xl'>inventory_2</span>
@@ -932,7 +980,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                 <button
                   aria-label={isFavorited ? 'Favorilerden çıkar' : 'Favorilere ekle'}
                   className={[
-                    'absolute right-4 top-4 flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md transition-colors',
+                    'absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md transition-colors md:right-4 md:top-4 md:h-12 md:w-12',
                     isFavorited
                       ? 'text-[#FF5A1F]'
                       : 'text-[#111111] hover:text-[#FF5A1F]',
@@ -956,7 +1004,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                   type='button'
                 >
                   <span
-                    className='material-symbols-outlined text-[26px]'
+                    className='material-symbols-outlined text-[21px] md:text-[26px]'
                     style={{
                       fontVariationSettings: isFavorited
                         ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
@@ -969,7 +1017,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
 
                 <button
                   aria-label='Önceki görsel'
-                  className='absolute left-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-outline-variant/30 bg-white/85 text-on-surface shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40'
+                  className='absolute left-4 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-outline-variant/30 bg-white/85 text-on-surface shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 md:flex'
                   disabled={!canNavigateMedia}
                   onClick={goToPreviousMedia}
                   type='button'
@@ -978,7 +1026,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                 </button>
                 <button
                   aria-label='Sonraki görsel'
-                  className='absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-outline-variant/30 bg-white/85 text-on-surface shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40'
+                  className='absolute right-4 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-outline-variant/30 bg-white/85 text-on-surface shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 md:flex'
                   disabled={!canNavigateMedia}
                   onClick={goToNextMedia}
                   type='button'
@@ -1045,11 +1093,11 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
               </div>
             </div>
 
-            <div className='sticky top-[104px] z-40 mb-2 py-2'>
-              <div className='grid max-w-[820px] grid-cols-3 overflow-hidden rounded-xl border border-outline-variant/30 bg-white'>
+            <div className='sticky top-0 z-40 mb-2 bg-surface/95 py-2 backdrop-blur lg:top-[104px]'>
+              <div className='grid max-w-[820px] grid-cols-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-[0_10px_28px_rgba(15,23,42,0.12)] ring-1 ring-white/70'>
                 <a
                   className={[
-                    'flex items-center justify-center border-b-2 px-3 py-4 text-center text-sm font-bold transition-colors',
+                    'flex items-center justify-center whitespace-nowrap border-b-2 px-1.5 py-3 text-center text-[11px] font-bold transition-colors sm:px-3 sm:py-4 sm:text-sm',
                     activeDetailSection === 'description'
                       ? 'border-primary text-primary'
                       : 'border-transparent text-outline',
@@ -1061,7 +1109,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                 </a>
                 <a
                   className={[
-                    'flex items-center justify-center border-b-2 px-3 py-4 text-center text-sm font-bold transition-colors',
+                    'flex items-center justify-center whitespace-nowrap border-b-2 px-1.5 py-3 text-center text-[11px] font-bold transition-colors sm:px-3 sm:py-4 sm:text-sm',
                     activeDetailSection === 'reviews'
                       ? 'border-primary text-primary'
                       : 'border-transparent text-outline',
@@ -1073,7 +1121,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                 </a>
                 <a
                   className={[
-                    'flex items-center justify-center border-b-2 px-3 py-4 text-center text-sm font-bold transition-colors',
+                    'flex items-center justify-center whitespace-nowrap border-b-2 px-1.5 py-3 text-center text-[11px] font-bold transition-colors sm:px-3 sm:py-4 sm:text-sm',
                     activeDetailSection === 'company'
                       ? 'border-primary text-primary'
                       : 'border-transparent text-outline',
@@ -1087,7 +1135,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
             </div>
 
             <div className='flex flex-1 flex-col gap-8'>
-              <section id='description' className='scroll-mt-48 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white'>
+              <section id='description' className='scroll-mt-20 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white lg:scroll-mt-48'>
                 <div className='border-b border-outline-variant/30 bg-surface-container-lowest px-8 py-5'>
                   <h2 className='text-lg font-bold text-on-surface'>Ürün Açıklaması</h2>
                 </div>
@@ -1132,7 +1180,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                 </div>
               </section>
 
-              <section id='reviews' className='scroll-mt-48 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white'>
+              <section id='reviews' className='scroll-mt-20 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white lg:scroll-mt-48'>
                 <div className='border-b border-outline-variant/30 bg-surface-container-lowest px-8 py-5'>
                   <h2 className='text-lg font-bold text-on-surface'>Değerlendirmeler (124)</h2>
                 </div>
@@ -1162,7 +1210,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                 </div>
               </section>
 
-              <section id='company' className='scroll-mt-48 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white lg:flex lg:flex-1 lg:flex-col'>
+              <section id='company' className='scroll-mt-20 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white lg:flex lg:flex-1 lg:flex-col lg:scroll-mt-48'>
                 <div className='border-b border-outline-variant/30 bg-surface-container-lowest px-8 py-5'>
                   <h2 className='text-lg font-bold text-on-surface'>Şirket Profili</h2>
                 </div>

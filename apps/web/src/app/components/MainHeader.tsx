@@ -11,11 +11,138 @@ import { fetchConversations } from '@/features/chat/api/chat.api';
 import { useChatStore } from '@/features/chat/store/useChatStore';
 import { useCartStore } from '@/features/cart/store/useCartStore';
 import { fetchMySupplierApplication } from '@/features/supplier-application/api/supplier-application.api';
+import {
+  fetchPublicProductListings,
+  resolveProductListingMediaUrl,
+  type ProductListingRecord,
+} from '@/features/product-listing/api/product-listing.api';
 import { AccountNavLink } from './AccountNavLink';
 import {
   CategoryMegaMenu,
   type CategoryMegaMenuCategory,
 } from './CategoryMegaMenu';
+
+function formatTryAmount(value: number): string {
+  return new Intl.NumberFormat('tr-TR', {
+    style: 'currency',
+    currency: 'TRY',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function buildPriceRange(listing: ProductListingRecord): string {
+  const tierPrices = listing.pricingTiers
+    .map((tier) => Number(tier.unitPrice))
+    .filter((price) => Number.isFinite(price) && price > 0);
+
+  if (tierPrices.length > 0) {
+    const min = Math.min(...tierPrices);
+    const max = Math.max(...tierPrices);
+    return min === max
+      ? formatTryAmount(min)
+      : `${formatTryAmount(min)} - ${formatTryAmount(max)}`;
+  }
+
+  const basePrice = Number(listing.basePrice);
+  if (Number.isFinite(basePrice) && basePrice > 0) {
+    return formatTryAmount(basePrice);
+  }
+
+  return 'Fiyat sorunuz';
+}
+
+function getCoverImageUrl(listing: ProductListingRecord): string | null {
+  const coverMedia = listing.media
+    .filter((item) => item.mediaType === 'IMAGE')
+    .sort((left, right) => left.displayOrder - right.displayOrder)[0];
+
+  return coverMedia ? resolveProductListingMediaUrl(coverMedia) : null;
+}
+
+type SearchPreviewPanelProps = {
+  isFetching: boolean;
+  items: ProductListingRecord[];
+  query: string;
+  visible: boolean;
+  onNavigate: () => void;
+  onViewAll: () => void;
+};
+
+function SearchPreviewPanel({
+  isFetching,
+  items,
+  query,
+  visible,
+  onNavigate,
+  onViewAll,
+}: SearchPreviewPanelProps) {
+  if (!visible || query.length < 2) {
+    return null;
+  }
+
+  return (
+    <div
+      className='absolute left-0 right-0 top-[calc(100%+8px)] z-[70] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10'
+      onMouseDown={(event) => event.preventDefault()}
+    >
+      <div className='max-h-[320px] overflow-y-auto py-1'>
+        {isFetching ? (
+          <div className='px-4 py-3 text-sm font-medium text-slate-500'>Aranıyor...</div>
+        ) : items.length > 0 ? (
+          <>
+            {items.map((item) => {
+              const imageUrl = getCoverImageUrl(item);
+
+              return (
+                <Link
+                  className='flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-slate-50'
+                  href={`/urun/${item.id}`}
+                  key={item.id}
+                  onClick={onNavigate}
+                >
+                  <div className='flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100'>
+                    {imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        alt={item.name}
+                        className='h-full w-full object-cover'
+                        src={imageUrl}
+                      />
+                    ) : (
+                      <span className='material-symbols-outlined text-[22px] text-slate-400'>inventory_2</span>
+                    )}
+                  </div>
+
+                  <div className='min-w-0 flex-1'>
+                    <p className='truncate text-sm font-medium text-slate-900'>{item.name}</p>
+                    <p className='truncate text-xs font-medium text-slate-500'>
+                      {item.categoryName}
+                      {item.minOrderQuantity ? ` · MSM: ${item.minOrderQuantity} Adet` : ''}
+                    </p>
+                    <p className='mt-0.5 truncate text-xs font-medium text-slate-700'>
+                      {buildPriceRange(item)}
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
+
+            <button
+              className='block w-full border-t border-slate-100 px-4 py-2.5 text-center text-sm font-semibold text-[#003FB1] hover:bg-slate-50'
+              onClick={onViewAll}
+              type='button'
+            >
+              Tüm sonuçları gör
+            </button>
+          </>
+        ) : (
+          <div className='px-4 py-3 text-sm font-medium text-slate-500'>Sonuç bulunamadı.</div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 type CategoryNode = {
   id: string;
@@ -50,6 +177,8 @@ export function MainHeader() {
   const [mobileSelectedCategoryId, setMobileSelectedCategoryId] = useState<string | null>(null);
   const [mobileSelectedGroupId, setMobileSelectedGroupId] = useState<string | null>(null);
   const [searchValue, setSearchValue] = useState('');
+  const [debouncedSearchValue, setDebouncedSearchValue] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileSearchReady, setIsMobileSearchReady] = useState(false);
   const totalItems = useCartStore((state) => state.totalItems);
   const setTotalItems = useCartStore((state) => state.setTotalItems);
@@ -99,6 +228,18 @@ export function MainHeader() {
     retry: false,
   });
 
+  const normalizedPreviewSearch = debouncedSearchValue.trim();
+  const searchPreviewQuery = useQuery({
+    queryKey: ['nav', 'search-preview', normalizedPreviewSearch],
+    queryFn: () => fetchPublicProductListings({
+      page: 1,
+      limit: 4,
+      search: normalizedPreviewSearch,
+    }),
+    enabled: normalizedPreviewSearch.length >= 2,
+    staleTime: 30_000,
+  });
+
   useEffect(() => {
     if (cartQuery.data) {
       setTotalItems(cartQuery.data.totalItems);
@@ -129,6 +270,16 @@ export function MainHeader() {
       window.clearTimeout(timeout);
     };
   }, [clearToast, toast]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedSearchValue(searchValue);
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [searchValue]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -215,6 +366,8 @@ export function MainHeader() {
     return lower.charAt(0).toLocaleUpperCase('tr-TR') + lower.slice(1);
   };
   const mobileBottomNavOffset = 'calc(3.5rem + env(safe-area-inset-bottom))';
+  const searchPreviewItems = searchPreviewQuery.data?.items ?? [];
+  const shouldShowSearchPreview = isSearchFocused && searchValue.trim().length >= 2;
 
   const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -226,6 +379,19 @@ export function MainHeader() {
         : '/kesfet';
 
     setMobileMenuOpen(false);
+    setIsSearchFocused(false);
+    router.push(nextHref);
+  };
+
+  const navigateToSearchResults = () => {
+    const normalizedSearch = searchValue.trim();
+    const nextHref =
+      normalizedSearch.length > 0
+        ? `/kesfet?search=${encodeURIComponent(normalizedSearch)}`
+        : '/kesfet';
+
+    setMobileMenuOpen(false);
+    setIsSearchFocused(false);
     router.push(nextHref);
   };
 
@@ -257,7 +423,7 @@ export function MainHeader() {
           <Link
             aria-label='ToptanNext ana sayfa'
             className={`shrink-0 overflow-hidden text-xl font-bold tracking-tighter text-[#003FB1] transition-all duration-700 ease-out ${
-              isMobileSearchReady ? 'w-0 -translate-x-4 opacity-0' : 'w-[74px] opacity-100'
+              isMobileSearchReady ? 'w-0 -translate-x-4 opacity-0' : 'w-[70px] translate-x-0 opacity-100'
             }`}
             href='/'
           >
@@ -265,8 +431,8 @@ export function MainHeader() {
           </Link>
 
           <form
-            className={`mx-2 flex min-w-0 items-center gap-1 rounded-xl border border-outline-variant/30 bg-surface-container-low px-3 py-2 transition-all duration-700 ease-out ${
-              isMobileSearchReady ? 'w-full opacity-100' : 'w-0 px-0 opacity-0'
+            className={`relative flex min-w-0 items-center gap-1 rounded-xl border border-outline-variant/30 bg-surface-container-low py-2 transition-all duration-700 ease-out focus-within:border-[#003FB1]/30 focus-within:bg-white ${
+              isMobileSearchReady ? 'mx-2 w-full px-3 opacity-100' : 'mx-0 w-0 px-0 opacity-0'
             }`}
             onSubmit={handleSearchSubmit}
           >
@@ -274,17 +440,30 @@ export function MainHeader() {
             <input
               aria-label='Ürün ara'
               className='min-w-0 flex-1 border-none bg-transparent text-sm text-on-surface-variant outline-none placeholder:text-slate-400 focus:ring-0'
+              onBlur={() => setIsSearchFocused(false)}
+              onFocus={() => setIsSearchFocused(true)}
               onChange={(event) => setSearchValue(event.target.value)}
               placeholder='Ara...'
               type='search'
               value={searchValue}
+            />
+            <SearchPreviewPanel
+              isFetching={searchPreviewQuery.isFetching}
+              items={searchPreviewItems}
+              onNavigate={() => {
+                setIsSearchFocused(false);
+                setMobileMenuOpen(false);
+              }}
+              onViewAll={navigateToSearchResults}
+              query={searchValue.trim()}
+              visible={shouldShowSearchPreview}
             />
           </form>
 
           <Link
             aria-label='ToptanNext ana sayfa'
             className={`shrink-0 overflow-hidden text-xl font-bold tracking-tighter text-[#FF5A1F] transition-all duration-700 ease-out ${
-              isMobileSearchReady ? 'w-0 translate-x-4 opacity-0' : 'w-[42px] opacity-100'
+              isMobileSearchReady ? 'w-0 translate-x-4 opacity-0' : 'w-[42px] translate-x-0 opacity-100'
             }`}
             href='/'
           >
@@ -293,16 +472,26 @@ export function MainHeader() {
         </div>
 
         <form
-          className='mx-12 hidden max-w-3xl flex-1 items-center gap-1 rounded-xl border border-outline-variant/30 bg-surface-container-low px-4 py-2 lg:flex'
+          className='relative mx-12 hidden max-w-3xl flex-1 items-center gap-1 rounded-xl border border-outline-variant/30 bg-surface-container-low px-4 py-2 transition-colors focus-within:border-[#003FB1]/30 focus-within:bg-white lg:flex'
           onSubmit={handleSearchSubmit}
         >
           <span className='material-symbols-outlined text-outline'>search</span>
           <input
-            className='w-full border-none bg-transparent text-sm text-on-surface-variant focus:ring-0'
+            className='w-full border-none bg-transparent text-sm text-on-surface-variant outline-none placeholder:text-slate-400 focus:outline-none focus:ring-0'
+            onBlur={() => setIsSearchFocused(false)}
+            onFocus={() => setIsSearchFocused(true)}
             onChange={(event) => setSearchValue(event.target.value)}
             placeholder='Ürün, kategori veya marka ara...'
             type='search'
             value={searchValue}
+          />
+          <SearchPreviewPanel
+            isFetching={searchPreviewQuery.isFetching}
+            items={searchPreviewItems}
+            onNavigate={() => setIsSearchFocused(false)}
+            onViewAll={navigateToSearchResults}
+            query={searchValue.trim()}
+            visible={shouldShowSearchPreview}
           />
         </form>
 
