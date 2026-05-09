@@ -12,11 +12,15 @@ import {
 const PAGE_SIZE = 20;
 
 function getCoverImageUrl(listing: ProductListingRecord): string | null {
+  return getProductImageUrls(listing)[0] ?? null;
+}
+
+function getProductImageUrls(listing: ProductListingRecord): string[] {
   const media = listing.media
     .filter((item) => item.mediaType === 'IMAGE')
-    .sort((left, right) => left.displayOrder - right.displayOrder)[0];
+    .sort((left, right) => left.displayOrder - right.displayOrder);
 
-  return media ? resolveProductListingMediaUrl(media) : null;
+  return media.map((item) => resolveProductListingMediaUrl(item));
 }
 
 function formatTryAmount(value: number): string {
@@ -124,10 +128,13 @@ export function HomeProductFeed() {
             : products.map((product) => (
               <ProductCard
                 key={product.id}
+                categoryName={product.categoryName}
                 href={`/urun/${product.id}`}
                 imageUrl={getCoverImageUrl(product)}
+                imageUrls={getProductImageUrls(product)}
                 minOrderQuantity={product.minOrderQuantity}
                 priceLabel={buildPriceRange(product)}
+                productId={product.id}
                 title={product.name}
               />
             ))}

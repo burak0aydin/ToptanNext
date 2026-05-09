@@ -173,7 +173,7 @@ export function FeaturedSectorsCarousel() {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      <div className='container mx-auto px-4 sm:px-6'>
+      <div className='w-full'>
         {isLoading ? <p className='text-sm text-slate-500'>Sektörler yükleniyor...</p> : null}
         {isError ? <p className='text-sm text-red-600'>Sektörler yüklenirken hata oluştu.</p> : null}
 
@@ -190,7 +190,7 @@ export function FeaturedSectorsCarousel() {
 
             <div
               ref={sliderRef}
-              className='hide-scrollbar flex gap-5 overflow-x-auto overflow-y-visible px-1 pb-3 pt-4 scroll-smooth md:gap-8 md:px-14 md:pb-5 md:pt-5'
+              className='hide-scrollbar flex gap-5 overflow-x-auto overflow-y-visible px-0 pb-3 pt-4 scroll-smooth md:gap-8 md:px-16 md:pb-5 md:pt-5'
             >
               {sectors.map((sector) => (
                 <Link

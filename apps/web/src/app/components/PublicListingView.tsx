@@ -68,11 +68,15 @@ function findCategoryTrailBySlug(
 }
 
 function getCoverImageUrl(listing: ProductListingRecord): string | null {
+  return getProductImageUrls(listing)[0] ?? null;
+}
+
+function getProductImageUrls(listing: ProductListingRecord): string[] {
   const media = listing.media
     .filter((item) => item.mediaType === 'IMAGE')
-    .sort((left, right) => left.displayOrder - right.displayOrder)[0];
+    .sort((left, right) => left.displayOrder - right.displayOrder);
 
-  return media ? resolveProductListingMediaUrl(media) : null;
+  return media.map((item) => resolveProductListingMediaUrl(item));
 }
 
 function formatTryAmount(value: number): string {
@@ -331,10 +335,13 @@ export function PublicListingView({ mode, slug }: PublicListingViewProps) {
                 return (
                   <ProductCard
                     key={item.id}
+                    categoryName={item.categoryName}
                     href={`/urun/${item.id}`}
                     imageUrl={imageUrl}
+                    imageUrls={getProductImageUrls(item)}
                     minOrderQuantity={item.minOrderQuantity}
                     priceLabel={buildPriceRange(item)}
+                    productId={item.id}
                     title={item.name}
                     className='bg-surface-container-lowest'
                   />

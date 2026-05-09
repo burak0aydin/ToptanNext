@@ -45,10 +45,13 @@ export default function FavorilerimPage() {
       {favorites.map((item) => (
         <article key={item.id} className='overflow-hidden rounded-2xl border border-outline-variant/20 bg-white shadow-sm'>
           <ProductCard
+            categoryName={item.categoryName}
+            categorySlug={item.categorySlug}
             href={`/urun/${item.id}`}
             imageUrl={item.imageUrl}
             minOrderQuantity={item.minOrderQuantity}
             priceLabel={item.priceLabel}
+            productId={item.id}
             title={item.name}
           />
 
