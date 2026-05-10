@@ -35,6 +35,7 @@ const productListingSelect = {
   slug: true,
   sku: true,
   description: true,
+  productInfoRows: true,
   categoryId: true,
   category: {
     select: {
@@ -163,6 +164,11 @@ export type ProductListingFeaturedFeatureRecord = {
   description: string;
 };
 
+export type ProductListingInfoTableRowRecord = {
+  label: string;
+  value: string;
+};
+
 export type ProductListingRecord = {
   id: string;
   supplierId: string;
@@ -174,6 +180,7 @@ export type ProductListingRecord = {
   slug: string;
   sku: string;
   description: string;
+  productInfoRows: ProductListingInfoTableRowRecord[];
   categoryId: string;
   categoryName: string;
   status: ProductListingStatus;
@@ -297,6 +304,7 @@ export type CreateProductListingInput = {
   slug: string;
   sku: string;
   description: string;
+  productInfoRows: ProductListingInfoTableRowRecord[];
   categoryId: string;
   sectorIds: string[];
   featuredFeatures: string[];
@@ -310,6 +318,7 @@ export type UpdateProductListingStepOneInput = {
   slug: string;
   sku: string;
   description: string;
+  productInfoRows: ProductListingInfoTableRowRecord[];
   categoryId: string;
   sectorIds: string[];
   featuredFeatures: string[];
@@ -642,6 +651,7 @@ export class ProductsRepository {
           slug: input.slug,
           sku: input.sku,
           description: input.description,
+          productInfoRows: input.productInfoRows as Prisma.InputJsonValue,
           categoryId: input.categoryId,
           featuredFeatures: input.featuredFeatures,
           isCustomizable: input.isCustomizable,
@@ -1132,6 +1142,7 @@ export class ProductsRepository {
           slug: input.slug,
           sku: input.sku,
           description: input.description,
+          productInfoRows: input.productInfoRows as Prisma.InputJsonValue,
           categoryId: input.categoryId,
           featuredFeatures: input.featuredFeatures,
           isCustomizable: input.isCustomizable,
@@ -1258,6 +1269,7 @@ export class ProductsRepository {
   ): ProductListingRecord {
     const pricingTiers = this.parsePricingTiers(listing.pricingTiers);
     const variantGroups = this.parseVariantGroups(listing.variantGroups);
+    const productInfoRows = this.parseProductInfoRows(listing.productInfoRows);
     const featuredFeatures = this.parseFeaturedFeatures(
       listing.featuredFeatures,
     );
@@ -1276,6 +1288,7 @@ export class ProductsRepository {
       supplierCity: supplier.supplierApplication?.city ?? null,
       supplierDistrict: supplier.supplierApplication?.district ?? null,
       categoryName: category.name,
+      productInfoRows,
       featuredFeatures,
       pricingTiers,
       variantGroups,
@@ -1415,6 +1428,37 @@ export class ProductsRepository {
       .filter(
         (group): group is ProductListingVariantGroupRecord => group !== null,
       );
+  }
+
+  private parseProductInfoRows(
+    value: Prisma.JsonValue,
+  ): ProductListingInfoTableRowRecord[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value
+      .map((item) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+          return null;
+        }
+
+        const typedItem = item as Record<string, unknown>;
+        const label =
+          typeof typedItem.label === 'string' ? typedItem.label.trim() : '';
+        const rowValue =
+          typeof typedItem.value === 'string' ? typedItem.value.trim() : '';
+
+        if (label.length === 0 || rowValue.length === 0) {
+          return null;
+        }
+
+        return {
+          label,
+          value: rowValue,
+        };
+      })
+      .filter((item): item is ProductListingInfoTableRowRecord => item !== null);
   }
 
   private parseFeaturedFeatures(

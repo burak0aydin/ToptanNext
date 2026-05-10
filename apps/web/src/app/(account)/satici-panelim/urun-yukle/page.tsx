@@ -7,6 +7,7 @@ import {
   productListingStepTwoSchema,
   type ProductListingDeliveryMethod,
   type ProductListingFeaturedFeature,
+  type ProductListingInfoTableRow,
   type ProductListingPackageType,
   type ProductListingStepOneDto,
   type ProductListingStepThreeDto,
@@ -62,6 +63,7 @@ const STEP_ONE_DEFAULT_VALUES: ProductListingStepOneDto = {
   isCustomizable: false,
   customizationNote: '',
   variantGroups: [],
+  productInfoRows: [],
   description: '',
 };
 
@@ -593,6 +595,7 @@ export default function SellerProductUploadPage() {
               };
             }),
           })),
+          productInfoRows: editableListing.productInfoRows ?? [],
           description: editableListing.description,
         });
 
@@ -807,6 +810,44 @@ export default function SellerProductUploadPage() {
     ));
 
     stepOneForm.setValue('featuredFeatures', nextFeatures, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  };
+
+  const addProductInfoRow = (): void => {
+    const current = stepOneForm.getValues('productInfoRows') ?? [];
+    stepOneForm.setValue('productInfoRows', [...current, { label: '', value: '' }], {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  };
+
+  const removeProductInfoRow = (index: number): void => {
+    const current = stepOneForm.getValues('productInfoRows') ?? [];
+    stepOneForm.setValue(
+      'productInfoRows',
+      current.filter((_, itemIndex) => itemIndex !== index),
+      { shouldValidate: true, shouldDirty: true },
+    );
+  };
+
+  const updateProductInfoRowField = (
+    index: number,
+    field: keyof ProductListingInfoTableRow,
+    value: string,
+  ): void => {
+    const current = stepOneForm.getValues('productInfoRows') ?? [];
+    const nextRows = current.map((row, itemIndex) => (
+      itemIndex === index
+        ? {
+          ...row,
+          [field]: value,
+        }
+        : row
+    ));
+
+    stepOneForm.setValue('productInfoRows', nextRows, {
       shouldValidate: true,
       shouldDirty: true,
     });
@@ -2231,6 +2272,80 @@ export default function SellerProductUploadPage() {
                   </div>
 
                   <div className='md:col-span-2'>
+                    <div className='mb-3 flex items-center justify-between gap-3'>
+                      <div className='flex items-center gap-2'>
+                        <span className='text-sm font-bold text-on-surface-variant'>Ürün Bilgi Tablosu</span>
+                        <FieldInfoHint text='İsteğe bağlıdır. Ölçü, materyal, garanti, sertifika gibi ürün sayfasında tablo olarak gösterilecek kısa bilgileri ekleyebilirsiniz. Boş bırakılırsa ürün sayfasında tablo görünmez.' />
+                      </div>
+                      <button
+                        className='inline-flex items-center gap-1.5 rounded-lg border border-outline-variant/40 bg-white px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60'
+                        disabled={isSubmittingStep || (watchedStepOne.productInfoRows ?? []).length >= 12}
+                        onClick={addProductInfoRow}
+                        type='button'
+                      >
+                        <span className='material-symbols-outlined text-[17px]'>add</span>
+                        Satır Ekle
+                      </button>
+                    </div>
+
+                    {(watchedStepOne.productInfoRows ?? []).length > 0 ? (
+                      <div className='mb-5 space-y-3 rounded-xl border border-outline-variant/30 bg-surface-container-low p-3'>
+                        {(watchedStepOne.productInfoRows ?? []).map((row, index) => (
+                          <div className='grid gap-2 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto]' key={`product-info-row-${index}`}>
+                            <label className='block'>
+                              <span className='mb-1 block text-[11px] font-semibold uppercase tracking-wide text-outline'>
+                                Başlık
+                              </span>
+                              <input
+                                className='h-10 w-full rounded-lg border border-outline-variant bg-white px-3 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20'
+                                disabled={isSubmittingStep}
+                                maxLength={80}
+                                onChange={(event) => updateProductInfoRowField(index, 'label', event.target.value)}
+                                placeholder='Materyal'
+                                value={row.label}
+                              />
+                              {stepOneForm.formState.errors.productInfoRows?.[index]?.label ? (
+                                <p className='mt-1 text-xs text-red-600'>
+                                  {stepOneForm.formState.errors.productInfoRows[index]?.label?.message}
+                                </p>
+                              ) : null}
+                            </label>
+                            <label className='block'>
+                              <span className='mb-1 block text-[11px] font-semibold uppercase tracking-wide text-outline'>
+                                Değer
+                              </span>
+                              <input
+                                className='h-10 w-full rounded-lg border border-outline-variant bg-white px-3 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20'
+                                disabled={isSubmittingStep}
+                                maxLength={160}
+                                onChange={(event) => updateProductInfoRowField(index, 'value', event.target.value)}
+                                placeholder='Paslanmaz çelik'
+                                value={row.value}
+                              />
+                              {stepOneForm.formState.errors.productInfoRows?.[index]?.value ? (
+                                <p className='mt-1 text-xs text-red-600'>
+                                  {stepOneForm.formState.errors.productInfoRows[index]?.value?.message}
+                                </p>
+                              ) : null}
+                            </label>
+                            <button
+                              aria-label='Bilgi satırını sil'
+                              className='mt-5 flex h-10 w-10 items-center justify-center rounded-lg border border-red-100 bg-red-50 text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 md:mt-[21px]'
+                              disabled={isSubmittingStep}
+                              onClick={() => removeProductInfoRow(index)}
+                              type='button'
+                            >
+                              <span className='material-symbols-outlined text-[18px]'>delete</span>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className='mb-5 rounded-xl border border-dashed border-outline-variant/40 bg-surface-container-low px-4 py-3 text-xs font-medium text-outline'>
+                        Bilgi tablosu eklenmedi. Ürün sayfasında tablo alanı gösterilmeyecek.
+                      </p>
+                    )}
+
                     <span className='mb-2 block text-sm font-bold text-on-surface-variant'>Ürün Açıklaması</span>
                     <RichTextEditor
                       value={watchedStepOne.description ?? ''}

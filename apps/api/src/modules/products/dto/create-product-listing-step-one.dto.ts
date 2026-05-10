@@ -92,6 +92,22 @@ const toOptionalFeaturedFeatures = ({ value }: { value: unknown }): unknown => {
   return value;
 };
 
+const toOptionalInfoRows = ({ value }: { value: unknown }): unknown => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  }
+
+  return value;
+};
+
 export class ProductListingVariantOptionDto {
   @Transform(toTrimmedString)
   @IsString({ message: 'Varyant seçenek etiketi metin olmalıdır.' })
@@ -137,6 +153,18 @@ export class ProductListingFeaturedFeatureDto {
   @IsString({ message: 'Özellik açıklaması metin olmalıdır.' })
   @MaxLength(140, { message: 'Özellik açıklaması en fazla 140 karakter olabilir.' })
   description: string;
+}
+
+export class ProductListingInfoTableRowDto {
+  @Transform(toTrimmedString)
+  @IsString({ message: 'Bilgi başlığı metin olmalıdır.' })
+  @MaxLength(80, { message: 'Bilgi başlığı en fazla 80 karakter olabilir.' })
+  label: string;
+
+  @Transform(toTrimmedString)
+  @IsString({ message: 'Bilgi değeri metin olmalıdır.' })
+  @MaxLength(160, { message: 'Bilgi değeri en fazla 160 karakter olabilir.' })
+  value: string;
 }
 
 export class CreateProductListingStepOneDto {
@@ -188,6 +216,14 @@ export class CreateProductListingStepOneDto {
   @ValidateNested({ each: true })
   @Type(() => ProductListingVariantGroupDto)
   variantGroups?: ProductListingVariantGroupDto[];
+
+  @Transform(toOptionalInfoRows)
+  @IsOptional()
+  @IsArray({ message: 'Ürün bilgi tablosu dizi olmalıdır.' })
+  @ArrayMaxSize(12, { message: 'En fazla 12 ürün bilgi satırı ekleyebilirsiniz.' })
+  @ValidateNested({ each: true })
+  @Type(() => ProductListingInfoTableRowDto)
+  productInfoRows?: ProductListingInfoTableRowDto[];
 
   @Transform(toTrimmedString)
   @IsString({ message: 'Ürün açıklaması metin olmalıdır.' })

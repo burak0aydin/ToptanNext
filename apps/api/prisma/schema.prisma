@@ -265,6 +265,7 @@ model ProductListing {
   slug              String
   sku               String
   description       String               @db.Text
+  productInfoRows   Json                 @default("[]") @map("product_info_rows")
   categoryId        String               @map("category_id")
   status            ProductListingStatus @default(DRAFT)
   isActive          Boolean              @default(true) @map("is_active")

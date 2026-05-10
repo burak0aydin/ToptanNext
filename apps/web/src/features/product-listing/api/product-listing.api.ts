@@ -1,5 +1,6 @@
 import type {
   ProductListingFeaturedFeature,
+  ProductListingInfoTableRow,
   ProductListingVariantGroup,
   ProductListingStepOneDto,
   ProductListingStepThreeDto,
@@ -58,6 +59,7 @@ export type ProductListingRecord = {
   slug: string;
   sku: string;
   description: string;
+  productInfoRows: ProductListingInfoTableRow[];
   categoryId: string;
   categoryName: string;
   status: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
@@ -232,6 +234,9 @@ function normalizeProductListingRecord(record: ProductListingRecord): ProductLis
 
   return {
     ...record,
+    productInfoRows: Array.isArray(record.productInfoRows)
+      ? record.productInfoRows
+      : [],
     featuredFeatures,
   };
 }

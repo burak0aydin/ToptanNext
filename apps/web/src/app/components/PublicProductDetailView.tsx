@@ -1140,32 +1140,19 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                   <h2 className='text-lg font-bold text-on-surface'>Ürün Açıklaması</h2>
                 </div>
                 <div className='p-8'>
-                  <div className='mb-8 grid grid-cols-1 gap-x-16 gap-y-4 md:grid-cols-2'>
-                    <div className='flex justify-between border-b border-outline-variant/10 py-3'>
-                      <span className='text-sm text-outline'>Model</span>
-                      <span className='text-sm font-semibold text-on-surface'>{listing.sku}</span>
+                  {listing.productInfoRows.length > 0 ? (
+                    <div className='mb-8 grid grid-cols-1 gap-x-16 gap-y-4 md:grid-cols-2'>
+                      {listing.productInfoRows.map((row, index) => (
+                        <div
+                          className='flex justify-between gap-4 border-b border-outline-variant/10 py-3'
+                          key={`${row.label}-${index}`}
+                        >
+                          <span className='text-sm text-outline'>{row.label}</span>
+                          <span className='text-right text-sm font-semibold text-on-surface'>{row.value}</span>
+                        </div>
+                      ))}
                     </div>
-                    <div className='flex justify-between border-b border-outline-variant/10 py-3'>
-                      <span className='text-sm text-outline'>Kategori</span>
-                      <span className='text-sm font-semibold text-on-surface'>{listing.categoryName}</span>
-                    </div>
-                    <div className='flex justify-between border-b border-outline-variant/10 py-3'>
-                      <span className='text-sm text-outline'>Sektör</span>
-                      <span className='text-sm font-semibold text-on-surface'>{listing.sectors[0]?.sectorName ?? 'Belirtilmedi'}</span>
-                    </div>
-                    <div className='flex justify-between border-b border-outline-variant/10 py-3'>
-                      <span className='text-sm text-outline'>Stok</span>
-                      <span className='text-sm font-semibold text-on-surface'>{listing.stock ?? 0} Adet</span>
-                    </div>
-                    <div className='flex justify-between border-b border-outline-variant/10 py-3'>
-                      <span className='text-sm text-outline'>Teslimat</span>
-                      <span className='text-sm font-semibold text-on-surface'>{listing.leadTimeDays ?? '-'} Gün</span>
-                    </div>
-                    <div className='flex justify-between border-b border-outline-variant/10 py-3'>
-                      <span className='text-sm text-outline'>Sertifikalar</span>
-                      <span className='text-sm font-semibold text-on-surface'>Tedarikçi Beyanı</span>
-                    </div>
-                  </div>
+                  ) : null}
                   {sanitizedDescription ? (
                     <div
                       className='text-sm leading-7 text-on-surface-variant [&_p]:mb-3 [&_p:empty]:hidden [&_strong]:font-bold [&_strong]:text-on-surface [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 [&_li>p]:mb-0'

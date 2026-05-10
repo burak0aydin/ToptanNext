@@ -348,6 +348,7 @@ export default function AdminProductManagementPage() {
 				isCustomizable: form.isCustomizable,
 				customizationNote: form.customizationNote.trim(),
 				variantGroups: selectedListingQuery.data?.variantGroups ?? [],
+				productInfoRows: selectedListingQuery.data?.productInfoRows ?? [],
 				description: form.description.trim(),
 			};
 

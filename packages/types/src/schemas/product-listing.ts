@@ -115,6 +115,40 @@ export const productListingFeaturedFeatureSchema = z.object({
     .max(140, 'Özellik açıklaması en fazla 140 karakter olabilir.'),
 });
 
+export const productListingInfoTableRowSchema = z.object({
+  label: z
+    .string()
+    .trim()
+    .min(1, 'Bilgi başlığı boş olamaz.')
+    .max(80, 'Bilgi başlığı en fazla 80 karakter olabilir.'),
+  value: z
+    .string()
+    .trim()
+    .min(1, 'Bilgi değeri boş olamaz.')
+    .max(160, 'Bilgi değeri en fazla 160 karakter olabilir.'),
+});
+
+const productListingInfoTableRowsSchema = z.preprocess((value) => {
+  if (!Array.isArray(value)) {
+    return value;
+  }
+
+  return value.filter((item) => {
+    if (!item || typeof item !== 'object') {
+      return true;
+    }
+
+    const maybeRow = item as { label?: unknown; value?: unknown };
+    const label = typeof maybeRow.label === 'string' ? maybeRow.label.trim() : '';
+    const rowValue = typeof maybeRow.value === 'string' ? maybeRow.value.trim() : '';
+
+    return label.length > 0 || rowValue.length > 0;
+  });
+}, z
+  .array(productListingInfoTableRowSchema)
+  .max(12, 'En fazla 12 ürün bilgi satırı ekleyebilirsiniz.')
+  .default([]));
+
 const productListingFeaturedFeaturesSchema = z.preprocess((value) => {
   if (!Array.isArray(value)) {
     return value;
@@ -179,6 +213,7 @@ export const productListingStepOneSchema = z
       .array(productListingVariantGroupSchema)
       .max(6, 'En fazla 6 varyant grubu ekleyebilirsiniz.')
       .default([]),
+    productInfoRows: productListingInfoTableRowsSchema,
     description: z
       .string()
       .trim()
@@ -387,6 +422,7 @@ export type ProductListingVariantDisplayType =
 export type ProductListingVariantOption = z.infer<typeof productListingVariantOptionSchema>;
 export type ProductListingVariantGroup = z.infer<typeof productListingVariantGroupSchema>;
 export type ProductListingFeaturedFeature = z.infer<typeof productListingFeaturedFeatureSchema>;
+export type ProductListingInfoTableRow = z.infer<typeof productListingInfoTableRowSchema>;
 export type ProductListingStepOneDto = z.infer<typeof productListingStepOneSchema>;
 export type ProductListingStepTwoDto = z.infer<typeof productListingStepTwoSchema>;
 export type ProductListingStepThreeDto = z.infer<typeof productListingStepThreeSchema>;

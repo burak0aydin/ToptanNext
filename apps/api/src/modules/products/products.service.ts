@@ -14,6 +14,7 @@ import {
 import {
   CreateProductListingStepOneDto,
   ProductListingFeaturedFeatureDto,
+  ProductListingInfoTableRowDto,
 } from './dto/create-product-listing-step-one.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { SubmitProductListingDto } from './dto/submit-product-listing.dto';
@@ -33,6 +34,7 @@ import {
   ProductListingManagementResult,
   ProductListingManagementStatusFilter,
   ProductListingRecord,
+  ProductListingInfoTableRowRecord,
   ProductRecord,
   ProductsRepository,
   UpdateProductListingStepOneInput,
@@ -221,6 +223,7 @@ export class ProductsService {
       dto.description,
       'Ürün açıklaması boş olamaz.',
     );
+    const productInfoRows = this.normalizeProductInfoRows(dto.productInfoRows ?? []);
     const variantGroups = this.normalizeVariantGroups(dto.variantGroups ?? []);
     const stepOneRefs = await this.resolveStepOneReferences(dto);
 
@@ -248,6 +251,7 @@ export class ProductsService {
       slug,
       sku,
       description,
+      productInfoRows,
       categoryId: stepOneRefs.categoryId,
       sectorIds: stepOneRefs.sectorIds,
       featuredFeatures: this.serializeFeaturedFeatures(
@@ -588,6 +592,7 @@ export class ProductsService {
       dto.description,
       'Ürün açıklaması boş olamaz.',
     );
+    const productInfoRows = this.normalizeProductInfoRows(dto.productInfoRows ?? []);
     const variantGroups = this.normalizeVariantGroups(dto.variantGroups ?? []);
     const stepOneRefs = await this.resolveStepOneReferences(dto);
 
@@ -608,6 +613,7 @@ export class ProductsService {
       slug,
       sku,
       description,
+      productInfoRows,
       categoryId: stepOneRefs.categoryId,
       sectorIds: stepOneRefs.sectorIds,
       featuredFeatures: this.serializeFeaturedFeatures(
@@ -637,6 +643,7 @@ export class ProductsService {
       dto.description,
       'Ürün açıklaması boş olamaz.',
     );
+    const productInfoRows = this.normalizeProductInfoRows(dto.productInfoRows ?? []);
     const variantGroups = this.normalizeVariantGroups(dto.variantGroups ?? []);
     const stepOneRefs = await this.resolveStepOneReferences(dto);
 
@@ -660,6 +667,7 @@ export class ProductsService {
       slug,
       sku,
       description,
+      productInfoRows,
       categoryId: stepOneRefs.categoryId,
       sectorIds: stepOneRefs.sectorIds,
       featuredFeatures: this.serializeFeaturedFeatures(
@@ -929,6 +937,42 @@ export class ProductsService {
         description: item.description,
       }),
     );
+  }
+
+  private normalizeProductInfoRows(
+    rows: Array<ProductListingInfoTableRowDto | null | undefined>,
+  ): ProductListingInfoTableRowRecord[] {
+    if (rows.length > 12) {
+      throw new BadRequestException(
+        'En fazla 12 ürün bilgi satırı ekleyebilirsiniz.',
+      );
+    }
+
+    return rows
+      .map((row) => {
+        if (!row || typeof row !== 'object') {
+          return null;
+        }
+
+        const label = typeof row.label === 'string' ? row.label.trim() : '';
+        const value = typeof row.value === 'string' ? row.value.trim() : '';
+
+        if (label.length === 0 && value.length === 0) {
+          return null;
+        }
+
+        if (label.length === 0 || value.length === 0) {
+          throw new BadRequestException(
+            'Ürün bilgi tablosunda başlık ve değer birlikte girilmelidir.',
+          );
+        }
+
+        return {
+          label,
+          value,
+        };
+      })
+      .filter((row): row is ProductListingInfoTableRowRecord => row !== null);
   }
 
   private normalizeVariantGroups(
