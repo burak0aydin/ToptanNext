@@ -602,30 +602,30 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
     <>
       <div>
         {listing!.isCustomizable ? (
-          <span className='mb-3 inline-flex rounded border border-blue-200 bg-blue-100 px-3 py-1 text-[11px] font-extrabold uppercase tracking-widest text-blue-700'>
+          <span className='mb-2 inline-flex rounded border border-blue-200 bg-blue-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-blue-700 sm:mb-3 sm:px-3 sm:text-[11px] sm:tracking-widest'>
             Özelleştirilebilir
           </span>
         ) : null}
       </div>
 
       {listing!.variantGroups.length > 0 ? (
-        <div className='rounded-xl border border-outline-variant/20 bg-surface-container-low p-5'>
-          <div className='space-y-4'>
+        <div className='rounded-xl border border-outline-variant/20 bg-surface-container-low p-3 sm:p-5'>
+          <div className='space-y-3 sm:space-y-4'>
             {listing!.variantGroups.map((group, groupIndex) => {
               const groupKey = `${group.groupName}-${groupIndex}`;
               const selectedLabel = variantSelections[groupKey];
 
               return (
                 <div key={groupKey}>
-                  <p className='mb-2 text-sm font-semibold text-on-surface'>{group.groupName}</p>
-                  <div className='flex flex-wrap gap-2'>
+                  <p className='mb-1.5 text-xs font-semibold text-on-surface sm:mb-2 sm:text-sm'>{group.groupName}</p>
+                  <div className='flex flex-wrap gap-1.5 sm:gap-2'>
                     {group.options.map((option) => {
                       const isSelected = selectedLabel === option.label;
                       return (
                         <button
                           key={option.label}
                           className={[
-                            'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+                            'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:py-2 sm:text-sm',
                             isSelected
                               ? 'border-primary bg-primary/10 text-primary'
                               : 'border-outline-variant/40 bg-white text-on-surface hover:border-primary/40',
@@ -647,7 +647,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                           {group.displayType === 'image' && option.imageUrl ? (
                             <ProductMediaImage
                               alt={option.label}
-                              className='h-5 w-5 rounded-full border border-outline-variant/30 object-cover'
+                              className='h-4 w-4 rounded-full border border-outline-variant/30 object-cover sm:h-5 sm:w-5'
                               src={resolveVariantOptionImageUrl(option.imageUrl) ?? ''}
                             />
                           ) : null}
@@ -663,9 +663,9 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
         </div>
       ) : null}
 
-      <div className='rounded-xl border border-outline-variant/20 bg-surface-container-low p-5'>
+      <div className='rounded-xl border border-outline-variant/20 bg-surface-container-low p-3 sm:p-5'>
         {sortedPricingTiers.length > 0 ? (
-          <div className='grid grid-cols-1 gap-3 sm:grid-cols-3'>
+          <div className='grid grid-cols-3 gap-2 sm:gap-3'>
             {sortedPricingTiers.map((tier) => {
               const isActive = selectedTier
                 ? selectedTier.minQuantity === tier.minQuantity && selectedTier.maxQuantity === tier.maxQuantity
@@ -674,7 +674,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                 <button
                   key={`${tier.minQuantity}-${tier.maxQuantity}`}
                   className={[
-                    'rounded-xl border p-4 text-center transition-colors',
+                    'rounded-lg border px-1.5 py-2 text-center transition-colors sm:rounded-xl sm:p-4',
                     isActive
                       ? 'border-2 border-primary/40 bg-primary/5'
                       : 'border-outline-variant/30 bg-white hover:border-primary/30',
@@ -682,10 +682,10 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                   onClick={() => setQuantity(Math.max(minOrderQuantity, tier.minQuantity))}
                   type='button'
                 >
-                  <div className={`mb-1 text-[11px] font-medium uppercase tracking-[0.03em] ${isActive ? 'text-primary' : 'text-outline'}`}>
+                  <div className={`mb-1 text-[9px] font-medium uppercase tracking-[0.02em] sm:text-[11px] sm:tracking-[0.03em] ${isActive ? 'text-primary' : 'text-outline'}`}>
                     {tier.maxQuantity === null ? `>= ${tier.minQuantity} Adet` : `${tier.minQuantity}-${tier.maxQuantity} Adet`}
                   </div>
-                  <div className={`text-[1.40rem] font-medium leading-none tracking-[-0.01em] ${isActive ? 'text-primary' : 'text-on-surface'}`}>
+                  <div className={`text-sm font-semibold leading-none sm:text-[1.40rem] sm:font-medium sm:tracking-[-0.01em] ${isActive ? 'text-primary' : 'text-on-surface'}`}>
                     {formatTryAmount(tier.unitPrice)}
                   </div>
                 </button>
@@ -693,37 +693,37 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
             })}
           </div>
         ) : (
-          <div className='rounded-lg border border-outline-variant/30 bg-white p-4 text-center'>
-            <div className='text-xs font-bold uppercase text-outline'>Birim Fiyat</div>
-            <div className='text-[1.40rem] font-medium leading-none tracking-[-0.01em] text-on-surface'>
+          <div className='rounded-lg border border-outline-variant/30 bg-white p-3 text-center sm:p-4'>
+            <div className='text-[10px] font-bold uppercase text-outline sm:text-xs'>Birim Fiyat</div>
+            <div className='text-lg font-semibold leading-none text-on-surface sm:text-[1.40rem] sm:font-medium sm:tracking-[-0.01em]'>
               {formatTryAmount(unitPrice)}
             </div>
           </div>
         )}
 
-        <div className='mt-4 flex items-center justify-center gap-2 rounded-lg border border-outline-variant/20 bg-surface-container-highest py-1.5'>
+        <div className='mt-2 flex items-center justify-center gap-1.5 rounded-lg border border-outline-variant/20 bg-surface-container-highest py-1 sm:mt-4 sm:gap-2 sm:py-1.5'>
           <span className='material-symbols-outlined text-sm text-outline'>trending_down</span>
-          <p className='text-[11px] font-medium text-on-surface-variant'>
+          <p className='text-[10px] font-medium text-on-surface-variant sm:text-[11px]'>
             Bu alımla {formatTryAmount(savingsAmount)} kar ettiniz
           </p>
         </div>
       </div>
 
-      <div className='rounded-2xl border border-outline-variant/40 bg-white p-6 shadow-sm'>
-        <div className='mb-6'>
-          <label className='mb-2 block text-xs font-bold uppercase tracking-wide text-outline'>
+      <div className='rounded-xl border border-outline-variant/40 bg-white p-3 shadow-sm sm:rounded-2xl sm:p-6'>
+        <div className='mb-3 sm:mb-6'>
+          <label className='mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-outline sm:mb-2 sm:text-xs'>
             Miktar Seçin
           </label>
           <div className='flex items-center overflow-hidden rounded-lg border border-outline-variant'>
             <button
-              className='p-3 transition-colors hover:bg-surface-container-low'
+              className='p-2 transition-colors hover:bg-surface-container-low sm:p-3'
               type='button'
               onClick={() => setQuantity((current) => Math.max(minOrderQuantity, current - 1))}
             >
               <span className='material-symbols-outlined text-sm'>remove</span>
             </button>
             <input
-              className='w-full border-none text-center font-bold text-on-surface focus:ring-0'
+              className='h-9 w-full border-none text-center text-sm font-bold text-on-surface focus:ring-0 sm:h-auto sm:text-base'
               min={minOrderQuantity}
               type='number'
               value={quantity}
@@ -736,47 +736,47 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
               }}
             />
             <button
-              className='p-3 transition-colors hover:bg-surface-container-low'
+              className='p-2 transition-colors hover:bg-surface-container-low sm:p-3'
               type='button'
               onClick={() => setQuantity((current) => current + 1)}
             >
               <span className='material-symbols-outlined text-sm'>add</span>
             </button>
           </div>
-          <p className='mt-1.5 text-center text-[10px] font-medium text-primary'>
+          <p className='mt-1 text-center text-[9px] font-medium text-primary sm:mt-1.5 sm:text-[10px]'>
             Minimum Sipariş (MSM): {minOrderQuantity} Adet
           </p>
         </div>
 
-        <div className='mb-6 space-y-3'>
-          <div className='flex items-center justify-between text-sm'>
-            <span className='text-outline'>Birim Fiyat</span>
-            <span className='font-bold'>{formatTryAmount(unitPrice)}</span>
+        <div className='mb-3 grid grid-cols-3 gap-2 sm:mb-6 sm:block sm:space-y-3'>
+          <div className='rounded-lg bg-surface-container-low px-2 py-2 text-center sm:flex sm:items-center sm:justify-between sm:bg-transparent sm:p-0 sm:text-sm'>
+            <span className='block text-[10px] text-outline sm:inline sm:text-sm'>Birim Fiyat</span>
+            <span className='block text-xs font-bold sm:inline sm:text-sm'>{formatTryAmount(unitPrice)}</span>
           </div>
-          <div className='flex items-center justify-between text-sm'>
-            <span className='text-outline'>Ara Toplam</span>
-            <span className='font-bold'>{formatTryAmount(subtotal)}</span>
+          <div className='rounded-lg bg-surface-container-low px-2 py-2 text-center sm:flex sm:items-center sm:justify-between sm:bg-transparent sm:p-0 sm:text-sm'>
+            <span className='block text-[10px] text-outline sm:inline sm:text-sm'>Ara Toplam</span>
+            <span className='block text-xs font-bold sm:inline sm:text-sm'>{formatTryAmount(subtotal)}</span>
           </div>
-          <div className='h-px bg-outline-variant/30' />
-          <div className='flex items-end justify-between'>
-            <span className='text-sm font-bold text-on-surface'>Toplam Tahmini</span>
-            <span className='text-xl font-extrabold text-primary'>{formatTryAmount(subtotal)}</span>
+          <div className='hidden h-px bg-outline-variant/30 sm:block' />
+          <div className='rounded-lg bg-primary/5 px-2 py-2 text-center sm:flex sm:items-end sm:justify-between sm:bg-transparent sm:p-0'>
+            <span className='block text-[10px] font-bold text-on-surface sm:inline sm:text-sm'>Toplam</span>
+            <span className='block text-sm font-extrabold text-primary sm:inline sm:text-xl'>{formatTryAmount(subtotal)}</span>
           </div>
         </div>
 
-        <div className='mt-6 space-y-4 border-t border-outline-variant/30 pt-6'>
-          <div className='flex items-start gap-3'>
-            <span className='material-symbols-outlined text-green-600'>verified_user</span>
-            <p className='text-[11px] leading-tight'>
+        <div className='mt-3 grid grid-cols-2 gap-2 border-t border-outline-variant/30 pt-3 sm:mt-6 sm:block sm:space-y-4 sm:pt-6'>
+          <div className='flex items-start gap-2 sm:gap-3'>
+            <span className='material-symbols-outlined text-[18px] text-green-600 sm:text-2xl'>verified_user</span>
+            <p className='text-[10px] leading-tight sm:text-[11px]'>
               <span className='block font-bold'>Güvenli Ödeme</span>
-              ToptanNext Güvence Paketi ile paranız teslimat onayına kadar bizde kalır.
+              Güvence paketi.
             </p>
           </div>
-          <div className='flex items-start gap-3'>
-            <span className='material-symbols-outlined text-blue-500'>local_shipping</span>
-            <p className='text-[11px] leading-tight'>
+          <div className='flex items-start gap-2 sm:gap-3'>
+            <span className='material-symbols-outlined text-[18px] text-blue-500 sm:text-2xl'>local_shipping</span>
+            <p className='text-[10px] leading-tight sm:text-[11px]'>
               <span className='block font-bold'>Hızlı Lojistik</span>
-              Global depolardan 7-14 iş günü içinde adrese teslimat.
+              7-14 iş günü.
             </p>
           </div>
         </div>
@@ -786,17 +786,17 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
 
   const renderSidebarActions = (sticky: boolean) => (
     <div className={[
-      'border-t border-outline-variant/30 bg-white p-4 sm:p-5',
-      sticky ? 'sticky bottom-0 z-30 shrink-0 bg-white/95 backdrop-blur' : '',
+      'border-t border-outline-variant/30 bg-white p-3 sm:p-5',
+      sticky ? 'fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-[80] shrink-0 bg-white/95 shadow-[0_-10px_28px_rgba(15,23,42,0.12)] backdrop-blur lg:sticky lg:inset-x-auto lg:bottom-0 lg:z-30 lg:shadow-none' : '',
     ].join(' ')}>
-      <div className='grid grid-cols-2 gap-3'>
+      <div className='grid grid-cols-2 gap-2 sm:gap-3'>
         <button
-          className='flex w-full items-center justify-center gap-2 rounded-xl bg-[#1A56DB] py-3 font-bold text-white shadow-md transition-all hover:opacity-90 active:scale-[0.98]'
+          className='flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#1A56DB] py-2.5 text-xs font-bold text-white shadow-md transition-all hover:opacity-90 active:scale-[0.98] sm:gap-2 sm:py-3 sm:text-base'
           disabled={addToCartMutation.isPending || isOwnListing}
           onClick={handleAddToCart}
           type='button'
         >
-          <span className='material-symbols-outlined'>shopping_cart</span>
+          <span className='material-symbols-outlined text-[20px] sm:text-2xl'>shopping_cart</span>
           {isOwnListing
             ? 'Kendi Ürünün'
             : addToCartMutation.isPending
@@ -804,12 +804,12 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
               : 'Sepete Ekle'}
         </button>
         <button
-          className='flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1A56DB] bg-white py-3 font-bold text-[#1A56DB] transition-all hover:bg-surface-container-low active:scale-[0.98]'
+          className='flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-[#1A56DB] bg-white py-2.5 text-xs font-bold text-[#1A56DB] transition-all hover:bg-surface-container-low active:scale-[0.98] sm:gap-2 sm:py-3 sm:text-base'
           disabled={isStartingConversation}
           onClick={handleStartConversation}
           type='button'
         >
-          <span className='material-symbols-outlined'>chat</span>
+          <span className='material-symbols-outlined text-[20px] sm:text-2xl'>chat</span>
           {isStartingConversation ? 'Açılıyor...' : 'Sohbet Et'}
         </button>
       </div>
@@ -890,7 +890,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
     <div className='bg-surface text-on-surface'>
       <MainHeader />
 
-      <main className='mx-auto max-w-[1440px] px-6 py-8'>
+      <main className='mx-auto max-w-[1440px] px-4 pb-36 pt-5 sm:px-6 sm:py-8'>
         <nav className='mb-6 flex items-center gap-1 text-xs font-medium text-outline overflow-x-auto flex-nowrap'>
           {categoryTrail.map((item, index) => {
             const isLast = index === categoryTrail.length - 1;
@@ -908,8 +908,8 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
           })}
         </nav>
 
-        <div className='mb-12 grid grid-cols-1 gap-8 lg:grid-cols-12'>
-          <div className='flex flex-col gap-8 lg:col-span-7'>
+        <div className='mb-12 grid grid-cols-1 gap-5 lg:grid-cols-12 lg:gap-8'>
+          <div className='flex flex-col gap-5 lg:col-span-7 lg:gap-8'>
             <h1 className='text-[1.35rem] font-medium leading-tight tracking-normal text-on-surface'>
               {listing.name}
             </h1>
@@ -1065,9 +1065,18 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
               </div>
             ) : null}
 
+            <div className='lg:hidden'>
+              <div className='rounded-2xl border border-outline-variant/30 bg-white shadow-sm'>
+                <div className='space-y-3 p-3'>
+                  {renderSidebarBody()}
+                </div>
+                {renderSidebarActions(true)}
+              </div>
+            </div>
+
             <div className='space-y-3'>
               <h3 className='text-sm font-bold text-on-surface'>Öne Çıkan Özellikler</h3>
-              <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+              <div className='grid grid-cols-2 gap-2 sm:gap-3'>
                 {(listing.featuredFeatures.length > 0
                   ? listing.featuredFeatures
                   : [{ title: 'Standart Özellik', description: 'Bu ürün için özellik bilgisi eklenmedi.' }])
@@ -1075,16 +1084,16 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                   .map((feature, index) => (
                     <div
                       key={`${feature.title}-${index}`}
-                      className='flex items-center gap-3 rounded-lg border border-outline-variant/30 bg-white p-3'
+                      className='flex min-w-0 items-center gap-2 rounded-lg border border-outline-variant/30 bg-white p-2 sm:gap-3 sm:p-3'
                     >
-                      <span className='material-symbols-outlined text-primary'>
+                      <span className='material-symbols-outlined shrink-0 text-[19px] text-primary sm:text-2xl'>
                         {index % 2 === 0 ? 'bolt' : 'speed'}
                       </span>
-                      <div>
-                        <div className='text-[10px] font-bold uppercase tracking-tight text-outline'>
+                      <div className='min-w-0'>
+                        <div className='truncate text-[9px] font-bold uppercase tracking-tight text-outline sm:text-[10px]'>
                           {feature.title}
                         </div>
-                        <div className='text-xs font-semibold text-on-surface'>
+                        <div className='line-clamp-2 text-[10px] font-semibold leading-tight text-on-surface sm:text-xs'>
                           {feature.description || feature.title}
                         </div>
                       </div>
@@ -1134,33 +1143,33 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
               </div>
             </div>
 
-            <div className='flex flex-1 flex-col gap-8'>
+            <div className='flex flex-1 flex-col gap-5 sm:gap-8'>
               <section id='description' className='scroll-mt-20 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white lg:scroll-mt-48'>
-                <div className='border-b border-outline-variant/30 bg-surface-container-lowest px-8 py-5'>
-                  <h2 className='text-lg font-bold text-on-surface'>Ürün Açıklaması</h2>
+                <div className='border-b border-outline-variant/30 bg-surface-container-lowest px-4 py-3 sm:px-8 sm:py-5'>
+                  <h2 className='text-base font-bold text-on-surface sm:text-lg'>Ürün Açıklaması</h2>
                 </div>
-                <div className='p-8'>
+                <div className='p-4 sm:p-8'>
                   {listing.productInfoRows.length > 0 ? (
-                    <div className='mb-8 grid grid-cols-1 gap-x-16 gap-y-4 md:grid-cols-2'>
+                    <div className='mb-5 grid grid-cols-1 gap-x-16 gap-y-2 sm:mb-8 md:grid-cols-2 md:gap-y-4'>
                       {listing.productInfoRows.map((row, index) => (
                         <div
-                          className='flex justify-between gap-4 border-b border-outline-variant/10 py-3'
+                          className='flex justify-between gap-4 border-b border-outline-variant/10 py-2 sm:py-3'
                           key={`${row.label}-${index}`}
                         >
-                          <span className='text-sm text-outline'>{row.label}</span>
-                          <span className='text-right text-sm font-semibold text-on-surface'>{row.value}</span>
+                          <span className='text-xs text-outline sm:text-sm'>{row.label}</span>
+                          <span className='text-right text-xs font-semibold text-on-surface sm:text-sm'>{row.value}</span>
                         </div>
                       ))}
                     </div>
                   ) : null}
                   {sanitizedDescription ? (
                     <div
-                      className='text-sm leading-7 text-on-surface-variant [&_p]:mb-3 [&_p:empty]:hidden [&_strong]:font-bold [&_strong]:text-on-surface [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 [&_li>p]:mb-0'
+                      className='text-[12px] leading-5 text-on-surface-variant sm:text-sm sm:leading-7 [&_p]:mb-1.5 sm:[&_p]:mb-3 [&_p:empty]:hidden [&_strong]:font-bold [&_strong]:text-on-surface [&_ul]:mb-2.5 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-4 sm:[&_ul]:mb-4 sm:[&_ul]:space-y-2 sm:[&_ul]:pl-5 [&_li>p]:mb-0'
                       // eslint-disable-next-line react/no-danger
                       dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
                     />
                   ) : (
-                    <p className='text-sm leading-relaxed text-on-surface-variant'>
+                    <p className='text-[12px] leading-5 text-on-surface-variant sm:text-sm sm:leading-relaxed'>
                       Bu ürün için henüz açıklama girilmedi.
                     </p>
                   )}
@@ -1168,10 +1177,10 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
               </section>
 
               <section id='reviews' className='scroll-mt-20 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white lg:scroll-mt-48'>
-                <div className='border-b border-outline-variant/30 bg-surface-container-lowest px-8 py-5'>
-                  <h2 className='text-lg font-bold text-on-surface'>Değerlendirmeler (124)</h2>
+                <div className='border-b border-outline-variant/30 bg-surface-container-lowest px-4 py-3 sm:px-8 sm:py-5'>
+                  <h2 className='text-base font-bold text-on-surface sm:text-lg'>Değerlendirmeler (124)</h2>
                 </div>
-                <div className='p-8'>
+                <div className='p-4 sm:p-8'>
                   <div className='mb-8 flex items-center gap-4'>
                     <div className='text-4xl font-extrabold text-on-surface'>4.8</div>
                     <div>
@@ -1198,10 +1207,10 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
               </section>
 
               <section id='company' className='scroll-mt-20 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white lg:flex lg:flex-1 lg:flex-col lg:scroll-mt-48'>
-                <div className='border-b border-outline-variant/30 bg-surface-container-lowest px-8 py-5'>
-                  <h2 className='text-lg font-bold text-on-surface'>Şirket Profili</h2>
+                <div className='border-b border-outline-variant/30 bg-surface-container-lowest px-4 py-3 sm:px-8 sm:py-5'>
+                  <h2 className='text-base font-bold text-on-surface sm:text-lg'>Şirket Profili</h2>
                 </div>
-                <div className='p-8 lg:flex lg:flex-1 lg:flex-col'>
+                <div className='p-4 sm:p-8 lg:flex lg:flex-1 lg:flex-col'>
                   <div className='mb-10 flex flex-col gap-6 md:flex-row md:items-center'>
                     <div className='flex h-24 w-24 shrink-0 items-center justify-center rounded-xl border border-outline-variant/20 bg-surface-container'>
                       <span className='material-symbols-outlined text-5xl text-primary'>factory</span>
@@ -1275,7 +1284,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
             </div>
           </div>
 
-          <aside className='lg:col-span-5 lg:self-start'>
+          <aside className='hidden lg:col-span-5 lg:block lg:self-start'>
               <div className='space-y-8'>
               <div ref={primaryPanelRef} className='rounded-2xl border border-outline-variant/30 bg-white shadow-sm'>
                 <div className='space-y-6 p-5 sm:p-6'>
@@ -1312,8 +1321,6 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
           </aside>
         </div>
       </main>
-
-      <MainFooter />
 
       <ProductChatDrawer
         canSendQuote={canSendQuote}
