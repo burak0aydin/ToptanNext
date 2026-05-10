@@ -15,6 +15,7 @@ import {
   fetchPaymentCards,
   selectPaymentCard,
 } from '@/features/payment-cards/api/payment-cards.api';
+import { checkoutOrder } from '@/features/orders/api/orders.api';
 import PaymentCardPreview from '@/features/payment-cards/components/PaymentCardPreview';
 import SavedPaymentCard from '@/features/payment-cards/components/SavedPaymentCard';
 import { resolveProductListingMediaUrl } from '@/features/product-listing/api/product-listing.api';
@@ -98,6 +99,14 @@ export default function PaymentPage() {
     mutationFn: selectPaymentCard,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payment-cards'] });
+    },
+  });
+
+  const checkoutMutation = useMutation({
+    mutationFn: checkoutOrder,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+      window.location.href = '/siparis';
     },
   });
 
@@ -798,12 +807,18 @@ export default function PaymentPage() {
                       ? 'bg-primary text-white hover:bg-primary-container'
                       : 'cursor-not-allowed bg-surface-variant text-on-surface-variant'
                   }`}
-                  disabled={!canPay}
+                  disabled={!canPay || checkoutMutation.isPending}
+                  onClick={() => checkoutMutation.mutate()}
                   type="button"
                 >
                   <span className="material-symbols-outlined">lock</span>
-                  Siparişi Onayla ve Öde
+                  {checkoutMutation.isPending ? 'Sipariş oluşturuluyor...' : 'Siparişi Onayla ve Öde'}
                 </button>
+                {checkoutMutation.error ? (
+                  <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+                    {checkoutMutation.error.message}
+                  </p>
+                ) : null}
                 <div className="mt-2 flex items-center justify-center gap-4 opacity-60">
                   <span className="material-symbols-outlined text-3xl">verified_user</span>
                   <span className="text-xs font-medium">256-bit SSL Secure</span>

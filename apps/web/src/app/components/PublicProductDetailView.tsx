@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import DOMPurify from 'dompurify';
-import { MainFooter } from '@/app/components/MainFooter';
 import { MainHeader } from '@/app/components/MainHeader';
 import { ProductChatDrawer } from '@/components/chat/ProductChatDrawer';
 import { addCartItem } from '@/features/cart/api/cart.api';
@@ -26,6 +25,11 @@ import {
   type CategoryTreeNode,
   type ProductListingRecord,
 } from '@/features/product-listing/api/product-listing.api';
+import {
+  fetchMyProductReviewState,
+  fetchProductReviews,
+  upsertProductReview,
+} from '@/features/product-reviews/api/product-reviews.api';
 
 type PublicProductDetailViewProps = {
   id: string;
@@ -127,6 +131,22 @@ function buildListingPriceLabel(listing: ProductListingRecord): string {
   return 'Fiyat sorunuz';
 }
 
+function renderRatingStars(rating: number, className = 'text-[18px]') {
+  return Array.from({ length: 5 }, (_, index) => (
+    <span
+      className={`material-symbols-outlined ${className}`}
+      key={`star-${index}`}
+      style={{
+        fontVariationSettings: index < Math.round(rating)
+          ? "'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24"
+          : "'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24",
+      }}
+    >
+      star
+    </span>
+  ));
+}
+
 export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -142,6 +162,9 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
   const [canSendQuote, setCanSendQuote] = useState(false);
   const [chatActionError, setChatActionError] = useState<string | null>(null);
   const [cartActionError, setCartActionError] = useState<string | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewError, setReviewError] = useState<string | null>(null);
   const [isPrimaryPanelVisible, setIsPrimaryPanelVisible] = useState(true);
   const [primaryPanelHeight, setPrimaryPanelHeight] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
@@ -166,6 +189,31 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
   const listing = listingQuery.data;
   const currentUserId = getCurrentUserIdFromToken();
   const isOwnListing = Boolean(listing && currentUserId === listing.supplierId);
+  const reviewsQuery = useQuery({
+    queryKey: ['product-reviews', id],
+    queryFn: () => fetchProductReviews(id),
+    enabled: id.length > 0,
+  });
+  const myReviewStateQuery = useQuery({
+    queryKey: ['product-reviews', id, 'me'],
+    queryFn: () => fetchMyProductReviewState(id),
+    enabled: id.length > 0 && hasAccessToken(),
+    retry: false,
+  });
+  const reviewMutation = useMutation({
+    mutationFn: () => upsertProductReview(id, {
+      rating: reviewRating,
+      comment: reviewComment,
+    }),
+    onSuccess: () => {
+      setReviewError(null);
+      queryClient.invalidateQueries({ queryKey: ['product-reviews', id] });
+      queryClient.invalidateQueries({ queryKey: ['product-reviews', id, 'me'] });
+    },
+    onError: (error) => {
+      setReviewError(error.message);
+    },
+  });
 
   const imageMedia = useMemo(
     () => (listing?.media ?? []).filter((item) => item.mediaType === 'IMAGE'),
@@ -185,7 +233,11 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
     }
 
     const minOrder = listing.minOrderQuantity ?? 1;
-    setQuantity((current) => Math.max(current, minOrder));
+    const stockLimit = listing.stock !== null && listing.stock > 0 ? listing.stock : null;
+    setQuantity((current) => {
+      const next = Math.max(current, minOrder);
+      return stockLimit !== null ? Math.min(next, stockLimit) : next;
+    });
     setSelectedMediaId((current) => current ?? allMedia[0]?.id ?? null);
 
     setVariantSelections((current) => {
@@ -210,6 +262,16 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
       return next;
     });
   }, [allMedia, listing]);
+
+  useEffect(() => {
+    const myReview = myReviewStateQuery.data?.myReview;
+    if (!myReview) {
+      return;
+    }
+
+    setReviewRating(myReview.rating);
+    setReviewComment(myReview.comment ?? '');
+  }, [myReviewStateQuery.data?.myReview]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -393,6 +455,9 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
   );
 
   const minOrderQuantity = listing?.minOrderQuantity ?? sortedPricingTiers[0]?.minQuantity ?? 1;
+  const stockLimit = listing?.stock ?? null;
+  const isOutOfStock = stockLimit !== null && stockLimit <= 0;
+  const isStockBelowMinimum = stockLimit !== null && stockLimit > 0 && stockLimit < minOrderQuantity;
 
   const selectedTier = useMemo(() => {
     if (!listing) {
@@ -463,6 +528,7 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
       await queryClient.invalidateQueries({ queryKey: ['cart'] });
     },
   });
+  const isCartDisabled = addToCartMutation.isPending || isOwnListing || isOutOfStock || isStockBelowMinimum;
 
   const handleStartConversation = async () => {
     if (!listing || isStartingConversation) {
@@ -679,7 +745,12 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                       ? 'border-2 border-primary/40 bg-primary/5'
                       : 'border-outline-variant/30 bg-white hover:border-primary/30',
                   ].join(' ')}
-                  onClick={() => setQuantity(Math.max(minOrderQuantity, tier.minQuantity))}
+                  onClick={() => {
+                    const nextQuantity = Math.max(minOrderQuantity, tier.minQuantity);
+                    setQuantity(stockLimit !== null && stockLimit > 0
+                      ? Math.min(nextQuantity, stockLimit)
+                      : nextQuantity);
+                  }}
                   type='button'
                 >
                   <div className={`mb-1 text-[9px] font-medium uppercase tracking-[0.02em] sm:text-[11px] sm:tracking-[0.03em] ${isActive ? 'text-primary' : 'text-outline'}`}>
@@ -732,13 +803,20 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                 if (!Number.isFinite(raw)) {
                   return;
                 }
-                setQuantity(Math.max(minOrderQuantity, Math.floor(raw)));
+                const nextQuantity = Math.max(minOrderQuantity, Math.floor(raw));
+                setQuantity(stockLimit !== null && stockLimit > 0
+                  ? Math.min(nextQuantity, stockLimit)
+                  : nextQuantity);
               }}
             />
             <button
               className='p-2 transition-colors hover:bg-surface-container-low sm:p-3'
               type='button'
-              onClick={() => setQuantity((current) => current + 1)}
+              onClick={() => setQuantity((current) => (
+                stockLimit !== null && stockLimit > 0
+                  ? Math.min(stockLimit, current + 1)
+                  : current + 1
+              ))}
             >
               <span className='material-symbols-outlined text-sm'>add</span>
             </button>
@@ -746,6 +824,18 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
           <p className='mt-1 text-center text-[9px] font-medium text-primary sm:mt-1.5 sm:text-[10px]'>
             Minimum Sipariş (MSM): {minOrderQuantity} Adet
           </p>
+          {stockLimit !== null ? (
+            <p className={[
+              'mt-1 text-center text-[9px] font-medium sm:text-[10px]',
+              isOutOfStock || isStockBelowMinimum ? 'text-red-600' : 'text-outline',
+            ].join(' ')}>
+              {isOutOfStock
+                ? 'Stokta yok'
+                : isStockBelowMinimum
+                  ? `Stok MSM değerinden düşük: ${stockLimit} Adet`
+                  : `Mevcut stok: ${stockLimit} Adet`}
+            </p>
+          ) : null}
         </div>
 
         <div className='mb-3 grid grid-cols-3 gap-2 sm:mb-6 sm:block sm:space-y-3'>
@@ -791,17 +881,21 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
     ].join(' ')}>
       <div className='grid grid-cols-2 gap-2 sm:gap-3'>
         <button
-          className='flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#1A56DB] py-2.5 text-xs font-bold text-white shadow-md transition-all hover:opacity-90 active:scale-[0.98] sm:gap-2 sm:py-3 sm:text-base'
-          disabled={addToCartMutation.isPending || isOwnListing}
+          className='flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#1A56DB] py-2.5 text-xs font-bold text-white shadow-md transition-all hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none sm:gap-2 sm:py-3 sm:text-base'
+          disabled={isCartDisabled}
           onClick={handleAddToCart}
           type='button'
         >
           <span className='material-symbols-outlined text-[20px] sm:text-2xl'>shopping_cart</span>
           {isOwnListing
             ? 'Kendi Ürünün'
-            : addToCartMutation.isPending
-              ? 'Ekleniyor...'
-              : 'Sepete Ekle'}
+            : isOutOfStock
+              ? 'Stokta Yok'
+              : isStockBelowMinimum
+                ? 'Stok Yetersiz'
+                : addToCartMutation.isPending
+                  ? 'Ekleniyor...'
+                  : 'Sepete Ekle'}
         </button>
         <button
           className='flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-[#1A56DB] bg-white py-2.5 text-xs font-bold text-[#1A56DB] transition-all hover:bg-surface-container-low active:scale-[0.98] sm:gap-2 sm:py-3 sm:text-base'
@@ -1178,30 +1272,113 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
 
               <section id='reviews' className='scroll-mt-20 overflow-hidden rounded-2xl border border-outline-variant/30 bg-white lg:scroll-mt-48'>
                 <div className='border-b border-outline-variant/30 bg-surface-container-lowest px-4 py-3 sm:px-8 sm:py-5'>
-                  <h2 className='text-base font-bold text-on-surface sm:text-lg'>Değerlendirmeler (124)</h2>
+                  <h2 className='text-base font-bold text-on-surface sm:text-lg'>
+                    Değerlendirmeler ({reviewsQuery.data?.summary.count ?? 0})
+                  </h2>
                 </div>
-                <div className='p-4 sm:p-8'>
-                  <div className='mb-8 flex items-center gap-4'>
-                    <div className='text-4xl font-extrabold text-on-surface'>4.8</div>
+                <div className='space-y-4 p-4 sm:space-y-6 sm:p-8'>
+                  <div className='flex items-center gap-3 rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-3 sm:gap-4 sm:px-4'>
+                    <div className='text-2xl font-extrabold text-on-surface sm:text-4xl'>
+                      {(reviewsQuery.data?.summary.averageRating ?? 0).toFixed(1)}
+                    </div>
                     <div>
                       <div className='flex text-[#FF5A1F]'>
-                        <span className='material-symbols-outlined'>star</span>
-                        <span className='material-symbols-outlined'>star</span>
-                        <span className='material-symbols-outlined'>star</span>
-                        <span className='material-symbols-outlined'>star</span>
-                        <span className='material-symbols-outlined'>star_half</span>
+                        {renderRatingStars(reviewsQuery.data?.summary.averageRating ?? 0, 'text-[16px] sm:text-[21px]')}
                       </div>
-                      <div className='text-xs font-medium text-outline'>124 Global Değerlendirme</div>
+                      <div className='text-[11px] font-medium text-outline sm:text-xs'>
+                        {reviewsQuery.data?.summary.count ?? 0} ürün değerlendirmesi
+                      </div>
                     </div>
                   </div>
-                  <div className='border-b border-outline-variant/10 pb-6'>
-                    <div className='mb-2 flex justify-between'>
-                      <span className='text-sm font-bold'>M*** K.</span>
-                      <span className='text-xs text-outline'>2 hafta önce</span>
+
+                  {myReviewStateQuery.data?.canReview ? (
+                    <div className='rounded-xl border border-primary/15 bg-primary/5 p-3 sm:p-4'>
+                      <div className='mb-2 flex items-center justify-between gap-3'>
+                        <span className='text-xs font-bold text-on-surface sm:text-sm'>
+                          {myReviewStateQuery.data.myReview ? 'Değerlendirmeni güncelle' : 'Ürünü değerlendir'}
+                        </span>
+                        <div className='flex gap-0.5 text-[#FF5A1F]'>
+                          {Array.from({ length: 5 }, (_, index) => (
+                            <button
+                              aria-label={`${index + 1} puan ver`}
+                              key={`rating-button-${index}`}
+                              onClick={() => setReviewRating(index + 1)}
+                              type='button'
+                            >
+                              <span
+                                className='material-symbols-outlined text-[20px] sm:text-[24px]'
+                                style={{
+                                  fontVariationSettings: index < reviewRating
+                                    ? "'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24"
+                                    : "'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24",
+                                }}
+                              >
+                                star
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <textarea
+                        className='h-20 w-full resize-none rounded-lg border border-outline-variant/40 bg-white px-3 py-2 text-xs outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15 sm:text-sm'
+                        maxLength={1000}
+                        onChange={(event) => setReviewComment(event.target.value)}
+                        placeholder='Ürün deneyimini kısaca paylaş...'
+                        value={reviewComment}
+                      />
+                      {reviewError ? (
+                        <p className='mt-2 text-xs font-medium text-red-600'>{reviewError}</p>
+                      ) : null}
+                      <button
+                        className='mt-2 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60'
+                        disabled={reviewMutation.isPending}
+                        onClick={() => reviewMutation.mutate()}
+                        type='button'
+                      >
+                        {reviewMutation.isPending ? 'Kaydediliyor...' : 'Değerlendirmeyi Kaydet'}
+                      </button>
                     </div>
-                    <p className='text-sm text-on-surface-variant'>
-                      Endüstriyel saha uygulamalarımızda kusursuz çalışıyor. Isınma problemi hiç yaşamadık. Paketleme çok özenliydi.
+                  ) : hasAccessToken() && myReviewStateQuery.data?.reason ? (
+                    <p className='rounded-xl border border-outline-variant/30 bg-surface-container-low px-3 py-2 text-[11px] font-medium text-outline sm:text-xs'>
+                      {myReviewStateQuery.data.reason}
                     </p>
+                  ) : null}
+
+                  <div className='divide-y divide-outline-variant/15'>
+                    {(reviewsQuery.data?.items ?? []).map((review) => (
+                      <div className='py-3 first:pt-0 last:pb-0' key={review.id}>
+                        <div className='mb-1.5 flex items-center justify-between gap-3'>
+                          <span className='text-xs font-bold text-on-surface sm:text-sm'>{review.buyerName}</span>
+                          <span className='text-[10px] text-outline sm:text-xs'>
+                            {new Intl.DateTimeFormat('tr-TR', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            }).format(new Date(review.createdAt))}
+                          </span>
+                        </div>
+                        <div className='mb-1 flex text-[#FF5A1F]'>
+                          {renderRatingStars(review.rating, 'text-[15px] sm:text-[18px]')}
+                        </div>
+                        {review.comment ? (
+                          <p className='text-xs leading-5 text-on-surface-variant sm:text-sm sm:leading-6'>
+                            {review.comment}
+                          </p>
+                        ) : null}
+                      </div>
+                    ))}
+
+                    {!reviewsQuery.isLoading && (reviewsQuery.data?.items.length ?? 0) === 0 ? (
+                      <p className='py-3 text-xs font-medium text-outline sm:text-sm'>
+                        Bu ürün için henüz değerlendirme yok.
+                      </p>
+                    ) : null}
+
+                    {reviewsQuery.isLoading ? (
+                      <p className='py-3 text-xs font-medium text-outline sm:text-sm'>
+                        Değerlendirmeler yükleniyor...
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               </section>

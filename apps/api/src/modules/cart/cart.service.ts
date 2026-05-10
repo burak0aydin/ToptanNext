@@ -173,8 +173,18 @@ export class CartService {
 
     const nextQuantity = requestedQuantity + (existingItem?.quantity ?? 0);
 
-    if (listing.stock !== null && nextQuantity > listing.stock) {
-      throw new BadRequestException('Sepete eklenen adet mevcut stoktan fazla olamaz.');
+    if (listing.stock !== null) {
+      if (listing.stock <= 0) {
+        throw new BadRequestException('Bu ürün şu anda stokta yok.');
+      }
+
+      if (requestedQuantity > listing.stock) {
+        throw new BadRequestException(`Bu üründen en fazla ${listing.stock} adet sepete ekleyebilirsiniz.`);
+      }
+
+      if (nextQuantity > listing.stock) {
+        throw new BadRequestException(`Sepetteki mevcut adetle birlikte stok sınırı aşılıyor. Bu üründen en fazla ${listing.stock} adet eklenebilir.`);
+      }
     }
 
     await this.prisma.cartItem.upsert({
@@ -261,11 +271,14 @@ export class CartService {
       throw new NotFoundException('Sepet kalemi bulunamadı.');
     }
 
-    if (
-      existing.productListing.stock !== null
-      && dto.quantity > existing.productListing.stock
-    ) {
-      throw new BadRequestException('Sepet adedi mevcut stoktan fazla olamaz.');
+    if (existing.productListing.stock !== null) {
+      if (existing.productListing.stock <= 0) {
+        throw new BadRequestException('Bu ürün şu anda stokta yok.');
+      }
+
+      if (dto.quantity > existing.productListing.stock) {
+        throw new BadRequestException(`Sepet adedi mevcut stoktan fazla olamaz. En fazla ${existing.productListing.stock} adet seçebilirsiniz.`);
+      }
     }
 
     await this.prisma.cartItem.update({

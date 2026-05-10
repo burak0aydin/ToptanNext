@@ -11,7 +11,9 @@ import { CartModule } from './modules/cart/cart.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
 import { LogisticsApplicationsModule } from './modules/logistics-applications/logistics-applications.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { OrdersModule } from './modules/orders/orders.module';
 import { PaymentCardsModule } from './modules/payment-cards/payment-cards.module';
+import { ProductReviewsModule } from './modules/product-reviews/product-reviews.module';
 import { ProductsModule } from './modules/products/products.module';
 import { QuotesModule } from './modules/quotes/quotes.module';
 import { SectorsModule } from './modules/sectors/sectors.module';
@@ -45,10 +47,12 @@ const bullImports = redisUrl
     AuthModule,
     AddressesModule,
     PaymentCardsModule,
+    OrdersModule,
     CartModule,
     CategoriesModule,
     SectorsModule,
     ProductsModule,
+    ProductReviewsModule,
     SupplierApplicationsModule,
     LogisticsApplicationsModule,
     ConversationsModule,
