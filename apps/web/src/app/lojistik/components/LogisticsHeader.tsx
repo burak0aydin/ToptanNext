@@ -1,24 +1,24 @@
 'use client';
 
-import { AccountNavLink } from '../../components/AccountNavLink';
+import { PanelAccountMenu } from '../../components/PanelAccountMenu';
 
 type LogisticsHeaderProps = {
   onToggleSidebar: () => void;
-  sidebarCollapsed: boolean;
+  sidebarHidden: boolean;
 };
 
-export function LogisticsHeader({ onToggleSidebar, sidebarCollapsed }: LogisticsHeaderProps) {
-  const desktopOffsetClass = sidebarCollapsed
-    ? 'md:left-20 md:w-[calc(100%-5rem)]'
+export function LogisticsHeader({ onToggleSidebar, sidebarHidden }: LogisticsHeaderProps) {
+  const desktopOffsetClass = sidebarHidden
+    ? 'md:left-0 md:w-full'
     : 'md:left-64 md:w-[calc(100%-16rem)]';
 
   return (
     <header
-      className={`fixed top-0 left-0 z-50 flex h-14 w-full items-center justify-between border-b border-slate-200/50 bg-slate-50/80 px-4 shadow-sm backdrop-blur-md sm:px-6 ${desktopOffsetClass}`}
+      className={`fixed left-0 top-0 z-50 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white/90 px-4 shadow-sm backdrop-blur sm:px-6 ${desktopOffsetClass}`}
     >
       <div className="flex items-center gap-4">
         <button
-          className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100"
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100"
           type="button"
           onClick={onToggleSidebar}
           aria-label="Menüyü aç/kapat"
@@ -28,7 +28,7 @@ export function LogisticsHeader({ onToggleSidebar, sidebarCollapsed }: Logistics
       </div>
 
       <div className="flex items-center gap-2">
-        <AccountNavLink />
+        <PanelAccountMenu />
       </div>
     </header>
   );

@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { RequireAuth } from "@/components/auth/RequireAuth";
+import { PanelAccountMenu } from "@/app/components/PanelAccountMenu";
 
 type SellerPanelShellProps = {
   children: ReactNode;
@@ -44,12 +45,18 @@ function isActivePath(pathname: string, href: string): boolean {
 
 export function SellerPanelShell({ children }: SellerPanelShellProps) {
   const pathname = usePathname();
+  const [isSidebarHidden, setIsSidebarHidden] = useState(false);
   const isMessagesSurface =
     pathname === "/satici-panelim" || pathname.startsWith("/satici-panelim/mesajlar");
 
   const shell = (
     <div className="flex h-dvh overflow-hidden bg-[#f7f9fb] font-body text-[#191c1e]">
-      <aside className="flex h-full w-64 shrink-0 flex-col border-r border-slate-800 bg-slate-900 py-4 text-sm font-medium tracking-tight text-slate-400 shadow-xl">
+      <aside
+        className={[
+          "flex h-full w-64 shrink-0 flex-col border-r border-slate-800 bg-slate-900 py-4 text-sm font-semibold tracking-tight text-slate-400 shadow-xl transition-all duration-300",
+          isSidebarHidden ? "-ml-64" : "ml-0",
+        ].join(" ")}
+      >
         <div className="px-6 pb-6 pt-2">
           <Link href="/" className="text-xl font-bold tracking-tight text-white">
             ToptanNext
@@ -103,23 +110,17 @@ export function SellerPanelShell({ children }: SellerPanelShellProps) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center justify-end border-b border-slate-100 bg-white/90 px-8 shadow-sm backdrop-blur">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              aria-label="Bildirimler"
-              className="rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
-            >
-              <span className="material-symbols-outlined">notifications</span>
-            </button>
-            <Link
-              href="/kullanici-bilgilerim"
-              aria-label="Hesap"
-              className="rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
-            >
-              <span className="material-symbols-outlined">account_circle</span>
-            </Link>
-          </div>
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-100 bg-white/90 px-6 shadow-sm backdrop-blur">
+          <button
+            type="button"
+            aria-label="Menüyü aç/kapat"
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100"
+            onClick={() => setIsSidebarHidden((prev) => !prev)}
+          >
+            <span className="material-symbols-outlined text-[22px]">menu</span>
+          </button>
+
+          <PanelAccountMenu />
         </header>
 
         <main

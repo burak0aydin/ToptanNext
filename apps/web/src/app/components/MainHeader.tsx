@@ -169,6 +169,7 @@ async function fetchSectors(): Promise<SectorItem[]> {
 export function MainHeader() {
   const pathname = usePathname();
   const router = useRouter();
+  const isStoreProfilePage = pathname?.startsWith('/magaza/') ?? false;
   const [desktopMenu, setDesktopMenu] = useState<'categories' | 'sectors' | null>(null);
   const [activeSectorId, setActiveSectorId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -535,6 +536,7 @@ export function MainHeader() {
         </div>
       </nav>
 
+      {!isStoreProfilePage ? (
       <div className='relative hidden border-b border-slate-200/50 bg-slate-50 lg:block'>
         <div
           className='mx-auto flex min-h-10 max-w-[1920px] items-center justify-between px-6'
@@ -631,6 +633,7 @@ export function MainHeader() {
           </div>
         ) : null}
       </div>
+      ) : null}
 
       {mobileMenuOpen ? (
         <>

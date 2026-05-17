@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 type LogisticsSidebarProps = {
-  isCollapsed: boolean;
+  isHidden: boolean;
 };
 
 const menuSections = [
@@ -40,41 +40,31 @@ const menuSections = [
   },
 ] as const;
 
-export function LogisticsSidebar({ isCollapsed }: LogisticsSidebarProps) {
+export function LogisticsSidebar({ isHidden }: LogisticsSidebarProps) {
   const pathname = usePathname();
 
   const isActive = (href: string) => pathname.includes(href);
 
   return (
     <aside
-      className={`hidden md:flex flex-col bg-slate-900 border-r border-slate-800 h-full z-40 fixed left-0 top-0 pt-0 font-['Inter'] text-sm font-semibold divide-y divide-slate-800 transition-all duration-200 overflow-hidden ${
-        isCollapsed ? 'w-20' : 'w-64'
-      }`}
+      className={[
+        "hidden md:flex fixed left-0 top-0 z-40 h-full w-64 flex-col overflow-hidden border-r border-slate-800 bg-slate-900 py-4 font-['Inter'] text-sm font-semibold tracking-tight text-slate-400 shadow-xl transition-all duration-300",
+        isHidden ? 'md:-translate-x-full' : 'md:translate-x-0',
+      ].join(' ')}
     >
-      <div className={`p-6 ${isCollapsed ? 'px-4' : ''}`}>
-        <div className={`flex items-center ${isCollapsed ? 'justify-start gap-3' : 'gap-3'} mb-2`}>
-          <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white shrink-0">
-            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
-              local_shipping
-            </span>
-          </div>
-          {isCollapsed ? null : (
-            <div>
-              <h2 className="text-sm font-bold text-white leading-tight">ToptanNext</h2>
-              <p className="text-xs font-normal text-slate-400">Lojistik Paneli</p>
-            </div>
-          )}
-        </div>
+      <div className="px-6 pb-6 pt-2">
+        <Link href="/" className="text-xl font-bold tracking-tight text-white">
+          ToptanNext
+        </Link>
+        <p className="mt-1 text-xs font-normal text-slate-400">Lojistik Paneli</p>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-4">
+      <nav className="flex-1 overflow-y-auto px-2">
         {menuSections.map((section) => (
-          <div className={`${isCollapsed ? 'px-2' : 'px-3'} mb-6`} key={section.title}>
-            {isCollapsed ? null : (
-              <h3 className="px-3 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                {section.title}
-              </h3>
-            )}
+          <div className="mb-4" key={section.title}>
+            <h3 className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              {section.title}
+            </h3>
             <ul className="space-y-1">
               {section.items.map((item) => {
                 const active = isActive(item.href);
@@ -83,17 +73,16 @@ export function LogisticsSidebar({ isCollapsed }: LogisticsSidebarProps) {
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      title={isCollapsed ? item.label : undefined}
-                      className={`flex w-full items-center rounded-lg transition-all duration-200 ease-in-out border-r-4 ${
+                      className={`flex w-full items-center gap-3 rounded-md px-3 py-2 transition-all duration-200 active:scale-95 ${
                         active
-                          ? 'bg-blue-900/50 text-blue-400 border-blue-500'
-                          : 'text-slate-300 hover:bg-slate-800 hover:text-white border-transparent'
+                          ? 'bg-blue-600 text-white'
+                          : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                       }`}
                     >
-                      <span className="material-symbols-outlined shrink-0">
+                      <span className="material-symbols-outlined shrink-0 text-[22px]">
                         {item.icon}
                       </span>
-                      {isCollapsed ? null : <span className="px-3 py-2.5">{item.label}</span>}
+                      <span>{item.label}</span>
                     </Link>
                   </li>
                 );

@@ -12,22 +12,22 @@ export default function LogisticsLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarHidden, setIsSidebarHidden] = useState(false);
 
   const toggleSidebar = () => {
-    setIsSidebarCollapsed((prev) => !prev);
+    setIsSidebarHidden((prev) => !prev);
   };
 
-  const mainPaddingClass = isSidebarCollapsed ? 'md:pl-20' : 'md:pl-64';
+  const mainPaddingClass = isSidebarHidden ? 'md:pl-0' : 'md:pl-64';
 
   const shell = (
     <div className="h-screen overflow-hidden flex bg-slate-50">
-      <LogisticsSidebar isCollapsed={isSidebarCollapsed} />
+      <LogisticsSidebar isHidden={isSidebarHidden} />
 
       <div className={`flex-1 flex flex-col h-full relative ${mainPaddingClass}`}>
-        <LogisticsHeader onToggleSidebar={toggleSidebar} sidebarCollapsed={isSidebarCollapsed} />
+        <LogisticsHeader onToggleSidebar={toggleSidebar} sidebarHidden={isSidebarHidden} />
 
-        <main className="flex-1 overflow-y-auto pt-12 pb-12 px-4 sm:px-6 lg:px-8 bg-slate-50">
+        <main className="flex-1 overflow-y-auto px-4 pb-12 pt-20 sm:px-6 lg:px-8 bg-slate-50">
           <div className="mx-auto w-full max-w-7xl">{children}</div>
         </main>
       </div>

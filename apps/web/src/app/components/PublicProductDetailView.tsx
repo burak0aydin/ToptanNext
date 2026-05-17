@@ -1408,9 +1408,9 @@ export function PublicProductDetailView({ id }: PublicProductDetailViewProps) {
                       <button className='rounded-lg bg-primary px-6 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90' type='button'>
                         Tedarikçiyi Takip Et
                       </button>
-                      <button className='rounded-lg border border-outline-variant px-6 py-2.5 text-sm font-bold transition-colors hover:bg-surface' type='button'>
+                      <Link className='rounded-lg border border-outline-variant px-6 py-2.5 text-sm font-bold transition-colors hover:bg-surface' href={`/magaza/${listing.supplierId}`}>
                         Mağazayı Ziyaret Et
-                      </button>
+                      </Link>
                     </div>
                   </div>
 
