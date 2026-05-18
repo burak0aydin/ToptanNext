@@ -398,13 +398,15 @@ export function MainHeader() {
 
   return (
     <header
-      className={`z-50 bg-white lg:sticky lg:top-0 lg:border-b lg:border-slate-100 lg:shadow-sm ${
+      className={`z-50 bg-white ${
+        isStoreProfilePage ? 'lg:border-b lg:border-slate-100 lg:shadow-sm' : 'lg:sticky lg:top-0 lg:border-b lg:border-slate-100 lg:shadow-sm'
+      } ${
         showTopNav ? 'sticky top-0 border-b border-slate-100 shadow-sm' : ''
       }`}
     >
       <nav
         className={`relative mx-auto w-full max-w-[1920px] items-center justify-between px-6 py-3 ${
-          showTopNav ? 'flex' : 'hidden lg:flex'
+          showTopNav || isStoreProfilePage ? 'flex' : 'hidden lg:flex'
         }`}
       >
         <button
